@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>青绿自然 · 青檐万灵册前端原型</title>
+<style>
+:root{--font:'Microsoft YaHei','PingFang SC',sans-serif;--head:'Microsoft YaHei','PingFang SC',sans-serif;--bg:#f6f8f4;--side:#ffffff;--panel:#ffffff;--ink:#24352f;--muted:#6d7f78;--line:#dfe7e2;--accent:#2f6b57;--accent-2:#7aa98f;--accent-soft:#e8f2ec;--warn:#b46a2c;--warn-soft:#f9ede0;--chip:#f2f6f3;--hover:#f7faf8;--table-head:#f0f5f2;--hero:linear-gradient(120deg,#eef5ef,#fbfdf8);--radius:14px;--radius-sm:9px;--shadow:0 2px 12px rgba(42,80,65,.06)}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+.app{display:flex;min-height:100vh}
+.sidebar{width:228px;flex:0 0 228px;background:var(--side);border-right:1px solid var(--line);padding:22px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:16px}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px}
+.brand-mark{width:38px;height:38px;border-radius:var(--radius-sm);background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;flex:0 0 auto}
+.brand b{display:block;font-size:16px;letter-spacing:.5px;line-height:1.3;font-family:var(--head)}
+.brand small{display:block;color:var(--muted);font-size:11px;letter-spacing:.2px}
+.theme-tag{margin:0 8px;padding:8px 10px;background:var(--accent-soft);color:var(--accent);border-radius:var(--radius-sm);font-size:12px;font-weight:600}
+nav{display:flex;flex-direction:column;gap:4px;margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;padding:10px 12px;border-radius:var(--radius-sm);cursor:pointer;text-align:left;color:var(--muted);transition:.15s}
+.nav-item span:first-child{font-size:16px;width:18px;text-align:center;flex:0 0 18px}
+.nav-item:hover{background:var(--hover);color:var(--ink)}
+.nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.side-foot{margin-top:auto;padding:10px 8px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{height:64px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:5}
+.crumb{color:var(--muted);font-size:13px}
+.crumb b{color:var(--ink);font-weight:600}
+.top-actions{display:flex;align-items:center;gap:12px}
+.pill{background:var(--accent-soft);color:var(--accent);padding:5px 10px;border-radius:999px;font-size:12px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.content{padding:26px 30px 46px;max-width:1360px;width:100%;margin:0 auto}
+.view{display:none;animation:fade .2s ease}
+.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+h1,h2,h3{font-family:var(--head);font-weight:600;margin:0}
+h1{font-size:26px;letter-spacing:.4px}
+h2{font-size:17px}
+h3{font-size:14px}
+p{margin:6px 0}
+.muted{color:var(--muted)}
+.hero{background:var(--hero);border:1px solid var(--line);border-radius:var(--radius);padding:24px 26px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:20px;box-shadow:var(--shadow)}
+.hero h1{margin-bottom:6px}
+.hero p{color:var(--muted);font-size:13px}
+.btn{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:var(--radius-sm);padding:9px 16px;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(.94)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.metric{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow)}
+.metric .label{color:var(--muted);font-size:12px}
+.metric .num{font-size:26px;font-weight:700;font-family:var(--head);margin:4px 0 2px}
+.metric .sub{font-size:11px;color:var(--muted)}
+.metric .sub b{color:var(--accent);font-weight:600}
+.grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-bottom:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-head .more{color:var(--muted);font-size:12px}
+.list{list-style:none;margin:0;padding:0}
+.list li{padding:11px 0;border-bottom:1px dashed var(--line);display:flex;align-items:center;gap:10px}
+.list li:last-child{border-bottom:0}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+.dot.gray{background:var(--muted)}
+.grow{flex:1;min-width:0}
+.time{color:var(--muted);font-size:12px;white-space:nowrap}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:11px;white-space:nowrap}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.gray{background:var(--chip);color:var(--muted)}
+.bars{display:flex;align-items:flex-end;gap:14px;height:150px;padding:10px 4px 0;border-bottom:1px solid var(--line)}
+.bar-wrap{flex:1;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center}
+.bar{width:100%;max-width:46px;margin:0 0 6px;background:var(--accent);border-radius:var(--radius-sm) var(--radius-sm) 0 0;opacity:.85;flex:0 0 auto}
+.bar.alt{background:var(--accent-2)}
+.bar-label{font-size:11px;color:var(--muted)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.input,.select{border:1px solid var(--line);background:var(--panel);border-radius:var(--radius-sm);padding:9px 12px;min-width:180px;outline:none}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--accent)}
+.table-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px}
+th{background:var(--table-head);color:var(--muted);font-weight:600;text-align:left;padding:11px 14px;white-space:nowrap}
+td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:middle}
+tbody tr:hover{background:var(--hover)}
+.animal-cell{display:flex;align-items:center;gap:10px}
+.emoji{width:34px;height:34px;border-radius:var(--radius-sm);background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+.code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--muted)}
+.profile{display:flex;gap:20px;align-items:center}
+.profile .emoji{width:82px;height:82px;font-size:40px;border-radius:var(--radius)}
+.profile h1{font-size:22px}
+.info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}
+.info{background:var(--chip);border-radius:var(--radius-sm);padding:11px 13px}
+.info .k{font-size:11px;color:var(--muted)}
+.info .v{font-weight:600;margin-top:2px}
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.plan{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:relative}
+.plan.hot{border-color:var(--accent)}
+.plan .price{font-family:var(--head);font-size:24px;font-weight:700;color:var(--accent);margin:8px 0}
+.plan .price small{font-size:12px;color:var(--muted);font-weight:400}
+.plan ul{margin:10px 0 0;padding-left:18px;color:var(--muted);font-size:12px}
+.cards3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pet{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.pet .photo{height:116px;background:var(--hero);display:flex;align-items:center;justify-content:center;font-size:46px}
+.pet .body{padding:14px}
+.pet .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.form-grid{display:grid;grid-template-columns:1.4fr .8fr;gap:16px}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+.textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;background:var(--panel);resize:vertical;outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 13px;cursor:pointer;color:var(--muted)}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+.drop{border:1.5px dashed var(--line);border-radius:var(--radius-sm);padding:20px;text-align:center;color:var(--muted);background:var(--chip)}
+.progress{height:8px;border-radius:999px;background:var(--chip);overflow:hidden;margin:8px 0 4px}
+.progress i{display:block;height:100%;background:var(--accent)}
+.progress i.alt{background:var(--accent-2)}
+.msg{padding:13px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.msg:last-child{border-bottom:0}
+.msg .unread{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:8px;flex:0 0 auto}
+.msg .read{width:8px;height:8px;flex:0 0 auto}
+.notice{background:var(--chip);border-left:3px solid var(--accent);padding:11px 14px;border-radius:var(--radius-sm);font-size:12px;color:var(--muted)}
+.footnote{margin-top:16px;color:var(--muted);font-size:12px;text-align:center}
+@media(max-width:1000px){.sidebar{width:70px;flex-basis:70px;padding:18px 8px}.brand b,.brand small,.theme-tag,.nav-item span+span,.side-foot{display:none}.nav-item{justify-content:center}.nav-item span{font-size:18px}.metrics{grid-template-columns:repeat(2,1fr)}.grid2,.form-grid{grid-template-columns:1fr}.plans,.cards3{grid-template-columns:1fr}.info-grid{grid-template-columns:repeat(2,1fr)}}
+
+
+body[data-theme="green"] .hero{position:relative;overflow:hidden}
+body[data-theme="green"] .hero:after{content:"青";position:absolute;right:26px;top:-30px;font-size:120px;color:rgba(47,107,87,.06);font-family:'SimSun',serif}
+body[data-theme="green"] .nav-item.active{box-shadow:inset 3px 0 0 var(--accent)}
+
+</style>
+</head>
+<body data-theme="green">
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">青</div><div><b>青檐万灵册</b><small>校园生物档案与救助平台</small></div></div>
+    <div class="theme-tag">风格原型 · 青绿自然</div>
+    <nav>
+            <button class="nav-item active" data-view="home"><span>◫</span><span>工作台</span></button>
+      <button class="nav-item" data-view="animals"><span>▤</span><span>生物档案</span></button>
+      <button class="nav-item" data-view="detail"><span>◎</span><span>档案详情</span></button>
+      <button class="nav-item" data-view="adopt"><span>♡</span><span>认养专区</span></button>
+      <button class="nav-item" data-view="report"><span>＋</span><span>救助上报</span></button>
+      <button class="nav-item" data-view="fund"><span>¥</span><span>资金透明</span></button>
+      <button class="nav-item" data-view="messages"><span>✉</span><span>消息中心</span></button>
+    </nav>
+    <div class="side-foot">静态原型 · 数据均为样例<br>用于四人小组统一视觉风格</div>
+  </aside>
+  <div class="main">
+    <header class="topbar"><div class="crumb">青檐万灵册 / <b id="crumb">工作台</b></div><div class="top-actions"><span class="pill">社团管理员</span><span class="muted" style="font-size:12px">2026-11-21</span><div class="avatar">管</div></div></header>
+    <main class="content">
+
+      <section class="view active" id="view-home">
+        <div class="hero"><div><h1>下午好，青檐同学</h1><p>今天有 3 条上报待受理、2 个认养申请待审核。让每一只校园生灵都被看见。</p></div><button class="btn" data-go="report">处理待办</button></div>
+        <div class="metrics">
+          <div class="metric"><div class="label">在册生物</div><div class="num">213</div><div class="sub">本周新增 <b>+6</b></div></div>
+          <div class="metric"><div class="label">已绝育</div><div class="num">148</div><div class="sub">覆盖率 <b>69.5%</b></div></div>
+          <div class="metric"><div class="label">生效认养</div><div class="num">36</div><div class="sub">待审核 <b>2</b></div></div>
+          <div class="metric"><div class="label">本月入账</div><div class="num">¥12,680</div><div class="sub">已支出 <b>¥4,320</b></div></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="card-head"><h2>近半年认养趋势</h2><span class="more">单位：件</span></div>
+            <div class="bars">
+              <div class="bar-wrap"><div class="bar" style="height:38%"></div><div class="bar-label">6月</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:52%"></div><div class="bar-label">7月</div></div>
+              <div class="bar-wrap"><div class="bar" style="height:44%"></div><div class="bar-label">8月</div></div>
+              <div class="bar-wrap"><div class="bar alt" style="height:68%"></div><div class="bar-label">9月</div></div>
+              <div class="bar-wrap"><div class="bar alt" style="height:81%"></div><div class="bar-label">10月</div></div>
+              <div class="bar-wrap"><div class="bar alt" style="height:72%"></div><div class="bar-label">11月</div></div>
+            </div>
+          </div>
+          <div class="card"><div class="card-head"><h2>待办事项</h2><span class="more">共 5 项</span></div>
+            <ul class="list">
+              <li><span class="dot"></span><span class="grow">认养申请待审核 · 三花 CAT-2026-031</span><span class="tag warn">待办</span></li>
+              <li><span class="dot"></span><span class="grow">上报 24 小时未受理 · 东区车棚</span><span class="tag warn">超时</span></li>
+              <li><span class="dot gray"></span><span class="grow">支出复核 · 秋季绝育专项 ¥520</span><span class="tag">复核</span></li>
+              <li><span class="dot gray"></span><span class="grow">疫苗到期提醒 3 条</span><span class="tag gray">提醒</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="card"><div class="card-head"><h2>校园动态</h2><span class="more">最新 4 条</span></div>
+          <ul class="list">
+            <li><span class="dot"></span><span class="grow">「秋季绝育专项」已完成 12 例手术，进度更新至 68%</span><span class="time">10 分钟前</span></li>
+            <li><span class="dot gray"></span><span class="grow">新成员上传了西区草坪的刺猬目击记录</span><span class="time">2 小时前</span></li>
+            <li><span class="dot gray"></span><span class="grow">三花 CAT-2026-031 的认养关系本月底到期</span><span class="time">昨天</span></li>
+            <li><span class="dot gray"></span><span class="grow">结项报告《猫屋维护》已公示，欢迎查阅</span><span class="time">3 天前</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="view" id="view-animals">
+        <div class="hero"><div><h1>生物档案</h1><p>个体、群体、出现记录三层口径分开统计；共 213 只在册个体、15 个群体、1200 条出现记录。</p></div><button class="btn">＋ 新建档案</button></div>
+        <div class="toolbar"><input class="input" placeholder="搜索编号 / 识别特征"><select class="select"><option>全部状态</option><option>在校园活动</option><option>治疗中</option><option>已放归</option><option>已认养</option></select><select class="select"><option>全部点位</option><option>东区宿舍七号楼</option><option>食堂后门</option><option>图书馆草坪</option></select><button class="btn ghost">筛选</button></div>
+        <div class="table-wrap"><table><thead><tr><th>编号</th><th>昵称 / 特征</th><th>类别</th><th>常驻点位</th><th>状态</th><th>绝育</th><th>认养</th><th>操作</th></tr></thead><tbody>
+          <tr><td class="code">CAT-2026-031</td><td><div class="animal-cell"><span class="emoji">🐈</span><div><b>三花</b><br><span class="muted" style="font-size:12px">左耳缺口，右后腿跛行</span></div></div></td><td>猫</td><td>东区宿舍七号楼</td><td><span class="tag warn">治疗中</span></td><td>否</td><td><span class="tag">已认养</span></td><td><button class="btn sm ghost" data-go="detail">查看</button></td></tr>
+          <tr><td class="code">CAT-2026-028</td><td><div class="animal-cell"><span class="emoji">🐈‍⬛</span><div><b>小黑</b><br><span class="muted" style="font-size:12px">全黑，尾尖白</span></div></div></td><td>猫</td><td>食堂后门</td><td><span class="tag">在校园活动</span></td><td>是</td><td>—</td><td><button class="btn sm ghost" data-go="detail">查看</button></td></tr>
+          <tr><td class="code">DOG-2026-014</td><td><div class="animal-cell"><span class="emoji">🐕</span><div><b>豆豆</b><br><span class="muted" style="font-size:12px">黄色短毛，温顺</span></div></div></td><td>犬</td><td>图书馆草坪</td><td><span class="tag">已放归</span></td><td>是</td><td>—</td><td><button class="btn sm ghost" data-go="detail">查看</button></td></tr>
+          <tr><td class="code">CAT-2026-019</td><td><div class="animal-cell"><span class="emoji">🐈</span><div><b>橘子</b><br><span class="muted" style="font-size:12px">橘白，体型偏胖</span></div></div></td><td>猫</td><td>体育馆北侧</td><td><span class="tag">在校园活动</span></td><td>否</td><td><span class="tag">已认养</span></td><td><button class="btn sm ghost" data-go="detail">查看</button></td></tr>
+          <tr><td class="code">GRP-2026-003</td><td><div class="animal-cell"><span class="emoji">🦔</span><div><b>刺猬群</b><br><span class="muted" style="font-size:12px">规模 3–5，夜间活动</span></div></div></td><td>群体</td><td>图书馆草坪</td><td><span class="tag gray">活跃</span></td><td>—</td><td>—</td><td><button class="btn sm ghost">查看</button></td></tr>
+          <tr><td class="code">CAT-2026-007</td><td><div class="animal-cell"><span class="emoji">🐈</span><div><b>雪球</b><br><span class="muted" style="font-size:12px">纯白，蓝眼</span></div></div></td><td>猫</td><td>艺术楼后院</td><td><span class="tag gray">已离世</span></td><td>是</td><td>—</td><td><button class="btn sm ghost" data-go="detail">查看</button></td></tr>
+        </tbody></table></div>
+        <p class="footnote">提示：状态字段只能按迁移表推进，非法迁移会返回允许的目标状态列表。</p>
+      </section>
+
+      <section class="view" id="view-detail">
+        <div class="card">
+          <div class="profile"><div class="emoji">🐈</div><div><h1>三花 <span class="code">CAT-2026-031</span></h1><p class="muted">猫 · 雌性 · 约 2 岁 · 三花 · 左耳缺口、右后腿跛行</p><div style="display:flex;gap:8px;margin-top:8px"><span class="tag warn">治疗中</span><span class="tag">已认养</span><span class="tag gray">未绝育</span></div></div><div style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost">登记就诊</button><button class="btn" data-go="adopt">云认养</button></div></div>
+          <div class="info-grid">
+            <div class="info"><div class="k">常驻点位</div><div class="v">东区宿舍七号楼</div></div>
+            <div class="info"><div class="k">首次建档</div><div class="v">2026-03-12</div></div>
+            <div class="info"><div class="k">最近更新</div><div class="v">2026-11-20</div></div>
+            <div class="info"><div class="k">认养人</div><div class="v">青檐一号</div></div>
+            <div class="info"><div class="k">有效期至</div><div class="v">2027-05-21</div></div>
+            <div class="info"><div class="k">绝育情况</div><div class="v">未绝育</div></div>
+            <div class="info"><div class="k">疫苗</div><div class="v">2026-09-02 已接种</div></div>
+            <div class="info"><div class="k">关联工单</div><div class="v">RO20261118006</div></div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card"><div class="card-head"><h2>健康与防疫</h2><span class="more">共 4 条</span></div><ul class="list">
+            <li><span class="dot"></span><span class="grow"><b>就诊 · 右后腿跛行</b><br><span class="muted">校医院动物门诊 · 2026-11-18 · ¥180</span></span><span class="tag warn">处理中</span></li>
+            <li><span class="dot gray"></span><span class="grow"><b>疫苗 · 猫三联</b><br><span class="muted">2026-09-02 · 下次 2027-09-02</span></span><span class="tag gray">已完成</span></li>
+            <li><span class="dot gray"></span><span class="grow"><b>驱虫</b><br><span class="muted">2026-08-15</span></span><span class="tag gray">已完成</span></li>
+          </ul></div>
+          <div class="card"><div class="card-head"><h2>状态时间线</h2></div><ul class="list">
+            <li><span class="dot"></span><span class="grow">治疗中 · 从工单转入</span><span class="time">11-18</span></li>
+            <li><span class="dot gray"></span><span class="grow">已认养 · 缴费入账生效</span><span class="time">11-12</span></li>
+            <li><span class="dot gray"></span><span class="grow">在校园活动 · 建档</span><span class="time">03-12</span></li>
+          </ul><div class="notice" style="margin-top:12px">公开页只显示昵称、点位与状态，不含联系方式与内部备注。</div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-adopt">
+        <div class="hero"><div><h1>云认养 · 让陪伴持续发生</h1><p>认养不带走陪伴，只把照顾变成一件可追踪的事。每位同学最多同时认养两只。</p></div><button class="btn ghost">我的认养</button></div>
+        <h2 style="margin-bottom:10px">选择认养方案</h2>
+        <div class="plans">
+          <div class="plan"><h3>月度守护</h3><div class="price">¥30 <small>/ 月</small></div><p class="muted" style="font-size:12px">每月一份粮与基础照护</p><ul><li>专属电子证书</li><li>每月档案更新</li></ul></div>
+          <div class="plan hot"><span class="tag">推荐</span><h3>季度陪伴</h3><div class="price">¥90 <small>/ 季</small></div><p class="muted" style="font-size:12px">覆盖一个季节的照护开销</p><ul><li>月度守护全部权益</li><li>探视预约优先</li><li>健康记录季报</li></ul></div>
+          <div class="plan"><h3>年度守护者</h3><div class="price">¥300 <small>/ 年</small></div><p class="muted" style="font-size:12px">全年陪伴，含一次医疗备用金</p><ul><li>季度陪伴全部权益</li><li>专属挂牌二维码</li><li>结项公示署名</li></ul></div>
+        </div>
+        <h2 style="margin-bottom:10px">等待认养的伙伴</h2>
+        <div class="cards3">
+          <div class="pet"><div class="photo">🐈‍⬛</div><div class="body"><h3>小黑</h3><p class="muted" style="font-size:12px">CAT-2026-028 · 食堂后门</p><div class="row"><span class="tag">已绝育</span><button class="btn sm">申请认养</button></div></div></div>
+          <div class="pet"><div class="photo">🐕</div><div class="body"><h3>豆豆</h3><p class="muted" style="font-size:12px">DOG-2026-014 · 图书馆草坪</p><div class="row"><span class="tag">已放归</span><button class="btn sm">申请认养</button></div></div></div>
+          <div class="pet"><div class="photo">🐈</div><div class="body"><h3>橘子</h3><p class="muted" style="font-size:12px">CAT-2026-019 · 体育馆北侧</p><div class="row"><span class="tag warn">已认养</span><button class="btn sm ghost" disabled>已被认养</button></div></div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-report">
+        <div class="hero"><div><h1>救助上报</h1><p>三步完成：选类型 → 在平面图选点 → 上传照片。提交后 24 小时内会有管理员受理。</p></div></div>
+        <div class="form-grid">
+          <div class="card"><h2 style="margin-bottom:16px">上报表单</h2>
+            <div class="field"><label>① 上报类型</label><div class="chips"><button class="chip on">受伤</button><button class="chip">新出现</button><button class="chip">疑似遗弃</button><button class="chip">扰民</button><button class="chip">死亡</button></div></div>
+            <div class="field"><label>② 发现点位（点击平面图选点）</label><div class="drop" style="height:120px;display:flex;align-items:center;justify-content:center">校园平面图 · 东区宿舍七号楼 <span class="tag" style="margin-left:8px">已选</span></div></div>
+            <div class="field"><label>③ 照片与描述</label><div class="drop">点击或拖拽上传照片 · 不超过 5MB · 至少 1 张</div></div>
+            <div class="field"><label>补充说明（不少于 10 字）</label><textarea class="textarea" placeholder="例如：右后腿跛行，躲在车棚角落，今天下午发现，状态尚可。"></textarea></div>
+            <button class="btn">提交上报</button>
+          </div>
+          <div class="card"><h2 style="margin-bottom:14px">上报须知</h2><ul class="list">
+            <li><span class="dot"></span><span class="grow"><b>不要自行处置野生动物</b><br><span class="muted">发现野猪等大型野生动物，系统会提示联系后勤。</span></span></li>
+            <li><span class="dot"></span><span class="grow"><b>同一点位 24 小时内重复上报</b><br><span class="muted">会提示合并到已有上报，避免重复派单。</span></span></li>
+            <li><span class="dot"></span><span class="grow"><b>进展会推送到消息中心</b><br><span class="muted">受理、处置、回访每一步都能看到。</span></span></li>
+          </ul><div class="notice" style="margin-top:14px">提交成功后返回上报编号 RP20261121007，请留意消息通知。</div></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-fund">
+        <div class="hero"><div><h1>资金透明</h1><p>登记不等于入账：学生上传凭证后，管理员核对到账才计入项目进度。每一笔支出都可追问到动物与票据。</p></div><button class="btn">发起项目</button></div>
+        <div class="grid2">
+          <div class="card"><div class="card-head"><h2>秋季绝育专项</h2><span class="tag">募捐中</span></div>
+            <p class="muted" style="font-size:12px">已筹 ¥2,680 / 目标 ¥3,000 · 剩余 9 天</p><div class="progress"><i style="width:89%"></i></div>
+            <div class="muted" style="font-size:12px">已复核支出 ¥1,200 · 可用余额 ¥1,480</div></div>
+          <div class="card"><div class="card-head"><h2>猫屋维护</h2><span class="tag gray">待结项</span></div>
+            <p class="muted" style="font-size:12px">已筹 ¥1,560 / 目标 ¥1,800</p><div class="progress"><i class="alt" style="width:87%"></i></div>
+            <div class="muted" style="font-size:12px">已复核支出 ¥980 · 可用余额 ¥580</div></div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>日期</th><th>类型</th><th>摘要</th><th>关联对象</th><th>金额</th><th>状态</th></tr></thead><tbody>
+          <tr><td>11-20</td><td>支出</td><td>绝育手术费（第二复核人已确认）</td><td class="code">CAT-2026-028</td><td>− ¥520.00</td><td><span class="tag">已复核</span></td></tr>
+          <tr><td>11-19</td><td>收入</td><td>爱心同学捐赠 · 匿名</td><td class="code">PRJ-2026-007</td><td>+ ¥200.00</td><td><span class="tag">已入账</span></td></tr>
+          <tr><td>11-18</td><td>支出</td><td>猫屋木材与防水垫</td><td class="code">PRJ-2026-006</td><td>− ¥318.00</td><td><span class="tag">已复核</span></td></tr>
+          <tr><td>11-17</td><td>收入</td><td>云认养缴费 · 三花</td><td class="code">AD20261112001</td><td>+ ¥90.00</td><td><span class="tag">已入账</span></td></tr>
+          <tr><td>11-16</td><td>收入</td><td>捐赠登记（凭证待核对）</td><td class="code">DN20261116012</td><td>+ ¥50.00</td><td><span class="tag warn">待核对</span></td></tr>
+        </tbody></table></div>
+        <p class="footnote">结项后的公示页只读；资金记录只允许新增与冲正，不允许删除。</p>
+      </section>
+
+      <section class="view" id="view-messages">
+        <div class="hero"><div><h1>消息中心</h1><p>认养到期、募捐进度、工单进展、审批结果四类消息，保留 180 天。</p></div><button class="btn ghost">全部标为已读</button></div>
+        <div class="card"><div class="msg"><span class="unread"></span><div class="grow"><b>认养审核通过</b> · 你的「三花」认养申请已通过，请在 7 日内完成缴费。<div class="time">今天 10:24</div></div><span class="tag">审批结果</span></div>
+          <div class="msg"><span class="unread"></span><div class="grow"><b>工单进展</b> · RO20261118006 已转入治疗中，校医院动物门诊已接诊。<div class="time">昨天 16:08</div></div><span class="tag">工单进展</span></div>
+          <div class="msg"><span class="unread"></span><div class="grow"><b>认养到期提醒</b> · 你对「橘子」的认养将在 7 天后到期，可续期。<div class="time">昨天 09:00</div></div><span class="tag warn">认养到期</span></div>
+          <div class="msg"><span class="read"></span><div class="grow"><b>募捐进度</b> · 「秋季绝育专项」已达成 89%，感谢你的支持。<div class="time">11-19 14:32</div></div><span class="tag gray">募捐进度</span></div>
+          <div class="msg"><span class="read"></span><div class="grow"><b>捐赠凭证已生成</b> · DN20261116012 已入账，电子感谢信可下载。<div class="time">11-17 11:20</div></div><span class="tag gray">审批结果</span></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+<script>
+var names={home:'工作台',animals:'生物档案',detail:'档案详情',adopt:'认养专区',report:'救助上报',fund:'资金透明',messages:'消息中心'};
+function show(view){
+  document.querySelectorAll('.view').forEach(function(v){v.classList.toggle('active',v.id==='view-'+view)});
+  document.querySelectorAll('.nav-item').forEach(function(b){b.classList.toggle('active',b.dataset.view===view)});
+  var n=names[view]||'工作台';document.getElementById('crumb').textContent=n;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+document.querySelectorAll('.nav-item').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.view)})});
+document.querySelectorAll('[data-go]').forEach(function(b){b.addEventListener('click',function(){show(b.dataset.go)})});
+document.querySelectorAll('.chip').forEach(function(b){b.addEventListener('click',function(){
+  b.parentNode.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});b.classList.add('on')
+})});
+if(location.hash && names[location.hash.slice(1)]) show(location.hash.slice(1));
+</script>
+</body></html>
