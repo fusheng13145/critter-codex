@@ -61,3 +61,15 @@ export function fetchUsers(params: {
 export function updateUserStatus(id: number, status: string, reason?: string): Promise<null> {
   return put<null>(`/users/${id}/status`, { status, reason })
 }
+
+/**
+ * 账号禁用申诉（公开接口）：被禁用的账号登不进来，只能凭学号从登录页提交。
+ * 同一学号已有待处理申诉时后端幂等返回原记录。
+ */
+export function submitAppeal(payload: {
+  userNo: string
+  reason: string
+  contact?: string
+}): Promise<import('./types').AppealResponse> {
+  return post('/users/me/appeals', payload)
+}

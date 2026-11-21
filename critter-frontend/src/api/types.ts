@@ -260,3 +260,51 @@ export interface RolesResponse {
   matrix: RoleMatrix[]
   allMenus: string[]
 }
+
+/** 找回密码（GET /auth/password/code 的返回） */
+export interface ResetCodeResponse {
+  userNo: string
+  emailMasked: string
+  codeTtlSeconds: number
+  devCode?: string | null
+}
+
+/** 账号禁用申诉（POST /users/me/appeals） */
+export interface AppealResponse {
+  id: number
+  userNo: string
+  status: string
+  statusLabel: string
+  message: string
+  createdAt: string
+}
+
+/** 角色权限在线配置的差异预览（PUT /roles/{id}/permissions） */
+export interface PermissionDiff {
+  roleCode: string
+  roleName: string
+  addedMenus: string[]
+  removedMenus: string[]
+  addedApis: string[]
+  removedApis: string[]
+  warnings: string[]
+  applied: boolean
+}
+
+/** 异步导出任务（超过 5 万行时才出现） */
+export interface ExportTask {
+  taskId: string
+  status: 'RUNNING' | 'DONE' | 'FAILED'
+  rows: number
+  fileName: string
+  downloadUrl: string | null
+  error: string | null
+}
+
+/** 同步导出被拒（异步受理）时的信封体 */
+export interface ExportAccepted {
+  taskId: string
+  status: string
+  rows: number
+  pollUrl: string
+}

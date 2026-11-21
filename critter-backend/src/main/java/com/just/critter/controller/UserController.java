@@ -1,6 +1,8 @@
 package com.just.critter.controller;
 
+import com.just.critter.controller.dto.AppealDtos;
 import com.just.critter.controller.dto.UserDtos;
+import com.just.critter.service.user.AppealService;
 import com.just.critter.service.user.UserService;
 import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.Result;
@@ -28,9 +30,11 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final AppealService appealService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, AppealService appealService) {
         this.userService = userService;
+        this.appealService = appealService;
     }
 
     @GetMapping("/me")
@@ -65,6 +69,16 @@ public class UserController {
         return Result.ok(userService.myApplications(AuthContext.require().id()));
     }
 
+    /**
+     * 账号禁用申诉：公开接口（被禁用的账号登不进来，只能凭学号申诉）。
+     * 路径挂在 /users/me 下是契约要求，鉴权白名单在 WebConfig 里按精确路径放行。
+     */
+    @PostMapping("/me/appeals")
+    public Result<AppealDtos.AppealResponse> appeal(@Valid @RequestBody AppealDtos.AppealRequest request,
+                                                    jakarta.servlet.http.HttpServletRequest servletRequest) {
+        return Result.ok(appealService.submit(request, clientIp(servletRequest)));
+    }
+
     @GetMapping
     @RequireRoles({"SYS_ADMIN", "SYSTEM_ADMIN"})
     public Result<UserDtos.UserPage> list(
@@ -97,5 +111,14 @@ public class UserController {
                                                    @Valid @RequestBody UserDtos.ReviewRequest request) {
         boolean approve = "APPROVE".equalsIgnoreCase(request.decision().trim());
         return Result.ok(userService.reviewApplication(id, approve, request.reason()));
+    }
+
+    private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            int comma = forwarded.indexOf(',');
+            return comma > 0 ? forwarded.substring(0, comma).trim() : forwarded.trim();
+        }
+        return request.getRemoteAddr();
     }
 }
