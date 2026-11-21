@@ -16,24 +16,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * T0.3 验收：Flyway 在真实 MySQL 8 上建出 37 张业务表 + seq_no + 3 视图，
+ * T0.3 验收：Flyway 在真实 MySQL 8 上建出 39 张业务表 + seq_no + 3 视图，
  * 且 CHECK / 唯一索引 / 生成列真实生效。
  * 默认跳过；需要真库时设 CRITTER_MYSQL_IT=true 运行。
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex"
+        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex_it"
                 + "?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8"
                 + "&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true",
-        "spring.datasource.username=root",
-        "spring.datasource.password=1234",
+        "spring.datasource.username=${CRITTER_MYSQL_USER:root}",
+        "spring.datasource.password=${CRITTER_MYSQL_PASSWORD:}",
         "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
         "spring.flyway.enabled=true"
 })
 @EnabledIfEnvironmentVariable(named = "CRITTER_MYSQL_IT", matches = "true")
-class MySqlSchemaIT {
+class MySqlSchemaIT extends MySqlIntegrationTestSupport {
 
     private static final List<String> TABLES = List.of(
             "sys_user", "sys_role", "sys_user_role", "sys_permission", "sys_dict", "sys_file", "sys_log",
+            "sys_role_permission", "sys_appeal",
             "base_roster", "base_point", "base_species", "base_clinic",
             "animal", "animal_status_log", "animal_change_log", "health_record",
             "animal_group", "sighting", "occurrence",
@@ -42,7 +43,6 @@ class MySqlSchemaIT {
             "report", "rescue_order", "visit", "tnr_task",
             "volunteer", "task", "task_signup",
             "notice", "message", "comment", "follow",
-            "sys_appeal", "sys_role_permission",
             "seq_no");
 
     @Autowired

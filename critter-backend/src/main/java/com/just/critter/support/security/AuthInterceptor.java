@@ -37,8 +37,8 @@ public class AuthInterceptor implements HandlerInterceptor {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        // 文档明确公开的只读接口：匿名可看，写操作仍要求令牌。
-        if (isPublicGet(request)) {
+        // 公开只读路径按请求判定；公开写接口由 @PublicEndpoint 按方法判定。
+        if (isPublicGet(request) || isPublicEndpoint(handler)) {
             return true;
         }
 
@@ -123,6 +123,11 @@ public class AuthInterceptor implements HandlerInterceptor {
                 || path.equals("/api/v1/occurrences")
                 || path.matches("^/api/v1/animals/[^/]+$")
                 || path.matches("^/api/v1/groups/[^/]+$");
+    }
+
+    private boolean isPublicEndpoint(Object handler) {
+        return handler instanceof HandlerMethod method
+                && AnnotatedElementUtils.hasAnnotation(method.getMethod(), PublicEndpoint.class);
     }
 
     private void checkRoles(Object handler) {

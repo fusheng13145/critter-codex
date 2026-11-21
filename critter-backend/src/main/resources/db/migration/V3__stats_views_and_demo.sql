@@ -11,6 +11,28 @@
 -- ============================================================
 SET NAMES utf8mb4;
 
+-- 身份申请表字段必须先于下方演示角色插入；V5 会幂等重复检查，兼容既有库。
+SET @ddl = (SELECT IF(COUNT(*) = 0,
+    'ALTER TABLE sys_user_role ADD COLUMN status VARCHAR(16) NOT NULL DEFAULT ''PENDING'' COMMENT ''PENDING/GRANTED/REJECTED''',
+    'DO 0')
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'sys_user_role' AND column_name = 'status');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = (SELECT IF(COUNT(*) = 0,
+    'ALTER TABLE sys_user_role ADD COLUMN apply_reason VARCHAR(255) NULL COMMENT ''申请理由/审批意见''',
+    'DO 0')
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'sys_user_role' AND column_name = 'apply_reason');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @ddl = (SELECT IF(COUNT(*) = 0,
+    'ALTER TABLE sys_user_role ADD COLUMN available_slots VARCHAR(255) NULL COMMENT ''可参与时段（志愿者）''',
+    'DO 0')
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE() AND table_name = 'sys_user_role' AND column_name = 'available_slots');
+PREPARE stmt FROM @ddl; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 CREATE OR REPLACE VIEW v_animal_overview AS
 SELECT status,
        COUNT(*) AS animal_count,
