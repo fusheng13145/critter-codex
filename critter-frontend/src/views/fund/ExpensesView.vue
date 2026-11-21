@@ -1,198 +1,290 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import * as statsApi from '@/api/stats'
+import * as fundApi from '@/api/fund'
 import { BizError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import PageHero from '@/components/PageHero.vue'
 import SectionTabs from '@/components/SectionTabs.vue'
-import PageState from '@/components/PageState.vue'
 import PanelCard from '@/components/PanelCard.vue'
-import type { EfficiencyStats } from '@/api/types'
+import StatusTag from '@/components/StatusTag.vue'
+import ExpenseCreateDialog from '@/views/fund/ExpenseCreateDialog.vue'
+import ExpenseReviewDialog from '@/views/fund/ExpenseReviewDialog.vue'
+import { dateTime, money, statusLabel } from '@/utils/format'
+import type { EfficiencyStats, ExpenseSummary, ProjectSummary } from '@/api/types'
 
 /**
- * P04 支出复核。
- * 后端 T3.2/T3.3 尚未实现，本页只读取 /stats/efficiency 的 pendingExpenses 做真实待办计数，
- * 不编造支出列表；列表结构先按接口设计说明书预留。
+ * P04 支出登记与复核：列表、筛选、登记、复核全部走真实接口。
+ * 复核仅 ANIMAL_ADMIN；SYSTEM_ADMIN 不参与业务审核。
  */
-
 const auth = useAuthStore()
-const data = ref<EfficiencyStats | null>(null)
+const canReview = computed(() => auth.roles.includes('ANIMAL_ADMIN'))
+
+const rows = ref<ExpenseSummary[]>([])
+const projects = ref<ProjectSummary[]>([])
+const efficiency = ref<EfficiencyStats | null>(null)
+const total = ref(0)
+const page = ref(1)
+const size = 20
+const statusFilter = ref('')
+const projectFilter = ref('')
 const loading = ref(false)
 const errorText = ref('')
+const createVisible = ref(false)
+const reviewVisible = ref(false)
+const current = ref<ExpenseSummary | null>(null)
+
+const pageAmount = computed(() => rows.value.reduce((sum, row) => sum + row.amount, 0))
+const pendingCount = computed(() => efficiency.value?.pendingExpenses ?? 0)
+const currentUserId = computed(() => auth.user?.id ?? null)
 
 async function load(): Promise<void> {
-  if (!auth.isAdmin) return
+  if (!canReview.value) return
   loading.value = true
   errorText.value = ''
   try {
-    data.value = await statsApi.fetchEfficiency()
+    const [expenses, stats] = await Promise.all([
+      fundApi.fetchExpenses({
+        status: statusFilter.value || undefined,
+        projectNo: projectFilter.value || undefined,
+        page: page.value,
+        size,
+      }),
+      statsApi.fetchEfficiency().catch(() => null),
+    ])
+    rows.value = expenses.list
+    total.value = expenses.page.total
+    efficiency.value = stats
   } catch (error) {
-    errorText.value = error instanceof BizError ? error.message : '待复核数量加载失败'
-    data.value = null
+    errorText.value = error instanceof BizError ? error.message : '支出列表加载失败'
+    rows.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
-onMounted(load)
+async function loadProjects(): Promise<void> {
+  try {
+    const result = await fundApi.fetchProjects({ status: 'FUNDING,PENDING_SETTLE', page: 1, size: 100 })
+    projects.value = result.list
+  } catch {
+    projects.value = []
+  }
+}
+
+function applyFilter(): void {
+  page.value = 1
+  load()
+}
+
+function resetFilter(): void {
+  statusFilter.value = ''
+  projectFilter.value = ''
+  page.value = 1
+  load()
+}
+
+function openReview(row: ExpenseSummary): void {
+  current.value = row
+  reviewVisible.value = true
+}
+
+function changePage(next: number): void {
+  const max = Math.max(1, Math.ceil(total.value / size))
+  page.value = Math.min(Math.max(1, next), max)
+  load()
+}
+
+async function afterSaved(): Promise<void> {
+  await load()
+  await loadProjects()
+}
+
+onMounted(() => {
+  if (!canReview.value) return
+  loadProjects()
+  load()
+})
 </script>
 
 <template>
   <div>
-    <PageHero
-      title="支出复核"
-      desc="支出登记、凭证复核与入账需要 T3.2/T3.3 接口；当前只提供真实待办计数与页面骨架。"
-    >
+    <PageHero title="支出复核" desc="支出登记后只进入待复核；复核通过才扣减项目余额，超 500 元必须两签。">
       <template #actions>
-        <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新计数</button>
+        <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
+        <button v-if="canReview" class="btn" type="button" @click="createVisible = true">登记支出</button>
       </template>
     </PageHero>
 
     <SectionTabs
       :items="[
         { label: '募捐项目', path: '/projects', matchPrefix: true },
-        { label: '资金台账', path: '/ledger', adminOnly: true },
+        { label: '资金台账', path: '/ledger' },
         { label: '支出复核', path: '/expenses', adminOnly: true },
       ]"
     />
 
-    <div v-if="!auth.isAdmin" class="notice">支出复核仅 ANIMAL_ADMIN / SYSTEM_ADMIN 可见。</div>
+    <div v-if="!canReview" class="notice">
+      支出登记与复核仅 ANIMAL_ADMIN 可操作；SYSTEM_ADMIN 不参与业务审核。
+    </div>
 
     <template v-else>
-      <PageState :loading="loading" :error="errorText" empty-text="暂无待复核数据">
-        <div class="metrics">
-          <div class="metric">
-            <div class="label">待复核支出</div>
-            <div class="num">{{ data?.pendingExpenses ?? 0 }}</div>
-            <div class="sub">来源 /stats/efficiency，仅计数</div>
-          </div>
-          <div class="metric">
-            <div class="label">支出登记接口</div>
-            <div class="num">T3.2</div>
-            <div class="sub">POST /expenses · 待实现</div>
-          </div>
-          <div class="metric">
-            <div class="label">复核入账接口</div>
-            <div class="num">T3.3</div>
-            <div class="sub">PUT /expenses/{no}/verify · 待实现</div>
-          </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="label">待复核 / 待二签</div>
+          <div class="num">{{ pendingCount }}</div>
+          <div class="sub">来源 /stats/efficiency</div>
+        </div>
+        <div class="metric">
+          <div class="label">当前筛选笔数</div>
+          <div class="num">{{ total }}</div>
+          <div class="sub">全部状态含已复核与已驳回</div>
+        </div>
+        <div class="metric">
+          <div class="label">本页金额</div>
+          <div class="num">{{ money(pageAmount) }}</div>
+          <div class="sub">仅当前 20 笔合计</div>
+        </div>
+      </div>
+
+      <PanelCard title="支出列表" :more="`共 ${total} 笔`">
+        <div class="toolbar">
+          <select v-model="statusFilter" class="select">
+            <option value="">全部状态</option>
+            <option value="PENDING_REVIEW">待复核</option>
+            <option value="FIRST_APPROVED">待二签</option>
+            <option value="APPROVED">已复核</option>
+            <option value="REJECTED">已驳回</option>
+          </select>
+          <select v-model="projectFilter" class="select grow-input">
+            <option value="">全部项目</option>
+            <option v-for="project in projects" :key="project.projectNo" :value="project.projectNo">
+              {{ project.projectNo }} · {{ project.name }}
+            </option>
+          </select>
+          <button class="btn sm" type="button" :disabled="loading" @click="applyFilter">筛选</button>
+          <button class="btn sm ghost" type="button" :disabled="loading" @click="resetFilter">重置</button>
         </div>
 
-        <div class="expense-grid">
-          <PanelCard title="支出列表（骨架）" more="接口未开放">
-            <div class="toolbar">
-              <input class="input grow-input" placeholder="单号 / 项目 / 科目" disabled />
-              <select class="select" disabled>
-                <option>全部状态</option>
-                <option>PENDING_VERIFY</option>
-                <option>VERIFIED</option>
-                <option>ABNORMAL</option>
-              </select>
-              <button class="btn sm" type="button" disabled>筛选</button>
-              <button class="btn sm" type="button" disabled>登记支出</button>
-            </div>
-
-            <div class="table-wrap skeleton-table">
-              <table class="native">
-                <thead>
-                  <tr>
-                    <th>支出单号</th>
-                    <th>项目</th>
-                    <th>科目</th>
-                    <th>金额</th>
-                    <th>凭证</th>
-                    <th>状态</th>
-                    <th>登记人</th>
-                    <th>时间</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="8" class="skeleton-cell">
-                      等待 <span class="mono">T3.2 / T3.3</span> 提供支出列表接口后接入；此处不放置假数据。
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="footnote" style="text-align: left">
-              已确认契约：金额为整数分、凭证必填、支出只能挂在已入账项目余额内、复核通过才计入 spentAmount。
-            </div>
-          </PanelCard>
-
-          <PanelCard title="待确认的展示口径">
-            <div class="rule-list">
-              <div class="rule">
-                <b>支出与项目余额</b>
-                <span>支出金额不得超过项目已筹余额；待复核支出不进入公开进度。</span>
-              </div>
-              <div class="rule">
-                <b>凭证异常</b>
-                <span>金额或凭证不一致时转 ABNORMAL，保持原余额并写审计日志。</span>
-              </div>
-              <div class="rule">
-                <b>批量复核</b>
-                <span>逐笔独立事务，部分成功不回滚；失败项要逐条回显错误码。</span>
-              </div>
-              <div class="rule">
-                <b>台账联动</b>
-                <span>T3.5 逐笔台账需要同时记录捐赠入账与支出复核，本页不提前拼装。</span>
-              </div>
-            </div>
-          </PanelCard>
+        <div v-if="errorText" class="notice">{{ errorText }}</div>
+        <div v-else-if="loading" class="muted empty-line">支出列表加载中…</div>
+        <div v-else-if="!rows.length" class="muted empty-line">当前筛选没有支出记录</div>
+        <div v-else class="table-wrap">
+          <table class="native">
+            <thead>
+              <tr>
+                <th>支出单号</th>
+                <th>项目 / 动物</th>
+                <th>用途</th>
+                <th>金额</th>
+                <th>收款方</th>
+                <th>状态</th>
+                <th>登记人</th>
+                <th>发生时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in rows" :key="row.expenseNo">
+                <td class="mono">{{ row.expenseNo }}</td>
+                <td>
+                  <div>{{ row.projectNo }}</div>
+                  <div class="muted small">{{ row.animalCode }} · {{ row.animalName || '未命名' }}</div>
+                </td>
+                <td>{{ row.purpose }}</td>
+                <td class="amount">{{ money(row.amount) }}</td>
+                <td>{{ row.payee }}</td>
+                <td>
+                  <StatusTag :code="row.status" :label="statusLabel(row.status)" />
+                  <div v-if="row.reviewReason" class="muted small reason">{{ row.reviewReason }}</div>
+                </td>
+                <td>
+                  <div>{{ row.handlerName || `#${row.handlerId}` }}</div>
+                  <div v-if="row.handlerId === currentUserId" class="tag gray">本人登记</div>
+                </td>
+                <td class="muted small">{{ dateTime(row.occurredAt) }}</td>
+                <td>
+                  <button
+                    v-if="row.status === 'PENDING_REVIEW' || row.status === 'FIRST_APPROVED'"
+                    class="btn sm ghost"
+                    type="button"
+                    @click="openReview(row)"
+                  >
+                    复核
+                  </button>
+                  <span v-else class="muted small">已处理</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </PageState>
+
+        <div class="pager">
+          <button class="btn sm ghost" type="button" :disabled="page <= 1 || loading" @click="changePage(page - 1)">上一页</button>
+          <span class="muted small">第 {{ page }} / {{ Math.max(1, Math.ceil(total / size)) }} 页</span>
+          <button
+            class="btn sm ghost"
+            type="button"
+            :disabled="page >= Math.ceil(total / size) || loading"
+            @click="changePage(page + 1)"
+          >
+            下一页
+          </button>
+        </div>
+
+        <div class="footnote" style="text-align: left">
+          来源：GET /expenses。金额为整数分；待复核不进入公开进度，复核通过才计入 spentAmount。
+        </div>
+      </PanelCard>
     </template>
+
+    <ExpenseCreateDialog v-model="createVisible" :projects="projects" @saved="afterSaved" />
+    <ExpenseReviewDialog
+      v-model="reviewVisible"
+      :expense="current"
+      :current-user-id="currentUserId"
+      @saved="afterSaved"
+    />
   </div>
 </template>
 
 <style scoped>
-.expense-grid {
+.metrics {
   display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.skeleton-table {
-  box-shadow: none;
+.amount {
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--brand);
 }
 
-.skeleton-cell {
-  padding: 32px;
+.reason {
+  margin-top: 4px;
+  max-width: 220px;
+  white-space: normal;
+}
+
+.empty-line {
+  padding: 20px 0;
+  font-size: 12px;
   text-align: center;
-  color: var(--muted);
-  font-size: 12px;
-  background: var(--chip);
 }
 
-.rule-list {
-  display: grid;
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
-}
-
-.rule {
-  padding: 10px 12px;
-  border-left: 3px solid var(--accent-2);
-  background: var(--hover);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-.rule b {
-  display: block;
-  margin-bottom: 3px;
-  font-size: 12px;
-}
-
-.rule span {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
+  margin-top: 12px;
 }
 
 @media (max-width: 1000px) {
-  .expense-grid {
+  .metrics {
     grid-template-columns: 1fr;
   }
 }

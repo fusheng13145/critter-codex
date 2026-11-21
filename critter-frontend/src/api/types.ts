@@ -436,6 +436,16 @@ export type AnimalStatusCode =
   | 'MISSING'
   | 'DECEASED'
 
+export type AnimalEventCode =
+  | 'REPORT_ACCEPTED'
+  | 'SEND_TO_HOSPITAL'
+  | 'SURGERY_DONE'
+  | 'RELEASE'
+  | 'INJURY_FOUND'
+  | 'ADOPTION_COMPLETED'
+  | 'NO_SIGHTING_30D'
+  | 'CONFIRM_DEATH'
+
 export interface PointRef {
   id: number
   name: string
@@ -466,6 +476,8 @@ export interface AnimalDetail {
   features: string
   point: PointRef | null
   status: AnimalStatusCode
+  /** 状态机允许迁移到的目标状态，前端据此渲染迁移按钮 */
+  allowedStatuses: AnimalStatusCode[]
   neutered: boolean
   neuteredAt: string | null
   adopted: boolean
@@ -489,6 +501,24 @@ export interface AnimalChangeLogView {
   reason: string
   operatorId: number | null
   createdAt: string
+}
+
+export interface AnimalStatusResult {
+  code: string
+  status: AnimalStatusCode
+  allowedStatuses: AnimalStatusCode[]
+  occurredAt: string
+}
+
+export interface AnimalStatusLogView {
+  fromStatus: AnimalStatusCode
+  fromLabel: string
+  toStatus: AnimalStatusCode
+  toLabel: string
+  event: AnimalEventCode
+  eventLabel: string
+  reason: string
+  occurredAt: string
 }
 
 export interface HealthRecordView {
@@ -535,6 +565,27 @@ export interface GroupDetail extends GroupSummary {
 export interface CreatedGroup {
   groupCode: string
   status: GroupSummary['status']
+}
+
+export interface SightingView {
+  id: number
+  groupCode: string | null
+  point: PointRef | null
+  seenAt: string
+  countEstimate: number | null
+  behavior: string | null
+  fileIds: string[]
+  recorderId: number | null
+  assignStatus: string
+  createdAt: string
+}
+
+export interface CreatedSighting {
+  sightingId: number
+}
+
+export interface CreatedOccurrence {
+  occurrenceId: number
 }
 
 export interface SpeciesView {
@@ -689,6 +740,88 @@ export interface BatchFailure {
 export interface BatchConfirmResult {
   success: number
   failed: BatchFailure[]
+}
+
+export type ExpenseStatusCode = 'PENDING_REVIEW' | 'FIRST_APPROVED' | 'APPROVED' | 'REJECTED'
+
+export interface ExpenseSummary {
+  expenseNo: string
+  projectNo: string | null
+  projectName: string | null
+  animalCode: string | null
+  animalName: string | null
+  purpose: string
+  amount: number
+  payee: string
+  occurredAt: string
+  handlerId: number | null
+  handlerName: string | null
+  voucherFileIds: string[]
+  status: ExpenseStatusCode
+  firstReviewerId: number | null
+  secondReviewerId: number | null
+  reviewReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatedExpense {
+  expenseNo: string
+  status: 'PENDING_REVIEW'
+  note: string
+}
+
+export interface ProjectFundSnapshot {
+  projectNo: string
+  raised: number
+  spent: number
+  balance: number
+}
+
+export interface ExpenseReviewResult {
+  expenseNo: string
+  status: ExpenseStatusCode
+  needSecondReview: boolean
+  project: ProjectFundSnapshot
+  message: string
+}
+
+export interface LedgerEntry {
+  type: 'INCOME' | 'EXPENSE'
+  refNo: string
+  projectNo: string | null
+  projectName: string | null
+  title: string
+  party: string | null
+  animalCode: string | null
+  amount: number
+  status: string
+  occurredAt: string
+}
+
+export interface LedgerSummary {
+  income: number
+  expense: number
+  balance: number
+  donationCount: number
+  expenseCount: number
+}
+
+export interface LedgerResult {
+  summary: LedgerSummary
+  entries: LedgerEntry[]
+}
+
+export interface ProjectSettlementView {
+  projectNo: string
+  projectName: string
+  reportText: string
+  totalRaised: number
+  totalSpent: number
+  balance: number
+  balanceTo: string
+  attachments: string[]
+  publishedAt: string
 }
 
 export interface ReportSummary {

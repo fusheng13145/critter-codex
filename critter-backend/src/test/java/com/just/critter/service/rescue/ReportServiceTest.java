@@ -64,7 +64,9 @@ class ReportServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReportService(reportMapper, pointMapper, animalMapper,
-                new ReportCodeGenerator((bizType, year) -> 7, CLOCK), orderMapper, auditLogService, CLOCK);
+                new ReportCodeGenerator((bizType, year) -> 7, CLOCK),
+                new com.just.critter.domain.rescue.OrderCodeGenerator((bizType, year) -> 8, CLOCK),
+                orderMapper, auditLogService, CLOCK);
         BasePoint point = new BasePoint();
         point.setId(7L);
         point.setPointName("东区宿舍七号楼");

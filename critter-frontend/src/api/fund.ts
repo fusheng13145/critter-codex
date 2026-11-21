@@ -2,16 +2,21 @@ import { get, post, put } from './http'
 import type {
   BatchConfirmResult,
   CreatedDonation,
+  CreatedExpense,
   CreatedProject,
   DonationConfirmation,
   DonationSummary,
+  ExpenseReviewResult,
+  ExpenseSummary,
+  LedgerResult,
   PageData,
   ProjectAuditResult,
   ProjectDetail,
+  ProjectSettlementView,
   ProjectSummary,
 } from './types'
 
-/** 项目与捐赠接口：T3.1 已落地，支出/台账接口仍待 T3.2/T3.3/T3.5。 */
+/** 项目、捐赠、支出与台账接口。金额统一整数分。 */
 
 export interface ProjectQuery extends Record<string, unknown> {
   status?: string
@@ -88,4 +93,63 @@ export function confirmDonation(
 
 export function confirmDonations(ids: string[]): Promise<BatchConfirmResult> {
   return put<BatchConfirmResult>('/donations/batch', { ids })
+}
+
+export interface ExpensePayload {
+  projectNo: string
+  animalCode: string
+  purpose: string
+  amount: number
+  payee: string
+  occurredAt: string
+  voucherFileIds: string[]
+}
+
+export interface ExpenseQuery extends Record<string, unknown> {
+  status?: string
+  projectNo?: string
+  page?: number
+  size?: number
+}
+
+export interface LedgerQuery extends Record<string, unknown> {
+  projectNo?: string
+  from?: string
+  to?: string
+}
+
+export function fetchExpenses(params: ExpenseQuery): Promise<PageData<ExpenseSummary>> {
+  return get<PageData<ExpenseSummary>>('/expenses', params)
+}
+
+export function createExpense(payload: ExpensePayload): Promise<CreatedExpense> {
+  return post<CreatedExpense>('/expenses', payload)
+}
+
+export function reviewExpense(
+  expenseNo: string,
+  payload: { decision: 'APPROVE' | 'REJECT'; reason?: string },
+): Promise<ExpenseReviewResult> {
+  return put<ExpenseReviewResult>(`/expenses/${expenseNo}/review`, payload)
+}
+
+export function fetchLedger(params: LedgerQuery = {}): Promise<LedgerResult> {
+  return get<LedgerResult>('/ledger', params)
+}
+
+export interface SettleProjectPayload {
+  reportText: string
+  balanceTo: string
+  attachments: string[]
+}
+
+export function settleProject(
+  projectNo: string,
+  payload: SettleProjectPayload,
+): Promise<ProjectSettlementView> {
+  return put<ProjectSettlementView>(`/projects/${projectNo}/settle`, payload)
+}
+
+export function fetchProjectSettlement(projectNo: string): Promise<ProjectSettlementView> {
+  return get<ProjectSettlementView>(`/projects/${projectNo}/settlement`)
 }

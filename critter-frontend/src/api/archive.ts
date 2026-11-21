@@ -2,16 +2,22 @@ import { get, post, put } from './http'
 import type {
   AnimalChangeLogView,
   AnimalDetail,
+  AnimalStatusLogView,
+  AnimalStatusResult,
   AnimalSummary,
+  AnimalStatusCode,
   CreatedAnimal,
   CreatedGroup,
   CreatedHealthRecord,
+  CreatedOccurrence,
+  CreatedSighting,
   GroupDetail,
   GroupSummary,
   HealthRecordView,
   OccurrenceView,
   PageData,
   PointView,
+  SightingView,
   SpeciesView,
 } from './types'
 
@@ -67,6 +73,31 @@ export interface CreateGroupPayload {
   sizeBasis: string
 }
 
+export interface UpdateGroupPayload {
+  features: string
+  pointIds: number[]
+  minSize: number
+  maxSize: number
+  sizeBasis: string
+}
+
+export interface CreateSightingPayload {
+  pointId: number
+  seenAt: string
+  countEstimate?: number
+  behavior?: string
+  fileIds?: string[]
+}
+
+export interface CreateOccurrencePayload {
+  speciesId: number
+  pointId: number
+  occurredAt: string
+  scale: 'FEW' | 'SMALL_HERD' | 'LARGE_HERD'
+  habitat?: string
+  fileIds?: string[]
+}
+
 export function fetchAnimals(params: AnimalQuery): Promise<PageData<AnimalSummary>> {
   return get<PageData<AnimalSummary>>('/animals', params)
 }
@@ -85,6 +116,17 @@ export function updateAnimal(code: string, payload: UpdateAnimalPayload): Promis
 
 export function fetchAnimalHistory(code: string): Promise<AnimalChangeLogView[]> {
   return get<AnimalChangeLogView[]>(`/animals/${code}/history`)
+}
+
+export function changeAnimalStatus(
+  code: string,
+  payload: { targetStatus: AnimalStatusCode; reason: string },
+): Promise<AnimalStatusResult> {
+  return put<AnimalStatusResult>(`/animals/${code}/status`, payload)
+}
+
+export function fetchAnimalStatusHistory(code: string): Promise<AnimalStatusLogView[]> {
+  return get<AnimalStatusLogView[]>(`/animals/${code}/status-history`)
 }
 
 export function fetchHealthRecords(code: string): Promise<HealthRecordView[]> {
@@ -110,6 +152,24 @@ export function createGroup(payload: CreateGroupPayload): Promise<CreatedGroup> 
   return post<CreatedGroup>('/groups', payload)
 }
 
+export function updateGroup(code: string, payload: UpdateGroupPayload): Promise<GroupDetail> {
+  return put<GroupDetail>(`/groups/${code}`, payload)
+}
+
+export function createSighting(code: string, payload: CreateSightingPayload): Promise<CreatedSighting> {
+  return post<CreatedSighting>(`/groups/${code}/sightings`, payload)
+}
+
+export function fetchSightings(params: {
+  groupCode?: string
+  assignStatus?: string
+  pointId?: number
+  page?: number
+  size?: number
+}): Promise<PageData<SightingView>> {
+  return get<PageData<SightingView>>('/sightings', params)
+}
+
 export function fetchSpecies(params?: { keyword?: string; category?: string }): Promise<SpeciesView[]> {
   return get<SpeciesView[]>('/species', params)
 }
@@ -126,4 +186,8 @@ export function fetchOccurrences(params: {
   size?: number
 }): Promise<PageData<OccurrenceView>> {
   return get<PageData<OccurrenceView>>('/occurrences', params)
+}
+
+export function createOccurrence(payload: CreateOccurrencePayload): Promise<CreatedOccurrence> {
+  return post<CreatedOccurrence>('/occurrences', payload)
 }

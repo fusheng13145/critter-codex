@@ -13,6 +13,8 @@ import StatusTag from '@/components/StatusTag.vue'
 import DonationPanel from '@/views/fund/DonationPanel.vue'
 import DonationDialog from '@/views/fund/DonationDialog.vue'
 import ProjectAuditDialog from '@/views/fund/ProjectAuditDialog.vue'
+import ProjectCreateDialog from '@/views/fund/ProjectCreateDialog.vue'
+import SettlementCreateDialog from '@/views/fund/SettlementCreateDialog.vue'
 import { dateTime, money } from '@/utils/format'
 import { projectStatusLabel, targetTypeLabel } from '@/utils/domain'
 import type { ProjectDetail } from '@/api/types'
@@ -34,10 +36,25 @@ const errorText = ref('')
 const actionBusy = ref(false)
 const auditVisible = ref(false)
 const donationVisible = ref(false)
+const editVisible = ref(false)
+const settleVisible = ref(false)
 
 const animalAdmin = computed(() => auth.hasRole('ANIMAL_ADMIN'))
 const balance = computed(() => (project.value ? project.value.raisedAmount - project.value.spentAmount : 0))
 const canDonate = computed(() => project.value?.status === 'FUNDING')
+const canEdit = computed(() =>
+  Boolean(project.value && (project.value.status === 'DRAFT' || project.value.status === 'REJECTED')),
+)
+const canSettle = computed(() => {
+  const current = project.value
+  if (!current || !animalAdmin.value) return false
+  if (current.status === 'SETTLED') return false
+  if (current.status === 'PENDING_SETTLE') return true
+  if (current.status !== 'FUNDING') return false
+  const reachedTarget = current.raisedAmount >= current.targetAmount
+  const deadlineReached = current.endDate <= new Date().toISOString().slice(0, 10)
+  return reachedTarget || deadlineReached
+})
 const canAudit = computed(() =>
   Boolean(project.value?.allowedActions.includes('APPROVE') || project.value?.allowedActions.includes('REJECT')),
 )
@@ -101,6 +118,15 @@ async function afterChange(): Promise<void> {
   await load()
 }
 
+function openEdit(): void {
+  if (!canEdit.value) return
+  editVisible.value = true
+}
+
+function openSettlement(): void {
+  router.push(`/projects/${projectNo}/settlement`)
+}
+
 onMounted(load)
 </script>
 
@@ -114,6 +140,14 @@ onMounted(load)
         <button class="btn ghost" type="button" @click="router.push('/projects')">返回列表</button>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
         <button
+          v-if="animalAdmin && canEdit"
+          class="btn ghost"
+          type="button"
+          @click="openEdit"
+        >
+          编辑项目
+        </button>
+        <button
           v-if="animalAdmin && canSubmit"
           class="btn ghost"
           type="button"
@@ -124,6 +158,12 @@ onMounted(load)
         </button>
         <button v-if="animalAdmin && canAudit" class="btn" type="button" @click="auditVisible = true">
           审核项目
+        </button>
+        <button v-if="canSettle" class="btn" type="button" @click="settleVisible = true">
+          提交结项
+        </button>
+        <button v-if="project?.status === 'SETTLED'" class="btn" type="button" @click="openSettlement">
+          查看结项公示
         </button>
         <button v-if="canDonate" class="btn" type="button" @click="donationVisible = true">
           我要捐赠
@@ -161,7 +201,7 @@ onMounted(load)
           <div class="metric">
             <div class="label">已支出</div>
             <div class="num">{{ money(project.spentAmount) }}</div>
-            <div class="sub">支出接口待 T3.2</div>
+            <div class="sub">只含已复核支出</div>
           </div>
           <div class="metric">
             <div class="label">可用余额</div>
@@ -261,6 +301,16 @@ onMounted(load)
       v-model="donationVisible"
       :project-no="projectNo"
       @created="afterChange"
+    />
+    <ProjectCreateDialog
+      v-model="editVisible"
+      :project="project"
+      @created="afterChange"
+    />
+    <SettlementCreateDialog
+      v-model="settleVisible"
+      :project="project"
+      @settled="afterChange"
     />
   </div>
 </template>

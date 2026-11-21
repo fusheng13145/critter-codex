@@ -4,12 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.just.critter.config.AppConfig;
+import com.just.critter.domain.enums.OrderStatus;
 import com.just.critter.domain.enums.ReportStatus;
 import com.just.critter.domain.enums.ReportType;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.BasePoint;
 import com.just.critter.domain.model.Order;
 import com.just.critter.domain.model.Report;
+import com.just.critter.domain.rescue.OrderCodeGenerator;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
@@ -48,6 +50,7 @@ public class ReportService {
     private final BasePointMapper points;
     private final AnimalMapper animals;
     private final ReportCodeGenerator codeGenerator;
+    private final OrderCodeGenerator orderCodeGenerator;
     private final OrderMapper orders;
     private final AuditLogService auditLog;
     private final Clock clock;
@@ -56,6 +59,7 @@ public class ReportService {
                          BasePointMapper points,
                          AnimalMapper animals,
                          ReportCodeGenerator codeGenerator,
+                         OrderCodeGenerator orderCodeGenerator,
                          OrderMapper orders,
                          AuditLogService auditLog,
                          Clock clock) {
@@ -63,6 +67,7 @@ public class ReportService {
         this.points = points;
         this.animals = animals;
         this.codeGenerator = codeGenerator;
+        this.orderCodeGenerator = orderCodeGenerator;
         this.orders = orders;
         this.auditLog = auditLog;
         this.clock = clock;
@@ -105,6 +110,19 @@ public class ReportService {
         report.setCreatedBy(reporterId);
         reports.insert(report);
 
+        // 上报即生成待受理工单，使 24 小时超时扫描有真实对象；受理时再转 PROCESSING。
+        Order order = new Order();
+        order.setOrderNo(orderCodeGenerator.next());
+        order.setReportId(report.getId());
+        order.setAnimalId(animalId);
+        order.setType(type);
+        order.setDeadlineAt(now.plusHours(DEDUP_HOURS));
+        order.setStatus(OrderStatus.PENDING);
+        order.setCreatedAt(now);
+        order.setUpdatedAt(now);
+        order.setCreatedBy(reporterId);
+        orders.insert(order);
+
         return new CreatedReport(
                 report.getReportNo(),
                 report.getStatus(),
@@ -114,8 +132,6 @@ public class ReportService {
     }
 
     public PageResult<ReportSummary> search(ReportFilter filter, PageQuery pageQuery) {
-        PageQuery safe = pageQuery.normalized();
-        Page<Report> page = new Page<>(safe.getPage(), safe.getSize());
         LocalDateTime now = LocalDateTime.now(clock).withNano(0);
 
         LambdaQueryWrapper<Report> query = new LambdaQueryWrapper<>();
@@ -140,6 +156,27 @@ public class ReportService {
         }
         query.orderByDesc(Report::getCreatedAt);
 
+        return toPage(query, pageQuery);
+    }
+
+    /**
+     * 我的上报：按 reporterId 过滤，返回结构与管理员列表一致。
+     */
+    public PageResult<ReportSummary> mine(Long reporterId, PageQuery pageQuery) {
+        if (reporterId == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGGED_IN);
+        }
+        LambdaQueryWrapper<Report> query = new LambdaQueryWrapper<Report>()
+                .eq(Report::getReporterId, reporterId)
+                .orderByDesc(Report::getCreatedAt)
+                .orderByDesc(Report::getId);
+        return toPage(query, pageQuery);
+    }
+
+    private PageResult<ReportSummary> toPage(LambdaQueryWrapper<Report> query, PageQuery pageQuery) {
+        PageQuery safe = pageQuery.normalized();
+        Page<Report> page = new Page<>(safe.getPage(), safe.getSize());
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
         IPage<Report> result = reports.selectPage(page, query);
         Set<Long> pointIds = result.getRecords().stream()
                 .map(Report::getPointId).filter(java.util.Objects::nonNull).collect(Collectors.toSet());

@@ -257,6 +257,7 @@ public class ProjectService {
             case DRAFT -> List.of("SUBMIT");
             case PENDING_AUDIT -> List.of("APPROVE", "REJECT");
             case REJECTED -> List.of("RESUBMIT");
+            case PENDING_SETTLE -> List.of("SETTLE");
             default -> List.of();
         };
     }

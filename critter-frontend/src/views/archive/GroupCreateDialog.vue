@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as archiveApi from '@/api/archive'
 import { BizError } from '@/api/http'
-import type { PointView, SpeciesView } from '@/api/types'
+import type { GroupDetail, PointView, SpeciesView } from '@/api/types'
 
-/** 群体建档：规模始终是闭区间，前端不替用户取中位数。 */
+/** 群体建档/编辑：规模始终是闭区间，前端不替用户取中位数；物种建后不可改。 */
 const props = defineProps<{
   modelValue: boolean
   species: SpeciesView[]
   points: PointView[]
+  group?: GroupDetail | null
 }>()
 
 const emit = defineEmits<{
@@ -28,20 +29,32 @@ const form = reactive({
 
 const submitting = ref(false)
 const errors = reactive<Record<string, string>>({})
+const editing = computed(() => Boolean(props.group?.groupCode))
+const dialogTitle = computed(() => (editing.value ? '编辑群体档案' : '新建群体档案'))
 
 function reset(): void {
+  Object.keys(errors).forEach((key) => delete errors[key])
+  const current = props.group
+  if (current) {
+    form.speciesId = current.species.id
+    form.features = current.features
+    form.pointIds = current.points.map((point) => point.id)
+    form.minSize = current.minSize
+    form.maxSize = current.maxSize
+    form.sizeBasis = current.sizeBasis
+    return
+  }
   form.speciesId = null
   form.features = ''
   form.pointIds = []
   form.minSize = 1
   form.maxSize = 1
   form.sizeBasis = ''
-  Object.keys(errors).forEach((key) => delete errors[key])
 }
 
 watch(
-  () => props.modelValue,
-  (open) => {
+  [() => props.modelValue, () => props.group],
+  ([open]) => {
     if (open) reset()
   },
 )
@@ -68,16 +81,26 @@ async function submit(): Promise<void> {
   if (submitting.value || !validate()) return
   submitting.value = true
   try {
-    const result = await archiveApi.createGroup({
-      speciesId: form.speciesId as number,
+    const payload = {
       features: form.features.trim(),
       pointIds: form.pointIds,
       minSize: form.minSize,
       maxSize: form.maxSize,
       sizeBasis: form.sizeBasis.trim(),
-    })
-    ElMessage.success(`群体建档成功：${result.groupCode}`)
-    emit('created', result.groupCode)
+    }
+    const existing = props.group
+    if (existing) {
+      await archiveApi.updateGroup(existing.groupCode, payload)
+      ElMessage.success(`群体档案已更新：${existing.groupCode}`)
+      emit('created', existing.groupCode)
+    } else {
+      const result = await archiveApi.createGroup({
+        speciesId: form.speciesId as number,
+        ...payload,
+      })
+      ElMessage.success(`群体建档成功：${result.groupCode}`)
+      emit('created', result.groupCode)
+    }
     emit('update:modelValue', false)
   } catch (error) {
     if (error instanceof BizError) {
@@ -95,14 +118,14 @@ async function submit(): Promise<void> {
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="新建群体档案"
+    :title="dialogTitle"
     width="720px"
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="field">
       <label>物种 <b>*</b></label>
-      <select v-model.number="form.speciesId" class="select" :class="{ invalid: errors.speciesId }">
+      <select v-model.number="form.speciesId" class="select" :disabled="editing" :class="{ invalid: errors.speciesId }">
         <option :value="null" disabled>请选择物种名录中的一项</option>
         <option v-for="item in species" :key="item.id" :value="item.id">
           {{ item.commonName }} · {{ item.category }} · 保护级别 {{ item.protectionLevel }}
@@ -164,12 +187,14 @@ async function submit(): Promise<void> {
       <div v-if="errors.sizeBasis" class="field-error">{{ errors.sizeBasis }}</div>
     </div>
 
-    <div class="notice">群体不参与认养；群体编号由服务端生成，规模以区间返回，不得把中位数当作事实。</div>
+    <div class="notice">
+      {{ editing ? '物种建后不可改；规模区间与计数依据可直接修正，保存后立即生效。' : '群体不参与认养；群体编号由服务端生成，规模以区间返回，不得把中位数当作事实。' }}
+    </div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>
       <button class="btn" type="button" :disabled="submitting" @click="submit">
-        {{ submitting ? '提交中…' : '提交建档' }}
+        {{ submitting ? '提交中…' : editing ? '保存修改' : '提交建档' }}
       </button>
     </template>
   </el-dialog>
