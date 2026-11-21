@@ -277,7 +277,7 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T2.4 项目发起与审核 | 完成（一期） | `POST /projects` 草稿/直接提交、`GET /projects` 公开列表、`GET /projects/{no}` 公开详情、`PUT /projects/{no}` 修改提交、`PUT /projects/{no}/audit` 审核；预算合计 > 目标返回 `40101` 并带差额；公开页只展示 FUNDING 及之后状态；`ProjectCodeGeneratorTest` 2 例、`ProjectServiceTest` 9 例、`ProjectControllerTest` 8 例、`ProjectIT` 4 例；T2.4 说明见 `docs/T2.4-项目发起与审核说明.md` |
 | T3.1 捐赠登记与核对入账 | 完成（一期） | `POST /donations` 登记固定 `PENDING_VERIFY`；`GET /donations` 管理员按状态/项目筛选；`PUT /donations/{no}/confirm` 单笔核对；`PUT /donations/batch` 逐笔独立事务批量核对；金额一致才写 `VERIFIED` 并同事务递增 `project.raised_amount`，金额不符转 `ABNORMAL` 且不动进度；项目已筹与已入账合计不一致返回 `40106`；`DonationCodeGeneratorTest` 2 例、`DonationServiceTest` 10 例、`DonationControllerTest` 5 例、`DonationIT` 6 例；T3.1 说明见 `docs/T3.1-捐赠登记与核对入账说明.md` |
 
-测试基线：`mvn -B test` **330 例全绿**（2026-11-21，已并入最新 main 的 D3 通知/就诊测试后全量回归）；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。迁移为 V1→V14（V13 认养生命周期、V14 支出双签约束分阶段），`critter_codex_dev` 已应用至 V14。
+测试基线：`mvn -B test` **400 例全绿**（2026-11-21 收尾批次，含 D3 通知/就诊与项目到期任务）；真库测试另计 **50 条**（含本轮 6 条并发/事务用例，默认跳过），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。迁移为 V1→V18，`critter_codex` 已应用至 V18。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
@@ -285,7 +285,7 @@ T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNex
 
 T1.5 遗留：归并/拆分、目击归属修正、群体状态接口、物种/点位写接口均为 P1；`30501 群体不可认养` 需 C 在认养提交处拦截，B 只保证群体编号可识别；目击归属状态暂用字符串 `ASSIGNED/UNASSIGNED`；鉴权同前。
 
-Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V12），`critter_codex_it` 真库 IT 专用库，`critter_ro@localhost` 只读，详见《联调环境说明》。
+Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库（V18），`critter_codex_dev` 联调库，`critter_codex_it` 真库 IT 专用库，`critter_ro@localhost` 只读，详见《联调环境说明》。
 
 ## 13 本轮治理结果（2026-11-21）
 
@@ -328,7 +328,7 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 
 | 验证项 | 结果 |
 |---|---|
-| 后端全量测试 | `mvn -B test`：330 例，0 失败，0 错误，0 跳过，BUILD SUCCESS |
+| 后端全量测试 | `mvn -B test`：400 例，0 失败，0 错误，0 跳过，BUILD SUCCESS |
 | 前端构建 | `npm run build`：`vue-tsc -b` 无类型错误，1825 modules，构建成功 |
 | 动物状态 | `TEST-CAT-001`：`ON_CAMPUS→TREATING` 成功，历史返回“在校园活动 → 治疗中”，事件 `REPORT_ACCEPTED` |
 | 支出双签 | 60000 分登记成功→自复核 40104→第一签 `FIRST_APPROVED`→第二签 `APPROVED`；项目 `spentAmount=60000`，台账支出 60000 |
@@ -337,12 +337,59 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 | 工单超时 | 回填 `deadline_at` 后扫描任务将 PENDING 置为 TIMEOUT 并写 `ORDER_TIMEOUT` 审计；TIMEOUT 工单再受理成功 |
 | 群体/物种 | 新建群体→编辑特征/规模→登记目击（列表 1 条）→登记物种出现记录（列表 1 条）全部成功 |
 
-### 14.4 仍未完成（P1/收尾，不属本轮 P0 闭环）
+### 14.4 收尾批次（`feature/b-final-polish`）
 
-| 编号 | 事项 | 说明 |
+| 编号 | 事项 | 状态 | 证据 |
+|---|---|---|---|
+| T4.1 | 并发与事务用例 ≥6 条 | 完成 | `ConcurrencyAndTransactionIT` 6/6；`docs/T4.1-并发与事务验证记录.md` |
+| T4.2 | Compose、备份恢复、匿名公示入口 | 完成（Docker 未在本机执行） | `deploy/docker-compose.yml`、`backup-mysql.ps1`、`restore-mysql.ps1`、`deploy/README.md`；恢复演练 200/12/1200/5 |
+| T4.3 | 演示数据集 | 完成 | `critter-backend/demo/qywl-demo.sql`、`generate_demo_data.py`、`reset-demo.ps1`、`demo/README.md` |
+| T4.4 | 4 分钟答辩脚本 | 完成 | `docs/T4.4-四分钟答辩脚本.md` |
+| — | 项目到期自动流转 | 完成 | `ProjectDeadlineJob`：`FUNDING` 且 `end_date < today`，达标转 `PENDING_SETTLE`，未达标转 `ENDED`，条件更新 + 审计；`ProjectDeadlineJobTest` 5/5 |
+
+## 15 收尾批次完成（2026-11-21）
+
+分支 `feature/b-final-polish`，从最新 `origin/main`（`10c8450`）创建。
+
+### 15.1 演示数据规模
+
+| 实体 | 数量 | 关键分布 |
+|---|---:|---|
+| 动物 | 200 | ON_CAMPUS 148、TREATING 15、ADOPTED 12、RELEASED 5、DECEASED 3 等 |
+| 项目 | 12 | FUNDING/SETTLED/PENDING_SETTLE/ENDED/DRAFT/PENDING_AUDIT |
+| 捐赠 | 1200 | VERIFIED 900、PENDING_VERIFY 250、ABNORMAL 50 |
+| 群体 | 5 | 含目击 50、物种出现记录 30 |
+| 支出 | 45 | APPROVED 27、FIRST_APPROVED 9、PENDING_REVIEW 5、REJECTED 4 |
+| 上报/工单 | 60/60 | 工单含 PENDING 15、PROCESSING 10、TO_REVISIT 5、CLOSED 20、TIMEOUT 10 |
+| 认养 | 20 | ACTIVE 12、EXPIRED 4、PENDING_PAYMENT 2 等 |
+| 健康/状态日志 | 160/52 | 另有就诊 10、TNR 20、公告 10、消息 30、任务 8、报名 20 |
+
+资金恒等式：`project.raised_amount` 与 `VERIFIED` 捐赠合计一致，`project.spent_amount` 与 `APPROVED` 支出合计一致，核对结果 `fund_mismatch=0`。SQL 已分别导入 `critter_codex_dev` 与 `critter_codex`。
+
+### 15.2 本轮修复
+
+| 缺陷 | 根因 | 修复 |
 |---|---|---|
-| T4.1 | 并发与事务用例 ≥6 条 | 已有行锁与条件更新设计，尚缺并发压测脚本与执行记录 |
-| T4.2 | docker-compose、备份与恢复演练 | 未开始 |
-| T4.3 | 200 档案/12 项目/1200 捐赠/5 群体的演示数据集 | 未开始；`critter_codex` 业务表当前为空 |
-| T4.4 | 4 分钟答辩切片脚本与讲稿 | 未开始 |
-| — | 项目到期自动转 `PENDING_SETTLE` 定时任务 | 当前由结项接口按“达标或到期”即时判断，不依赖定时任务 |
+| 发号器并发首取死锁 | `INSERT IGNORE` 插入意向锁与 `SELECT ... FOR UPDATE` 交叉 | 改为单条 `INSERT ... ON DUPLICATE KEY UPDATE current_no = LAST_INSERT_ID(current_no + 1)` + `SELECT LAST_INSERT_ID()` |
+| 到期任务状态迁移报错 | `ProjectDeadlineJob` 传 `Role.SYSTEM`，项目迁移只允许 `ADMIN` | 仅到期两条迁移改用 `ADMIN_OR_JOB`，新增 `projectJob()` 构造 |
+| 联调库 `message.type` 过窄 | 旧库仍为 `VARCHAR(16)`，`DONATION_PROGRESS` 长 17 | 手工扩到 `VARCHAR(24)`，与最新迁移一致 |
+| 主库 Flyway V2 残留 | 旧分支历史中 V2 已被 V11 取代 | 按 repair 语义将 V2 行 `type='DELETE'`；V16/V18 以一次性 out-of-order 补齐，主库最终 V18 |
+
+### 15.3 验证记录
+
+| 验证项 | 结果 |
+|---|---|
+| 后端定向测试 | `ProjectDeadlineJobTest` 5/5；`ConcurrencyAndTransactionIT` 6/6 |
+| 前端构建 | `npm run build`：`vue-tsc -b` 通过，1853 modules |
+| 公开接口 | `GET /projects` 匿名返回 10 个公开项目；`GET /animals` total=200；`GET /ledger?projectNo=PRJ-2026-009` income=4,284,624 / expense=170,000 / entries=93 |
+| 匿名公示 | `GET /projects/PRJ-2026-009/settlement` 匿名成功；前端路由 `meta.public=true` |
+| 备份恢复 | 备份 0.44 MB；恢复演练库后 animal/project/donation/animal_group = 200/12/1200/5 |
+| 最新后端 | `http://127.0.0.1:8083`（主库，PID 38764 为本轮重启进程；公开项目 10、动物 200、台账 income=4,284,624 / expense=170,000 / entries=93） |
+
+### 15.4 仍未完成
+
+| 事项 | 说明 |
+|---|---|
+| 校园真实底图 | 仍为示意点位图，等 Q-B-07 底图资产 |
+| 移动端适配 | 当前按桌面端验收，移动端为后续迭代 |
+| Docker 实跑 | 本机未安装 Docker；Compose/Dockerfile 已编写，未在本机执行 |

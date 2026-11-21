@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
+const apiProxy = process.env.VITE_API_PROXY ?? 'http://127.0.0.1:8083'
+
 export default defineConfig({
   plugins: [vue()],
   resolve: {
@@ -15,7 +17,7 @@ export default defineConfig({
     // 开发环境同源代理，避免 CORS，也让 httpOnly 刷新 Cookie 正常回传
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: apiProxy,
         changeOrigin: true,
       },
     },

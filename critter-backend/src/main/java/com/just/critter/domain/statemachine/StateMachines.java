@@ -104,8 +104,8 @@ public final class StateMachines {
         list.add(project(ProjectStatus.PENDING_AUDIT, ProjectEvent.REJECT, ProjectStatus.REJECTED));
         list.add(project(ProjectStatus.REJECTED, ProjectEvent.RESUBMIT, ProjectStatus.PENDING_AUDIT));
         list.add(project(ProjectStatus.FUNDING, ProjectEvent.TARGET_REACHED, ProjectStatus.PENDING_SETTLE));
-        list.add(project(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_REACHED, ProjectStatus.PENDING_SETTLE));
-        list.add(project(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_MISSED, ProjectStatus.ENDED));
+        list.add(projectJob(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_REACHED, ProjectStatus.PENDING_SETTLE));
+        list.add(projectJob(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_MISSED, ProjectStatus.ENDED));
         list.add(project(ProjectStatus.PENDING_SETTLE, ProjectEvent.SETTLE, ProjectStatus.SETTLED));
         return new StateMachine<>(ErrorCode.PROJECT_STATE_INVALID, list, EnumSet.allOf(ProjectStatus.class));
     }
@@ -113,6 +113,12 @@ public final class StateMachines {
     private static Transition<ProjectStatus, ProjectEvent> project(
             ProjectStatus from, ProjectEvent event, ProjectStatus to) {
         return new Transition<>(from, event, to, ADMIN, null);
+    }
+
+    /** 到期迁移可由定时任务触发；管理员手工触发同样允许。 */
+    private static Transition<ProjectStatus, ProjectEvent> projectJob(
+            ProjectStatus from, ProjectEvent event, ProjectStatus to) {
+        return new Transition<>(from, event, to, ADMIN_OR_JOB, null);
     }
 
     private static StateMachine<GroupStatus, GroupEvent> buildGroup() {
