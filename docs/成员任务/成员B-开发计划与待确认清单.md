@@ -255,3 +255,19 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 1. 先答 Q-B-01／02／04／05 四项——它们分别卡住排期、第一行代码、建表、协作方式。
 2. 我按确认结果补齐 W0 的四件事：ADR-001、`V1__init.sql`、统一响应体骨架、接口归属对照表。
 3. 同时提醒队友同步重写后的历史（`git fetch && git reset --hard origin/main`），避免分叉。
+
+## 12 执行进度（2026-11-21）
+
+| 任务 | 状态 | 证据 |
+|---|---|---|
+| T0.1 技术栈 ADR | 完成 | `docs/adr/ADR-001-backend-stack.md`：Boot 3.5.16 / MyBatis-Plus 3.5.18.1 / MySQL 8.4 / Redis / `com.just.critter` / HTTP 映射 / 30505+40108 |
+| T0.2 统一响应体、异常映射、requestId | 完成 | `support/api`、`support/exception`，`ApiContractTest` 4 例 |
+| T0.3 Flyway 建表 | 完成 | `V1__init.sql`：37 张业务表 + `seq_no` + 3 视图；`MySqlSchemaIT` 5/5 通过（真实 MySQL 8.4） |
+| T0.4 字典/角色种子 | 下一步 | 计划 `seed_dict.sql`，与演示数据 `seed_demo.sql` 分离 |
+| T1.1 编号器 / T1.3 状态机 | 完成 | `AnimalCodeGeneratorTest` 5 例、状态机 25 例 |
+| C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
+
+测试基线：`mvn -B test` 63 例全绿；真库结构测试另计 5 例，需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过，队友无库时不会红。
+
+Q-B-04 部分闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`，库 `critter_codex` 由 JDBC `createDatabaseIfNotExist` 自动创建；联调库与只读账号仍未定。
+
