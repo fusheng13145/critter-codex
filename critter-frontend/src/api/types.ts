@@ -418,3 +418,376 @@ export interface MessageReadResult {
   success: number
   failed: MessageReadFailure[]
 }
+
+/* ==========================================================================
+ * D2 域（档案 / 群体 / 物种 / 上报 / 工单 / 项目 / 捐赠）
+ * 字段与后端 service 层 record 一一对应；金额一律整数分。
+ * ========================================================================== */
+
+export type AnimalCategory = 'CAT' | 'DOG' | 'OTHER'
+export type AnimalGender = 'MALE' | 'FEMALE' | 'UNKNOWN'
+export type AnimalStatusCode =
+  | 'ON_CAMPUS'
+  | 'TREATING'
+  | 'HOSPITALIZED'
+  | 'TO_RELEASE'
+  | 'RELEASED'
+  | 'ADOPTED'
+  | 'MISSING'
+  | 'DECEASED'
+
+export interface PointRef {
+  id: number
+  name: string
+}
+
+export interface AnimalSummary {
+  code: string
+  category: AnimalCategory
+  name: string | null
+  gender: AnimalGender
+  color: string
+  estimatedAge: number | null
+  point: PointRef | null
+  status: AnimalStatusCode
+  neutered: boolean
+  adopted: boolean
+  coverUrl: string | null
+  updatedAt: string
+}
+
+export interface AnimalDetail {
+  code: string
+  category: AnimalCategory
+  name: string | null
+  gender: AnimalGender
+  color: string
+  estimatedAge: number | null
+  features: string
+  point: PointRef | null
+  status: AnimalStatusCode
+  neutered: boolean
+  neuteredAt: string | null
+  adopted: boolean
+  coverUrl: string | null
+  /** 仅管理员视图返回，公开视图不出现该字段 */
+  internalNote?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatedAnimal {
+  code: string
+  status: AnimalStatusCode
+  createdAt: string
+}
+
+export interface AnimalChangeLogView {
+  field: string
+  beforeValue: string | null
+  afterValue: string | null
+  reason: string
+  operatorId: number | null
+  createdAt: string
+}
+
+export interface HealthRecordView {
+  id: number
+  type: 'VACCINE' | 'DEWORM' | 'WEIGHT' | 'HISTORY'
+  typeLabel: string
+  recordedAt: string
+  result: string
+  nextDate: string | null
+  reminderDue: boolean
+  daysUntilNext: number | null
+  operatorId: number | null
+  createdAt: string
+}
+
+export interface CreatedHealthRecord {
+  healthRecordId: number
+}
+
+export interface SpeciesRef {
+  id: number
+  commonName: string
+  category: string
+}
+
+export interface GroupSummary {
+  groupCode: string
+  species: SpeciesRef
+  features: string
+  minSize: number
+  maxSize: number
+  sizeBasis: string
+  status: 'ACTIVE' | 'UNCONFIRMED' | 'GONE'
+  statusLabel: string
+  points: PointRef[]
+  lastSeenAt: string | null
+}
+
+export interface GroupDetail extends GroupSummary {
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatedGroup {
+  groupCode: string
+  status: GroupSummary['status']
+}
+
+export interface SpeciesView {
+  id: number
+  commonName: string
+  scientificName: string
+  category: string
+  protectionLevel: string
+  note: string | null
+}
+
+export interface PointView {
+  id: number
+  name: string
+  area: string
+  x: number
+  y: number
+  enabled: boolean
+  note: string | null
+}
+
+export interface OccurrenceView {
+  id: number
+  speciesId: number
+  speciesName: string
+  point: PointRef | null
+  occurredAt: string
+  scale: 'FEW' | 'SMALL_HERD' | 'LARGE_HERD'
+  scaleLabel: string
+  habitat: string | null
+  fileIds: string[]
+  recorderId: number | null
+  createdAt: string
+}
+
+export interface ProjectSummary {
+  projectNo: string
+  name: string
+  targetType: 'ANIMAL' | 'GROUP' | 'MIXED'
+  targetAmount: number
+  raisedAmount: number
+  spentAmount: number
+  progressPercent: number
+  startDate: string
+  endDate: string
+  daysRemaining: number
+  status: string
+  donationCount: number
+  coverFileId: string | null
+  createdAt: string
+}
+
+export interface ProjectBudgetItem {
+  subject: string
+  amount: number
+  note: string | null
+}
+
+export interface ProjectDonation {
+  donationNo: string
+  donorDisplay: string
+  amount: number
+  message: string | null
+  verifiedAt: string | null
+}
+
+export interface ProjectDetail {
+  projectNo: string
+  name: string
+  purpose: string
+  targetType: 'ANIMAL' | 'GROUP' | 'MIXED'
+  targetAmount: number
+  raisedAmount: number
+  spentAmount: number
+  progressPercent: number
+  startDate: string
+  endDate: string
+  daysRemaining: number
+  status: string
+  coverFileId: string | null
+  auditReason: string | null
+  auditorId: number | null
+  donationCount: number
+  budgetTotal: number
+  budget: ProjectBudgetItem[]
+  donations: ProjectDonation[]
+  createdAt: string
+  updatedAt: string
+  allowedActions: string[]
+}
+
+export interface CreatedProject {
+  projectNo: string
+  status: string
+  createdAt: string
+}
+
+export interface ProjectAuditResult {
+  projectNo: string
+  status: string
+  auditReason: string | null
+  auditorId: number | null
+  auditedAt: string
+  allowedActions: string[]
+}
+
+export interface DonationSummary {
+  donationNo: string
+  projectNo: string
+  projectName: string
+  userId: number
+  donorDisplay: string
+  amount: number
+  anonymous: boolean
+  message: string | null
+  voucherFileIds: string[]
+  status: 'PENDING_VERIFY' | 'VERIFIED' | 'ABNORMAL'
+  verifierId: number | null
+  verifiedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreatedDonation {
+  donationNo: string
+  status: 'PENDING_VERIFY'
+  note: string
+}
+
+export interface ProjectProgress {
+  projectNo: string
+  raisedAmount: number
+  targetAmount: number
+  progressPercent: number
+}
+
+export interface DonationConfirmation {
+  donationNo: string
+  status: 'VERIFIED' | 'ABNORMAL'
+  amount: number
+  verifiedAt: string | null
+  progress: ProjectProgress | null
+  note: string
+}
+
+export interface BatchFailure {
+  id: string
+  code: number
+  message: string
+}
+
+export interface BatchConfirmResult {
+  success: number
+  failed: BatchFailure[]
+}
+
+export interface ReportSummary {
+  id: number
+  reportNo: string
+  type: 'INJURED' | 'NEW_ARRIVAL' | 'ABANDONED' | 'DISTURB' | 'DEAD'
+  pointId: number
+  pointName: string
+  description: string
+  photos: string[]
+  status: 'PENDING' | 'PROCESSING' | 'CLOSED'
+  overdue: boolean
+  createdAt: string
+  deadline: string
+  reporterId: number
+}
+
+export interface ReportDetail extends ReportSummary {
+  animalId: number | null
+  animalCode: string | null
+  contact: string | null
+  orderNo: string | null
+}
+
+export interface CreatedReport {
+  reportNo: string
+  status: 'PENDING'
+  deadline: string
+  duplicated: boolean
+  duplicateOf: string | null
+}
+
+export interface AcceptedReport {
+  orderNo: string
+  reportNo: string
+  reportStatus: 'PROCESSING'
+  orderStatus: string
+  deadline: string
+}
+
+export interface ClosedReport {
+  reportNo: string
+  status: 'CLOSED'
+  closeReason: string
+}
+
+export type OrderStatusCode =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'TO_REVISIT'
+  | 'TIMEOUT'
+  | 'CLOSED'
+
+export interface OrderSummary {
+  orderNo: string
+  reportId: number
+  reportNo: string
+  type: ReportSummary['type']
+  pointId: number
+  pointName: string
+  status: OrderStatusCode
+  overdue: boolean
+  createdAt: string
+  deadlineAt: string
+  acceptedAt: string | null
+  handlerId: number | null
+}
+
+export interface OrderTimelineItem {
+  action: string
+  actionLabel: string
+  at: string
+  actorId: number | null
+  actorRole: string | null
+  result: string
+  fromStatus: OrderStatusCode | null
+  toStatus: OrderStatusCode | null
+  note: string | null
+}
+
+export interface OrderDetail extends OrderSummary {
+  description: string
+  photos: string[]
+  animalId: number | null
+  animalCode: string | null
+  acceptorId: number | null
+  disposeNote: string | null
+  closeReason: string | null
+  allowed: OrderStatusCode[]
+  timeline: OrderTimelineItem[]
+}
+
+export interface OrderTransitionResult {
+  orderNo: string
+  status: OrderStatusCode
+  allowed: OrderStatusCode[]
+  acceptedAt: string | null
+  deadlineAt: string
+  handlerId: number | null
+  disposeNote: string | null
+  closeReason: string | null
+}

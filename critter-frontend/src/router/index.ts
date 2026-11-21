@@ -5,8 +5,8 @@ import { useAuthStore } from '@/stores/auth'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 /**
- * 路由表：A 的四个页面 + B/C 的占位页。
- * 占位页不是"空壳"：它带着归属人与契约路径，B/C 接手时只换组件、不动路由与权限。
+ * 路由表：A 的外壳与通用页面 + B 的 P02/P04/P06 页面 + C 的占位页。
+ * 占位页不是"空壳"：它带着归属人与契约路径，C 接手时只换组件、不动路由与权限。
  */
 
 declare module 'vue-router' {
@@ -54,12 +54,30 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ProfileView.vue'),
         meta: { title: '个人中心', menu: 'me' },
       },
-      // ---- 以下五个由 B/C 实现，先落占位页，保证侧栏、面包屑与权限一致 ----
+      // ---- B 域页面：P02 档案中心 / P04 资金 / P06 上报与工单 ----
       {
         path: 'animals',
         name: 'animals',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/archive/AnimalsView.vue'),
         meta: { title: '生物档案', menu: 'archive', owner: 'B' },
+      },
+      {
+        path: 'animals/:id',
+        name: 'animal-detail',
+        component: () => import('@/views/archive/AnimalDetailView.vue'),
+        meta: { title: '档案详情', menu: 'archive', owner: 'B' },
+      },
+      {
+        path: 'groups',
+        name: 'groups',
+        component: () => import('@/views/archive/GroupsView.vue'),
+        meta: { title: '群体档案', menu: 'archive', owner: 'B' },
+      },
+      {
+        path: 'species',
+        name: 'species',
+        component: () => import('@/views/archive/SpeciesView.vue'),
+        meta: { title: '物种名录', menu: 'archive', owner: 'B' },
       },
       {
         path: 'adopt',
@@ -82,14 +100,50 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'report',
         name: 'report',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/rescue/ReportView.vue'),
         meta: { title: '救助上报', menu: 'report', owner: 'B' },
       },
       {
+        path: 'report/mine',
+        name: 'report-mine',
+        component: () => import('@/views/rescue/MyReportsView.vue'),
+        meta: { title: '我的上报', menu: 'report', owner: 'B' },
+      },
+      {
+        path: 'orders',
+        name: 'orders',
+        component: () => import('@/views/rescue/OrdersView.vue'),
+        meta: { title: '工单看板', menu: 'report', owner: 'B' },
+      },
+      {
+        // 后端菜单仍下发 /fund，旧入口统一跳到 /projects，避免维护两套路由
         path: 'fund',
         name: 'fund',
-        component: () => import('@/views/PlaceholderView.vue'),
-        meta: { title: '资金透明', menu: 'fund', owner: 'B' },
+        redirect: { name: 'projects' },
+      },
+      {
+        path: 'projects',
+        name: 'projects',
+        component: () => import('@/views/fund/ProjectsView.vue'),
+        meta: { title: '募捐项目', menu: 'fund', owner: 'B' },
+      },
+      {
+        path: 'projects/:id',
+        name: 'project-detail',
+        component: () => import('@/views/fund/ProjectDetailView.vue'),
+        meta: { title: '项目详情', menu: 'fund', owner: 'B' },
+      },
+      {
+        path: 'ledger',
+        name: 'ledger',
+        component: () => import('@/views/fund/LedgerView.vue'),
+        meta: { title: '资金台账', menu: 'fund', owner: 'B' },
+      },
+      {
+        path: 'expenses',
+        name: 'expenses',
+        component: () => import('@/views/fund/ExpensesView.vue'),
+        meta: { title: '支出复核', menu: 'fund', owner: 'B' },
       },
       {
         path: 'medical',
