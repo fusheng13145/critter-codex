@@ -191,3 +191,49 @@
 - 仍未完成：认养到期自动提醒 / 释放、B 域募捐与工单事件通知、服务端直接输出 PDF 证书。
 - 第五轮提交 `af329a7` 已推送至 `origin/feature/d3-messages`，并创建 PR #10：https://github.com/fusheng13145/critter-codex/pull/10 。
 
+## 第六轮：合作医院与就诊记录（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/clinics` 登录可读，返回合作医院名称、联系人、电话、地址与示例报价；示例数据不得当作真实报价。
+- `POST /api/v1/visits` 仅管理员可调用；`animalId`、`clinicId`、`visitedAt`、`cost` 必填，费用为整数分且不小于 0。
+- 到院时间不得晚于当前时间；主诉、诊断、处置、来源备注最长 255 字符；影像编号不得包含空字符串。
+- 无 `orderId` 时 `sourceNote` 必填；有 `orderId` 时必须存在且与就诊动物一致，否则 30301。
+- 动物、医院或工单不存在返回 30410；普通认养人登记返回 20003。
+- `visitNo` 采用 `VS + 到院日期 + 3 位年度序号`，序号复用 `seq_no`。
+- `GET /api/v1/visits/{no}` 登录可读，返回诊断、处置、费用、影像编号、来源备注与关联工单；不存在返回 30410。
+- 前端 `/medical` 替换占位页，提供医院列表、管理员登记、编号查询与详情抽屉；构建必须通过。
+
+### RED
+
+- 先新增 `VisitServiceTests`（9）、`MedicalQueryServiceTests`（3）、`MedicalControllerTests`（6）、`MedicalIT`（1），共 19 例。
+- 首次 `mvn test-compile` 因 `com.just.critter.care.service`、`care.repository` 等包与 `VisitService`、`MedicalRepository` 等类型不存在而编译失败，确认不是断言失败冒充 RED。
+- 唯一一次 GREEN 断言失败是测试对 `orderId` 错误数据要求完全等于 `{field=orderId}`，实现额外带 `reason`；调整为校验 `field`，不放宽业务校验。
+
+### GREEN 与重构
+
+- 新增 `ClinicView`、`VisitCommand`、`VisitWrite`、`VisitDetail`、`VisitRegistration` 与动物/医院/工单引用快照。
+- 新增 `MedicalRepository` / `MyBatisMedicalRepository`、`MedicalMapper`、`VisitEntity` 与四个联表行模型。
+- 新增 `MedicalQueryService`、`VisitService`、`ClinicController`、`VisitController`、`VisitCreateRequest`。
+- 登记流程：校验 → 查动物 → 查医院 → 校验工单与动物一致 → 按到院年份发号 → 单条插入 → 返回摘要；写入 0 行抛 50002。
+- 新增 V15，为 `visit` 补 `source_note`；未把来源塞进 `complaint`。
+- 前端新增 `api/medical.ts`、`MedicalView.vue`，切换 `/medical` 路由；费用按元录入、提交换算为分，登记后自动查询详情。
+- 新增 `docs/T3.3-医疗协作与就诊记录说明.md`，记录编号格式、来源备注列与未完成接口。
+
+### 测试结果
+
+- 新增相关单元 / 控制器 18/18、`MedicalIT` 1/1 通过。
+- 本轮实测完整后端：单元 / 控制器 309 例、真实 MySQL IT 39 例，合计 348 例，0 失败、0 错误、0 跳过。
+- 说明：默认 `mvn test` 的 surefire 不执行 `*IT`，此前记录中“完整套件”的 IT 数量来自单独汇总，容易低估；本轮以 `clean test` 加 `-Dtest='*IT'` 两次实测计数为准。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 仍未完成：`POST /clinics`、`PUT /visits/{no}`、按档案编号选择动物、附件上传与影像授权访问。
+
+### 合并与交付
+
+- PR #10 因 `main` 合入成员 B 页面后，在 `critter-frontend/src/api/types.ts` 与路由产生冲突；在 `feature/d3-messages` 上合入 `origin/main`，保留 D2 域与 D3 消息两套类型，解决后提交 `eecb500` 并推送。
+- PR #10 现已显示 “No conflicts with base branch”，可自动合并。
+- 医疗分支已重放到更新后的 `feature/d3-messages`，提交 `855f513`；`types.ts` 再次冲突，最终顺序为 D2 域类型、消息类型、医疗类型，路由保留 B 的页面与医疗页。
+- 推送 `origin/feature/d3-medical` 并自动创建 PR #12：https://github.com/fusheng13145/critter-codex/pull/12 。
+- PR #12 base 为 `feature/d3-messages`，显示无冲突；待 #10 合入后 retarget 到 `main`。
+- 重放后复跑：单元 / 控制器 309、真实 MySQL IT 39，合计 348，0 失败；前端构建通过。
+
