@@ -227,3 +227,13 @@
 - 说明：默认 `mvn test` 的 surefire 不执行 `*IT`，此前记录中“完整套件”的 IT 数量来自单独汇总，容易低估；本轮以 `clean test` 加 `-Dtest='*IT'` 两次实测计数为准。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
 - 仍未完成：`POST /clinics`、`PUT /visits/{no}`、按档案编号选择动物、附件上传与影像授权访问。
+
+### 合并与交付
+
+- PR #10 因 `main` 合入成员 B 页面后，在 `critter-frontend/src/api/types.ts` 与路由产生冲突；在 `feature/d3-messages` 上合入 `origin/main`，保留 D2 域与 D3 消息两套类型，解决后提交 `eecb500` 并推送。
+- PR #10 现已显示 “No conflicts with base branch”，可自动合并。
+- 医疗分支已重放到更新后的 `feature/d3-messages`，提交 `855f513`；`types.ts` 再次冲突，最终顺序为 D2 域类型、消息类型、医疗类型，路由保留 B 的页面与医疗页。
+- 推送 `origin/feature/d3-medical` 并自动创建 PR #12：https://github.com/fusheng13145/critter-codex/pull/12 。
+- PR #12 base 为 `feature/d3-messages`，显示无冲突；待 #10 合入后 retarget 到 `main`。
+- 重放后复跑：单元 / 控制器 309、真实 MySQL IT 39，合计 348，0 失败；前端构建通过。
+
