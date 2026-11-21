@@ -11,8 +11,12 @@ import com.just.critter.adopt.repository.AdoptionRepository;
 import com.just.critter.adopt.service.AdoptionAuditService;
 import com.just.critter.adopt.service.AuditedAdoption;
 import com.just.critter.domain.enums.AnimalStatus;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -45,13 +49,15 @@ class AdoptionAuditServiceTests {
 
     private AdoptionRepository adoptions;
     private AdoptableAnimalRepository animals;
+    private MessageRepository messages;
     private AdoptionAuditService service;
 
     @BeforeEach
     void setUp() {
         adoptions = mock(AdoptionRepository.class);
         animals = mock(AdoptableAnimalRepository.class);
-        service = new AdoptionAuditService(adoptions, animals, CLOCK);
+        messages = mock(MessageRepository.class);
+        service = new AdoptionAuditService(adoptions, animals, messages, CLOCK);
     }
 
     @Test
@@ -63,6 +69,7 @@ class AdoptionAuditServiceTests {
         when(adoptions.findBlockingAdoptionNo(ANIMAL_ID, ADOPTION_NO)).thenReturn(Optional.empty());
         when(adoptions.updateAudit(eq(ADOPTION_NO), eq(AdoptionStatus.PENDING_PAYMENT), eq(AUDITOR_ID),
                 eq("学籍与数量核对通过"), eq(3000), any(LocalDateTime.class))).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         AuditedAdoption result = service.audit(ADOPTION_NO,
                 new AdoptionAuditCommand(AdoptionDecision.APPROVE, "学籍与数量核对通过", null), AUDITOR_ID);
@@ -72,6 +79,13 @@ class AdoptionAuditServiceTests {
         assertThat(result.payDeadline()).isEqualTo(OffsetDateTime.parse("2026-11-28T12:00:00+08:00"));
         verify(adoptions).updateAudit(eq(ADOPTION_NO), eq(AdoptionStatus.PENDING_PAYMENT), eq(AUDITOR_ID),
                 eq("学籍与数量核对通过"), eq(3000), eq(LocalDateTime.of(2026, 11, 21, 12, 0)));
+        ArgumentCaptor<MessageWrite> notice = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(notice.capture());
+        assertThat(notice.getValue().receiverId()).isEqualTo(1001L);
+        assertThat(notice.getValue().type()).isEqualTo(MessageType.APPROVAL_RESULT.name());
+        assertThat(notice.getValue().title()).contains("通过");
+        assertThat(notice.getValue().bizType()).isEqualTo("ADOPTION");
+        assertThat(notice.getValue().bizId()).isEqualTo(ADOPTION_NO);
     }
 
     @Test
@@ -80,12 +94,16 @@ class AdoptionAuditServiceTests {
         when(adoptions.findByNoForUpdate(ADOPTION_NO)).thenReturn(Optional.of(pendingAuditAdoption()));
         when(adoptions.updateAudit(eq(ADOPTION_NO), eq(AdoptionStatus.REJECTED), eq(AUDITOR_ID),
                 eq("联系不上申请人"), eq(3000), any(LocalDateTime.class))).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         AuditedAdoption result = service.audit(ADOPTION_NO,
                 new AdoptionAuditCommand(AdoptionDecision.REJECT, "联系不上申请人", null), AUDITOR_ID);
 
         assertThat(result.status()).isEqualTo(AdoptionStatus.REJECTED);
         assertThat(result.payDeadline()).isNull();
+        ArgumentCaptor<MessageWrite> notice = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(notice.capture());
+        assertThat(notice.getValue().title()).contains("未通过").contains("联系不上申请人");
     }
 
     @Test

@@ -99,6 +99,25 @@ export function periodLabel(code: string | null | undefined): string {
   return code ?? '—'
 }
 
+export const MESSAGE_TYPE_LABELS: Record<string, string> = {
+  ADOPTION_EXPIRY: '认养到期',
+  DONATION_PROGRESS: '募捐进度',
+  ORDER_PROGRESS: '工单进展',
+  APPROVAL_RESULT: '审批结果',
+}
+
+export function messageTypeLabel(code: string | null | undefined): string {
+  if (!code) return '—'
+  return MESSAGE_TYPE_LABELS[code] ?? code
+}
+
+export function messageTypeTag(code: string | null | undefined): 'success' | 'warning' | 'info' | 'primary' {
+  if (code === 'APPROVAL_RESULT') return 'success'
+  if (code === 'ADOPTION_EXPIRY') return 'warning'
+  if (code === 'DONATION_PROGRESS') return 'primary'
+  return 'info'
+}
+
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action
 }

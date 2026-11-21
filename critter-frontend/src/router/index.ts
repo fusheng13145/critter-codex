@@ -106,7 +106,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'messages',
         name: 'messages',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/MessageView.vue'),
         meta: { title: '消息中心', menu: 'content', owner: 'C' },
       },
     ],

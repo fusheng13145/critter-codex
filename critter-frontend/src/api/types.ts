@@ -383,3 +383,38 @@ export interface TerminatedAdoption {
   endDate: string
   animalStatus: string
 }
+
+export type MessageType =
+  | 'ADOPTION_EXPIRY'
+  | 'DONATION_PROGRESS'
+  | 'ORDER_PROGRESS'
+  | 'APPROVAL_RESULT'
+
+export interface MessageItem {
+  id: number
+  type: MessageType
+  title: string
+  bizType: string | null
+  bizId: string | null
+  readFlag: boolean
+  readAt: string | null
+  createdAt: string
+}
+
+export interface MessageUnreadCount {
+  adoptionExpiry: number
+  donationProgress: number
+  orderProgress: number
+  approvalResult: number
+}
+
+export interface MessageReadFailure {
+  id: string
+  code: number
+  message: string
+}
+
+export interface MessageReadResult {
+  success: number
+  failed: MessageReadFailure[]
+}

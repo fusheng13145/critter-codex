@@ -8,6 +8,9 @@ import com.just.critter.adopt.domain.AdoptionStatus;
 import com.just.critter.adopt.repository.AdoptableAnimalRepository;
 import com.just.critter.adopt.repository.AdoptionRepository;
 import com.just.critter.domain.enums.AnimalStatus;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -31,13 +34,16 @@ public class AdoptionAuditService {
 
     private final AdoptionRepository adoptions;
     private final AdoptableAnimalRepository animals;
+    private final MessageRepository messages;
     private final Clock clock;
 
     public AdoptionAuditService(AdoptionRepository adoptions,
                                 AdoptableAnimalRepository animals,
+                                MessageRepository messages,
                                 Clock clock) {
         this.adoptions = adoptions;
         this.animals = animals;
+        this.messages = messages;
         this.clock = clock;
     }
 
@@ -63,6 +69,7 @@ public class AdoptionAuditService {
             if (updated != 1) {
                 throw new BusinessException(ErrorCode.AUDIT_CONFLICT, Map.of("adoptionNo", adoptionNo));
             }
+            notifyApplicant(record, "认养申请未通过：" + reason, auditorId, now);
             return new AuditedAdoption(adoptionNo, AdoptionStatus.REJECTED, null);
         }
 
@@ -86,9 +93,20 @@ public class AdoptionAuditService {
         if (updated != 1) {
             throw new BusinessException(ErrorCode.AUDIT_CONFLICT, Map.of("adoptionNo", adoptionNo));
         }
+        notifyApplicant(record, "认养申请已通过，请在7日内完成缴费", auditorId, now);
 
         return new AuditedAdoption(adoptionNo, AdoptionStatus.PENDING_PAYMENT,
                 now.plusDays(PAYMENT_DAYS).atZone(clock.getZone()).toOffsetDateTime());
+    }
+
+    private void notifyApplicant(AdoptionRecord record, String title, long auditorId, LocalDateTime now) {
+        int inserted = messages.insert(new MessageWrite(
+                record.userId(), MessageType.APPROVAL_RESULT.name(), title,
+                "ADOPTION", record.adoptionNo(), auditorId, now));
+        if (inserted != 1) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT,
+                    Map.of("adoptionNo", record.adoptionNo()));
+        }
     }
 
     private void validate(AdoptionAuditCommand command) {

@@ -8,6 +8,9 @@ import com.just.critter.adopt.repository.AdoptableAnimalRepository;
 import com.just.critter.adopt.repository.AdoptionRepository;
 import com.just.critter.domain.archive.SequencePort;
 import com.just.critter.domain.enums.AnimalStatus;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -36,15 +39,18 @@ public class AdoptionPaymentService {
     private final AdoptionRepository adoptions;
     private final AdoptableAnimalRepository animals;
     private final SequencePort sequences;
+    private final MessageRepository messages;
     private final Clock clock;
 
     public AdoptionPaymentService(AdoptionRepository adoptions,
                                   AdoptableAnimalRepository animals,
                                   SequencePort sequences,
+                                  MessageRepository messages,
                                   Clock clock) {
         this.adoptions = adoptions;
         this.animals = animals;
         this.sequences = sequences;
+        this.messages = messages;
         this.clock = clock;
     }
 
@@ -105,6 +111,15 @@ public class AdoptionPaymentService {
         int adoptionRows = adoptions.activate(new AdoptionActivation(
                 record.id(), certificateNo, startDate, endDate, now));
         if (adoptionRows != 1) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT,
+                    Map.of("adoptionNo", adoptionNo));
+        }
+
+        int messageRows = messages.insert(new MessageWrite(
+                record.userId(), MessageType.APPROVAL_RESULT.name(),
+                "认养缴费已入账，认养关系已生效，证书号 " + certificateNo,
+                "ADOPTION", adoptionNo, verifierId, now));
+        if (messageRows != 1) {
             throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT,
                     Map.of("adoptionNo", adoptionNo));
         }
