@@ -191,3 +191,114 @@
 - 仍未完成：认养到期自动提醒 / 释放、B 域募捐与工单事件通知、服务端直接输出 PDF 证书。
 - 第五轮提交 `af329a7` 已推送至 `origin/feature/d3-messages`，并创建 PR #10：https://github.com/fusheng13145/critter-codex/pull/10 。
 
+## 第六轮：合作医院与就诊记录（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/clinics` 登录可读，返回合作医院名称、联系人、电话、地址与示例报价；示例数据不得当作真实报价。
+- `POST /api/v1/visits` 仅管理员可调用；`animalId`、`clinicId`、`visitedAt`、`cost` 必填，费用为整数分且不小于 0。
+- 到院时间不得晚于当前时间；主诉、诊断、处置、来源备注最长 255 字符；影像编号不得包含空字符串。
+- 无 `orderId` 时 `sourceNote` 必填；有 `orderId` 时必须存在且与就诊动物一致，否则 30301。
+- 动物、医院或工单不存在返回 30410；普通认养人登记返回 20003。
+- `visitNo` 采用 `VS + 到院日期 + 3 位年度序号`，序号复用 `seq_no`。
+- `GET /api/v1/visits/{no}` 登录可读，返回诊断、处置、费用、影像编号、来源备注与关联工单；不存在返回 30410。
+- 前端 `/medical` 替换占位页，提供医院列表、管理员登记、编号查询与详情抽屉；构建必须通过。
+
+### RED
+
+- 先新增 `VisitServiceTests`（9）、`MedicalQueryServiceTests`（3）、`MedicalControllerTests`（6）、`MedicalIT`（1），共 19 例。
+- 首次 `mvn test-compile` 因 `com.just.critter.care.service`、`care.repository` 等包与 `VisitService`、`MedicalRepository` 等类型不存在而编译失败，确认不是断言失败冒充 RED。
+- 唯一一次 GREEN 断言失败是测试对 `orderId` 错误数据要求完全等于 `{field=orderId}`，实现额外带 `reason`；调整为校验 `field`，不放宽业务校验。
+
+### GREEN 与重构
+
+- 新增 `ClinicView`、`VisitCommand`、`VisitWrite`、`VisitDetail`、`VisitRegistration` 与动物/医院/工单引用快照。
+- 新增 `MedicalRepository` / `MyBatisMedicalRepository`、`MedicalMapper`、`VisitEntity` 与四个联表行模型。
+- 新增 `MedicalQueryService`、`VisitService`、`ClinicController`、`VisitController`、`VisitCreateRequest`。
+- 登记流程：校验 → 查动物 → 查医院 → 校验工单与动物一致 → 按到院年份发号 → 单条插入 → 返回摘要；写入 0 行抛 50002。
+- 新增 V15，为 `visit` 补 `source_note`；未把来源塞进 `complaint`。
+- 前端新增 `api/medical.ts`、`MedicalView.vue`，切换 `/medical` 路由；费用按元录入、提交换算为分，登记后自动查询详情。
+- 新增 `docs/T3.3-医疗协作与就诊记录说明.md`，记录编号格式、来源备注列与未完成接口。
+
+### 测试结果
+
+- 新增相关单元 / 控制器 18/18、`MedicalIT` 1/1 通过。
+- 本轮实测完整后端：单元 / 控制器 309 例、真实 MySQL IT 39 例，合计 348 例，0 失败、0 错误、0 跳过。
+- 说明：默认 `mvn test` 的 surefire 不执行 `*IT`，此前记录中“完整套件”的 IT 数量来自单独汇总，容易低估；本轮以 `clean test` 加 `-Dtest='*IT'` 两次实测计数为准。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 仍未完成：`POST /clinics`、`PUT /visits/{no}`、按档案编号选择动物、附件上传与影像授权访问。
+
+### 合并与交付
+
+- PR #10 因 `main` 合入成员 B 页面后，在 `critter-frontend/src/api/types.ts` 与路由产生冲突；在 `feature/d3-messages` 上合入 `origin/main`，保留 D2 域与 D3 消息两套类型，解决后提交 `eecb500` 并推送。
+- PR #10 现已显示 “No conflicts with base branch”，可自动合并。
+- 医疗分支已重放到更新后的 `feature/d3-messages`，提交 `855f513`；`types.ts` 再次冲突，最终顺序为 D2 域类型、消息类型、医疗类型，路由保留 B 的页面与医疗页。
+- 推送 `origin/feature/d3-medical` 并自动创建 PR #12：https://github.com/fusheng13145/critter-codex/pull/12 。
+- PR #12 base 为 `feature/d3-messages`，显示无冲突；待 #10 合入后 retarget 到 `main`。
+- 重放后复跑：单元 / 控制器 309、真实 MySQL IT 39，合计 348，0 失败；前端构建通过。
+
+## 第七轮：公告列表、发布与详情（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/notices` 公开可读，即使携带无效 Bearer 也不拦截；`category` 可选，`page/size` 分页。
+- 分类英文码固定为 `PROGRESS / PUBLICITY / SCIENCE`；非法分类返回 30303。
+- 列表只返回 `published_at` 非空记录，排序为 `pinned DESC, published_at DESC, id DESC`；空结果不查询明细列表。
+- `POST /api/v1/notices` 仅 `ANIMAL_ADMIN / SYS_ADMIN / SYSTEM_ADMIN` 可调用；普通学生返回 20003。
+- 标题 trim 后 1–128 字，正文 trim 后 1–20000 字；字段非法 30301，分类非法 30303，写入 0 行 50002。
+- `authorId` 取 Bearer 当前用户，发布即写 `published_at`；公告编号为 `NT + yyyyMMdd + 3 位年度序号`，复用 `seq_no` 的 `NOTICE` 键。
+- `GET /api/v1/notices/{id}` 公开可读，返回正文与发布人昵称；id 非法 30301、不存在 30410。
+- 前端新增公告列表与详情页，管理员可在列表页发布；构建必须通过。
+
+### RED
+
+- 先新增 `NoticeServiceTests`（8）、`NoticeControllerTests`（6）、`NoticeIT`（1），共 15 例。
+- 首次 `mvn test-compile` 因 `com.just.critter.notice.repository`、`notice.service` 包及 `NoticeService`、`NoticeRepository` 等类型不存在而编译失败，确认 RED；失败原因仅为缺失类型，不是断言失败。
+- 测试装配阶段发现 `/api/v1/notices/**` 原在 `OPTIONAL_AUTH`，该拦截器不做角色判定，导致学生发布返回 200；将公告从可选鉴权移出，改由 `@PublicEndpoint` 放行两个 GET、`@RequireRoles` 拦截 POST。
+- 控制器测试另修正两处测试自身问题：Mockito 对无 `equals` 的 `PageQuery` 用实例匹配会返回 null，改为 `any(PageQuery.class)`；业务失败按项目既有约定默认 HTTP 200，断言改为 `status().isOk()` 并保留 `code=30303`。
+
+### GREEN 与重构
+
+- 新增 `NoticeCategory`、`NoticeCommand`、`NoticeView`、`NoticeDetail`、`NoticeSummaryRecord`、`NoticeWrite`。
+- 新增 `NoticeRepository` / `MyBatisNoticeRepository`、`NoticeMapper`、`NoticeEntity` / `NoticeRow`。
+- 新增 `NoticeService`、`NoticeController`、`NoticeCreateRequest`；列表先 count，0 条直接返回空页；发布先校验再取号，避免非法请求消耗序号。
+- `NoticeMapper.findById` 只查 `published_at` 非空记录并左连 `sys_user.nickname`；不存在按 30410 处理。
+- `notice` 表字段已满足本轮需求，未新增迁移；`notice_no` 唯一键与 `(published_at, pinned)` 索引沿用 V1。
+- 前端新增 `api/notices.ts`、`NoticeListView.vue`、`NoticeDetailView.vue`，注册 `/notices` 与 `/notices/:id`；消息中心增加“校园公告”入口。列表支持分类切换、置顶标记与分页；管理员发布对话框校验标题/正文非空。
+- 同步文档：`03 接口设计说明书.md` 补 7.14 公告三接口、分类枚举与编号规则，并把“公告逻辑删除”修正为“当前不提供删除/撤回接口”。
+
+### 测试结果
+
+- 新增相关测试 15/15 通过；其中单元 8、控制器 6、`NoticeIT` 1。
+- 本轮实测完整后端：单元 / 控制器 323 例、真实 MySQL IT 40 例，合计 363 例，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 仍未完成：公告删除/撤回、首页置顶摘要、附件与富文本；档案详情反查就诊、三类消息生产与认养到期任务仍待后续轮次。
+
+## 第八轮：档案详情反查就诊（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/visits?animalCode=...` 登录可读，返回该动物全部就诊，按到院时间倒序。
+- `animalCode` 必填；空白 30301，档案不存在 30410，档案存在但无就诊返回空数组。
+- 返回字段与 `GET /visits/{no}` 一致；不改动 35 接口清单计数。
+- 档案详情页必须能展示该面板；无记录时给出明确空态。
+
+### RED
+
+- `MedicalQueryServiceTests` 新增 3 例、`MedicalControllerTests` 新增 3 例，并在 `MedicalIT` 扩展现有真库用例，断言按动物编号反查。
+- 首次定向运行因 `MedicalRepository.findAnimalByCode / findVisitsByAnimal` 与 `MedicalQueryService.visitsByAnimal` 不存在而编译失败，确认 RED。
+
+### GREEN
+
+- `MedicalMapper` 新增 `findAnimalByCode` 与 `findVisitsByAnimal`；后者联表动物、医院与工单，`ORDER BY visited_at DESC, visit_no DESC`。
+- `MedicalRepository / MyBatisMedicalRepository` 新增对应方法，并把 `VisitDetail` 映射抽成 `toDetail`，避免按编号与按动物两条查询重复拼装。
+- `MedicalQueryService.visitsByAnimal` 先校验档案存在再查列表；`VisitController` 新增根路径 GET，缺少 `animalCode` 交给服务返回 30301。
+- 前端新增 `AnimalVisitPanel.vue` 与 `fetchAnimalVisits`，嵌入 `AnimalDetailView`；无记录显示空态，失败显示错误文案。
+
+### 测试结果
+
+- 医疗相关 25/25 通过：`VisitServiceTests` 9、`MedicalQueryServiceTests` 6、`MedicalControllerTests` 9、`MedicalIT` 1。
+- 本轮完整后端：单元 / 控制器 329、真实 MySQL IT 40，合计 369，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过，仅有 chunk 体积告警。
+- UI 仅完成构建校验，未做浏览器端手工点验；后续交付前应在真实数据下检查档案详情面板。
+

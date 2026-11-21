@@ -791,3 +791,85 @@ export interface OrderTransitionResult {
   disposeNote: string | null
   closeReason: string | null
 }
+
+/** 合作医院（GET /clinics）；priceNote 为示例报价，不作真实价格承诺 */
+export interface ClinicView {
+  clinicId: number
+  clinicName: string
+  contact: string | null
+  phone: string | null
+  address: string | null
+  priceNote: string | null
+}
+
+export interface VisitCreatePayload {
+  animalId: number
+  orderId?: number | null
+  clinicId: number
+  visitedAt: string
+  complaint?: string
+  diagnosis?: string
+  treatment?: string
+  cost: number
+  fileIds?: string[]
+  sourceNote?: string
+}
+
+export interface VisitRegistration {
+  visitNo: string
+  animalId: number
+  animalCode: string
+  animalName: string | null
+  clinicId: number
+  clinicName: string
+  visitedAt: string
+  cost: number
+}
+
+/** 就诊详情（GET /visits/{no}）；cost 为整数分 */
+export interface VisitDetail {
+  visitNo: string
+  animalId: number
+  animalCode: string
+  animalName: string | null
+  orderId: number | null
+  orderNo: string | null
+  clinicId: number
+  clinicName: string
+  visitedAt: string
+  complaint: string | null
+  diagnosis: string | null
+  treatment: string | null
+  cost: number
+  fileIds: string[]
+  sourceNote: string | null
+  createdAt: string
+}
+
+/** 公告分类英文码：进展 / 公示 / 科普 */
+export type NoticeCategory = 'PROGRESS' | 'PUBLICITY' | 'SCIENCE'
+
+/** 公告列表项（GET /notices），不含正文 */
+export interface NoticeItem {
+  noticeId: number
+  noticeNo: string
+  category: NoticeCategory
+  title: string
+  pinned: boolean
+  publishedAt: string
+}
+
+/** 公告详情（GET /notices/{id}） */
+export interface NoticeDetail extends NoticeItem {
+  content: string
+  authorId: number | null
+  authorName: string | null
+  createdAt: string
+}
+
+export interface NoticeCreatePayload {
+  category: NoticeCategory
+  title: string
+  content: string
+  pinned?: boolean
+}

@@ -148,7 +148,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'medical',
         name: 'medical',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/MedicalView.vue'),
         meta: { title: '医疗协作', menu: 'medical', owner: 'C' },
       },
       {
@@ -162,6 +162,18 @@ const routes: RouteRecordRaw[] = [
         name: 'messages',
         component: () => import('@/views/MessageView.vue'),
         meta: { title: '消息中心', menu: 'content', owner: 'C' },
+      },
+      {
+        path: 'notices',
+        name: 'notices',
+        component: () => import('@/views/NoticeListView.vue'),
+        meta: { title: '校园公告', menu: 'content', owner: 'C' },
+      },
+      {
+        path: 'notices/:id',
+        name: 'notice-detail',
+        component: () => import('@/views/NoticeDetailView.vue'),
+        meta: { title: '公告详情', menu: 'content', owner: 'C' },
       },
     ],
   },
