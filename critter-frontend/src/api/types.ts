@@ -802,6 +802,15 @@ export interface ClinicView {
   priceNote: string | null
 }
 
+/** 新增合作医院（POST /clinics），仅管理员可用 */
+export interface ClinicCreatePayload {
+  clinicName: string
+  contact?: string
+  phone?: string
+  address?: string
+  priceNote?: string
+}
+
 export interface VisitCreatePayload {
   animalId: number
   orderId?: number | null
@@ -824,6 +833,16 @@ export interface VisitRegistration {
   clinicName: string
   visitedAt: string
   cost: number
+}
+
+/** 纠错就诊（PUT /visits/{no}），reason 只写审计日志 */
+export interface VisitUpdatePayload {
+  complaint?: string
+  diagnosis?: string
+  treatment?: string
+  cost: number
+  fileIds?: string[]
+  reason: string
 }
 
 /** 就诊详情（GET /visits/{no}）；cost 为整数分 */
