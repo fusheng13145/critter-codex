@@ -12,10 +12,10 @@ import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
+import com.just.critter.support.security.AuthContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,9 +66,7 @@ public class BiodiversityController {
     }
 
     @PostMapping("/occurrences")
-    public Result<CreatedOccurrence> createOccurrence(
-            @RequestBody CreateOccurrenceRequest request,
-            @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.createOccurrence(request.toCommand(), userId));
+    public Result<CreatedOccurrence> createOccurrence(@RequestBody CreateOccurrenceRequest request) {
+        return Result.ok(service.createOccurrence(request.toCommand(), AuthContext.require().id()));
     }
 }

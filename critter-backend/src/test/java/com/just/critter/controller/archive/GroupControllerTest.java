@@ -12,6 +12,11 @@ import com.just.critter.service.archive.SpeciesRef;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
+import com.just.critter.support.security.AuthContext;
+import com.just.critter.support.security.AuthInterceptor;
+import com.just.critter.support.security.CurrentUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -43,6 +49,21 @@ class GroupControllerTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @MockBean
+    private AuthInterceptor authInterceptor;
+
+    @BeforeEach
+    void auth() {
+        when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+        AuthContext.set(new CurrentUser(1001L, "2023019001", "管理员", "ANIMAL_ADMIN",
+                Set.of("ANIMAL_ADMIN"), "后勤处", "jti", null));
+    }
+
+    @AfterEach
+    void clearAuth() {
+        AuthContext.clear();
+    }
 
     @MockBean
     private GroupService groupService;

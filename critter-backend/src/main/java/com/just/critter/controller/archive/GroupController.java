@@ -13,12 +13,13 @@ import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
+import com.just.critter.support.security.AuthContext;
+import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,9 +39,9 @@ public class GroupController {
     }
 
     @PostMapping("/groups")
-    public Result<CreatedGroup> create(@RequestBody CreateGroupRequest request,
-                                       @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.create(request.toCommand(), userId));
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<CreatedGroup> create(@RequestBody CreateGroupRequest request) {
+        return Result.ok(service.create(request.toCommand(), AuthContext.require().id()));
     }
 
     @GetMapping("/groups")
@@ -67,17 +68,17 @@ public class GroupController {
     }
 
     @PutMapping("/groups/{code}")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<GroupDetail> update(@PathVariable String code,
-                                      @RequestBody UpdateGroupRequest request,
-                                      @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.update(code, request.toCommand(), userId));
+                                      @RequestBody UpdateGroupRequest request) {
+        return Result.ok(service.update(code, request.toCommand(), AuthContext.require().id()));
     }
 
     @PostMapping("/groups/{code}/sightings")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<CreatedSighting> recordSighting(@PathVariable String code,
-                                                  @RequestBody CreateSightingRequest request,
-                                                  @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.recordSighting(code, request.toCommand(), userId));
+                                                  @RequestBody CreateSightingRequest request) {
+        return Result.ok(service.recordSighting(code, request.toCommand(), AuthContext.require().id()));
     }
 
     @GetMapping("/sightings")

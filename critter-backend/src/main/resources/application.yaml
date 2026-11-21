@@ -6,7 +6,7 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/critter_codex?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: "123456"
+    password: "1234"
 
   flyway:
     enabled: true
