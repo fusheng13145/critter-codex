@@ -365,3 +365,37 @@
 - 合并时 C 验收记录按“第九轮 → 第十轮”顺序解决 EOF 冲突；同时发现 `main` 出现两个 `V14` 迁移（`message_type_width` 与 B 的 `expense_double_sign_stage`），Flyway 启动即失败。已将 B 的支出迁移顺延为 `V17__expense_double_sign_stage.sql`，不改既有业务 SQL，清理构建产物后全量 IT 恢复通过。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
 - 未做浏览器端手工点验；后续演示前应实际新增一家医院并纠错一条就诊，确认审计日志可在库中查到。
+
+## 第十一轮：TNR 五节点全链路（2026-11-21）
+
+### 验收标准
+
+- `POST /api/v1/tnr` 仅管理员可用，首节点固定 `CATCH`；`handlerId` 省略时取当前操作人；同一动物存在 `stage != OBSERVE` 的任务时返回 30403。
+- 编号为 `TNR + yyyyMMdd + 3 位年度序号`，日期取抓捕节点日期，序号按年递增。
+- `PUT /api/v1/tnr/{no}/node` 只能推进到当前节点的下一节点；跳节点、重复推进或已完成任务返回 30402。
+- 手术节点必须至少一个 `fileIds`，否则 30601；节点时间必须严格晚于当前节点，否则 30301；阶段非法 30303。
+- 末节点 `OBSERVE` 完成时同步 `animal.neutered=1`、`neutered_at=末节点日期`，不改其他动物状态。
+- `GET /api/v1/tnr` 登录可读，支持 `stage`、`animalCode`、分页；任务含全节点时间线。
+- `tnr_node` 保存每次推进的责任人、时间、附件与备注，唯一键 `(tnr_no, stage)` 阻止重复节点。
+
+### RED
+
+- 先写 `TnrServiceTests` 11 例、`TnrControllerTests` 6 例、`TnrIT` 1 例。
+- 首次 `test-compile` 因 `com.just.critter.tnr.service` 与 `repository` 包、类型不存在而失败，确认 RED。
+- 测试自身随后暴露两处问题：`findNodes` 返回 `TnrNodeRecord` 而非视图，Mockito 桩需对齐；编号日期取节点发生日，原期望 `TNR20261121001` 应改为 `TNR20261120001`。
+
+### GREEN
+
+- 新增 V16 `tnr_node` 迁移、`TnrStage`、`TnrCommand / TnrNodeCommand`、`TnrWrite / TnrNodeWrite`、任务与节点视图/记录。
+- 新增 `TnrRepository / MyBatisTnrRepository`、`TnrMapper`；任务头更新与节点插入分表写入，`file_ids` 用 Jackson 序列化。
+- `TnrService.create` 完成参数、动物、处理人、开放任务与取号校验后写任务头与首条 `CATCH` 节点；`advance` 用 `TnrStage.next()` 校验顺序，手术缺照片返回 30601，末节点同步绝育标记。
+- `TnrController` 的 GET 登录可读，POST/PUT 用 `@RequireRoles` 限制管理员，操作人取 `AuthContext.require().id()`。
+- 前端新增 `api/tnr.ts`、`TnrBoardView.vue` 与 `/tnr` 路由，医疗协作页增加入口；看板、详情时间线、发起与推进弹窗完成。
+
+### 测试结果
+
+- 定向 17 例单元/控制器通过：`TnrServiceTests` 11、`TnrControllerTests` 6。
+- 真实 MySQL `TnrIT` 1 例通过：跳节点被拒，顺序推进五个节点，断言 5 条 `tnr_node`、任务阶段 `OBSERVE`、动物绝育标记与看板查询。
+- 变基到含 PR #15/#17 的医院分支后完整后端：单元 / 控制器 370 例、64 suites；真实 MySQL IT 43 例、16 suites；合计 413 例，0 失败、0 错误、0 跳过。
+- 首次全量 IT 因 `MySqlSchemaIT` 仍按 40 张业务表断言而失败，已把 `tnr_node` 加入表清单并将期望调为 41，重跑通过；这是测试夹具更新，不是放宽生产约束。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。

@@ -944,6 +944,52 @@ export interface ClinicCreatePayload {
   priceNote?: string
 }
 
+/** TNR 五节点固定顺序：抓捕、转运、手术、放归、观察。 */
+export type TnrStage = 'CATCH' | 'TRANSPORT' | 'SURGERY' | 'RELEASE' | 'OBSERVE'
+
+export interface TnrNodeView {
+  stage: TnrStage
+  handlerId: number
+  handlerName: string | null
+  occurredAt: string
+  note: string | null
+  fileIds: string[]
+}
+
+/** TNR 看板任务（GET /tnr）：任务头字段 + 全节点时间线。 */
+export interface TnrTaskView {
+  tnrNo: string
+  animalId: number
+  animalCode: string
+  animalName: string | null
+  stage: TnrStage
+  handlerId: number
+  handlerName: string | null
+  occurredAt: string
+  note: string | null
+  fileIds: string[]
+  createdAt: string
+  nodes: TnrNodeView[]
+}
+
+/** 发起 TNR（POST /tnr），首节点固定 CATCH；handlerId 留空取当前操作人。 */
+export interface TnrCreatePayload {
+  animalId: number
+  handlerId?: number
+  occurredAt: string
+  note?: string
+  fileIds?: string[]
+}
+
+/** 推进 TNR（PUT /tnr/{no}/node），stage 必须是当前节点的下一节点。 */
+export interface TnrNodePayload {
+  stage: TnrStage
+  handlerId?: number
+  occurredAt: string
+  note?: string
+  fileIds?: string[]
+}
+
 export interface VisitCreatePayload {
   animalId: number
   orderId?: number | null

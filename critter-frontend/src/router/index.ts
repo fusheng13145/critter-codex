@@ -158,6 +158,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '医疗协作', menu: 'medical', owner: 'C' },
       },
       {
+        path: 'tnr',
+        name: 'tnr',
+        component: () => import('@/views/tnr/TnrBoardView.vue'),
+        meta: { title: 'TNR 全链路', menu: 'medical', owner: 'C' },
+      },
+      {
         path: 'tasks',
         name: 'tasks',
         component: () => import('@/views/PlaceholderView.vue'),
