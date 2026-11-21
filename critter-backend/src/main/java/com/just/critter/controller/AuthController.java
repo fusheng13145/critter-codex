@@ -10,6 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -43,6 +44,20 @@ public class AuthController {
     @PostMapping("/register/verify")
     public Result<AuthDtos.VerifyResponse> verify(@Valid @RequestBody AuthDtos.VerifyRequest request) {
         return Result.ok(authService.verify(request));
+    }
+
+    /** 发找回密码验证码：5 分钟有效，公开接口。 */
+    @PostMapping("/password/code")
+    public Result<AuthDtos.ResetCodeResponse> passwordCode(@Valid @RequestBody AuthDtos.ResetCodeRequest request) {
+        return Result.ok(authService.requestResetCode(request));
+    }
+
+    /** 凭验证码重置密码：错误 5 次锁定，规则与登录一致。 */
+    @PutMapping("/password")
+    public Result<Void> resetPassword(@Valid @RequestBody AuthDtos.ResetPasswordRequest request,
+                                      HttpServletRequest servletRequest) {
+        authService.resetPassword(request, clientIp(servletRequest));
+        return Result.ok();
     }
 
     @PostMapping("/login")

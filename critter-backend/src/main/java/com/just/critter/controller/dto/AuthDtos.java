@@ -57,4 +57,21 @@ public final class AuthDtos {
 
     public record PhoneSensitiveView(String phone, String phoneMasked, boolean visible) {
     }
+
+    // ---------------- 找回密码（接口设计 §6.1 第 6—7 项） ----------------
+
+    /** 发验证码：账号可以是学号或校园邮箱，与登录口径一致。 */
+    public record ResetCodeRequest(
+            @NotBlank(message = "请输入学号或校园邮箱") String account) {
+    }
+
+    /** 验证码只回传到脱敏邮箱；演示环境额外回传 devCode，生产置 expose-verification-code=false。 */
+    public record ResetCodeResponse(String userNo, String emailMasked, Integer codeTtlSeconds, String devCode) {
+    }
+
+    public record ResetPasswordRequest(
+            @NotBlank(message = "请输入学号或校园邮箱") String account,
+            @NotBlank(message = "请输入验证码") String code,
+            @NotBlank(message = "请输入新密码") String newPassword) {
+    }
 }

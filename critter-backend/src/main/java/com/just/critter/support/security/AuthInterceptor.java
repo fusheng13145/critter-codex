@@ -125,7 +125,8 @@ public class AuthInterceptor implements HandlerInterceptor {
                 || path.matches("^/api/v1/groups/[^/]+$");
     }
 
-    private void checkRoles(Object handler) {        if (!(handler instanceof HandlerMethod method)) {
+    private void checkRoles(Object handler) {
+        if (!(handler instanceof HandlerMethod method)) {
             return;
         }
         RequireRoles required = AnnotatedElementUtils.findMergedAnnotation(method.getMethod(), RequireRoles.class);

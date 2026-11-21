@@ -61,3 +61,9 @@ critter:
     # 附件根目录，相对启动目录；生产可换对象存储
     storage-dir: "data/files"
     max-size-bytes: 5242880
+  export:
+    # 统计导出：超过这个行数走异步任务（返回 taskId，前端轮询 /tasks/export/{taskId}）
+    async-threshold: 50000
+    # 异步导出文件落盘目录与任务状态保留时长（秒）
+    dir: "data/exports"
+    task-ttl-seconds: 3600
