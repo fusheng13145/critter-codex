@@ -264,10 +264,13 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T0.2 统一响应体、异常映射、requestId | 完成 | `support/api`、`support/exception`，`ApiContractTest` 4 例 |
 | T0.3 Flyway 建表 | 完成 | `V1__init.sql`：37 张业务表 + `seq_no` + 3 视图；`MySqlSchemaIT` 5/5 通过（真实 MySQL 8.4） |
 | T0.4 枚举常量与字典种子 | 完成 | 新增 `Gender`/`ReportType`/`DonationStatus`/`ExpenseStatus`/`OccurrenceScale`/`HealthType`；`V2__seed_reference_data.sql` 落 48 条字典、10 物种、3 示例医院、12 点位；`DomainEnumCatalogTest` 6 例、`SeedReferenceDataIT` 4/4 |
-| T1.1 编号器 / T1.3 状态机 | 完成 | `AnimalCodeGeneratorTest` 5 例、状态机 25 例 |
+| T1.1 编号器 / T1.3 状态机 | 完成 | `AnimalCodeGeneratorTest` 5 例、状态机 25 例；真库发号走 `seq_no` 行锁 |
+| T1.2 档案 CRUD | 完成（一期） | `POST/GET/PUT /animals`、`GET /animals/{code}/history`；建档发号、五条件筛选、编辑留痕、公开详情裁剪；`AnimalServiceTest` 8 例、`AnimalControllerTest` 5 例、`AnimalArchiveIT` 3 例 |
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
 
-测试基线：`mvn -B test` 69 例全绿；真库测试另计 9 例（`MySqlSchemaIT` 5 + `SeedReferenceDataIT` 4），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过，队友无库时不会红。
+测试基线：`mvn -B test` **82 例全绿**；真库测试另计 12 例（结构 5 + 种子 4 + 档案 3），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。
+
+T1.2 遗留：`X-User-Id` / `X-Debug-Role` 只是占位，等 A 的令牌与角色落地后换成 `@AuthenticationPrincipal`；`GET /animals/{code}/history` 目前未做管理员拦截，联调前必须补；`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
 Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1+V2），`critter_ro@localhost` 只读，详见《联调环境说明》。
 
