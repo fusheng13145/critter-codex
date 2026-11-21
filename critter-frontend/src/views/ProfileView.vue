@@ -31,6 +31,10 @@ const profileForm = reactive({ nickname: '', dept: '', phone: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '', confirm: '' })
 const applyForm = reactive({ roleCode: 'VOLUNTEER', reason: '', availableSlots: '' })
 
+/** 账号申诉：与登录页共用同一公开接口，这里方便登录用户对处理结果提出异议。 */
+const appealForm = reactive({ reason: '', contact: '', message: '', submitted: false })
+const submittingAppeal = ref(false)
+
 const roleTags = computed(() => profile.value?.roles ?? [])
 
 async function load(): Promise<void> {
@@ -124,6 +128,29 @@ async function confirmLogout(): Promise<void> {
   }
   await auth.logout()
   router.replace({ name: 'login' })
+}
+
+async function submitAppeal(): Promise<void> {
+  if (!profile.value) return
+  if (appealForm.reason.trim().length < 5) {
+    ElMessage.warning('请填写至少 5 个字的申诉理由')
+    return
+  }
+  submittingAppeal.value = true
+  try {
+    const result = await userApi.submitAppeal({
+      userNo: profile.value.userNo,
+      reason: appealForm.reason.trim(),
+      contact: appealForm.contact.trim() || undefined,
+    })
+    appealForm.submitted = true
+    appealForm.message = result.message
+    ElMessage.success('申诉已提交')
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '提交失败，请稍后重试')
+  } finally {
+    submittingAppeal.value = false
+  }
 }
 
 onMounted(load)
@@ -258,6 +285,33 @@ onMounted(load)
         </ul>
       </PanelCard>
     </div>
+
+    <PanelCard title="账号申诉" more="被禁用后同样可在登录页提交">
+      <template v-if="appealForm.submitted">
+        <div class="notice" style="margin-bottom: 12px">{{ appealForm.message }}</div>
+        <button class="btn ghost" type="button" @click="appealForm.submitted = false">再提交一条</button>
+      </template>
+      <template v-else>
+        <div class="field">
+          <label>申诉理由（5—500 字）</label>
+          <textarea
+            v-model="appealForm.reason"
+            class="textarea"
+            placeholder="例如：账号被误判为违规，附上当时的活动说明。"
+          />
+        </div>
+        <div class="field">
+          <label>联系方式（可选）</label>
+          <input v-model="appealForm.contact" class="input" placeholder="手机号或邮箱，便于回访" />
+        </div>
+        <button class="btn" type="button" :disabled="submittingAppeal" @click="submitAppeal">
+          {{ submittingAppeal ? '提交中…' : '提交申诉' }}
+        </button>
+        <div class="footnote" style="text-align: left">
+          申诉是公开接口：账号被禁用后无法登录，走登录页的"账号被禁用？申诉"同样能提交。
+        </div>
+      </template>
+    </PanelCard>
 
     <PanelCard title="登录日志" more="近 30 天，本人可见">
       <table class="native">

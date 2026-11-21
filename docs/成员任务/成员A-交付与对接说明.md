@@ -2,7 +2,7 @@
 
 > 本文给 B、C 看：A 交了什么、怎么起、前端怎么接、哪些地方与文档有偏差。
 > 契约基线：`docs/md/03 接口设计说明书.md` v1.0-frozen；数据基线：`docs/md/04 数据库设计说明书.md`。
-> 代码分支：`unifyed`（从 `main` 拉出，已快进到 `origin/main` 的 `19e3215`）。
+> 代码分支：`unifyed`（已快进合并 `origin/main`，当前含 B 的 T1.2/T1.4/T1.5；迁移到 V7）。
 
 ## 1 怎么跑起来
 
@@ -97,17 +97,41 @@ cd critter-frontend && npm install && npm run dev
 - 效率：上报/工单按 `created_at` 落在区间内计数，平均受理时长取 `accepted_at − created_at` 分钟均值。
 - 日期区间：`from`/`to` 为 `yyyy-MM-dd`，`to` 当天计入。
 
+### 2.5 本期新增的 5 个接口（第二部分）
+
+| # | 方法 | 路径 | 权限 | 关键规则 |
+|---|---|---|---|---|
+| 1 | POST | `/auth/password/code` | 公开 | 验证码 5 分钟有效，走 `KeyValueStore` 键 `pwd:code:{学号}`；禁用账号不发码（30104），只能走申诉 |
+| 2 | PUT | `/auth/password` | 公开 | 凭码重置；验证码错 30105 且计数与登录共用（账号 + IP），5 次锁 10 分钟 30103；成功写 min-iat 让旧令牌失效 |
+| 3 | POST | `/users/me/appeals` | 公开 | 账号不存在 30410、非禁用态 30402、已有待处理申诉幂等返回原记录；落 `sys_appeal` |
+| 4 | PUT | `/roles/{id}/permissions` | 系统 | `preview=true` 只回差异不落库；系统管理员必须保留 `menu:admin` + `role:manage`，否则 30301；SYS_ADMIN / SYSTEM_ADMIN 双码同步 |
+| 5 | GET | `/stats/export` | 管理员 | 行数 ≤ 阈值同步回 xlsx；超过则回 `{taskId, pollUrl}`，轮询 `GET /tasks/export/{taskId}`，下载走 `GET /stats/export/{taskId}/download` |
+
+配套：
+
+- 登录菜单与 `/users/me` 的 `menus` 改为**读 `sys_role_permission`**（DB 优先，某角色一条记录都没有时回退 `MenuMatrix` 常量）。改完权限后该角色下次登录立即生效。
+- 新增 `GET /tasks/export/{taskId}`（异步任务查询），路径按 03 §8 的约定预留。
+- 修掉一个既有缺陷：登录失败计数此前用 `store.get(ip 键)` 读值，而内存实现自增后 `get` 返回空，**导致 IP 维度从未真正锁定**；改为取 `increment` 返回值，账号与 IP 双维度都生效。
+
+### 2.6 本期迁移脚本
+
+| 版本 | 内容 | 注意 |
+|---|---|---|
+| V5 | 原 B 的 `V2__seed_reference_data.sql` 改名，**内容一行未改** | 与本方 `V2__seed_identity.sql` 重号会让 Flyway 拒绝启动 |
+| V6 | `dict_type` 统一大写 + 按 (dict_type, label) 去重 | 兼容 `DictService` 只接受大写类型 |
+| V7 | 新建 `sys_role_permission`（对齐本机既有结构）+ `sys_appeal`；补 `report:read` 权限点；按当前矩阵回填角色权限（先清空该表再播） | 该表是派生配置，回填后行为与改前完全一致 |
+
 ## 3 前端交付与接入方式
 
 ### 3.1 已实现页面
 
 | 页面组 | 路由 | 说明 |
 |---|---|---|
-| P00 登录注册 | `/login` | 登录 / 注册 / 验证码三步；注册含学号与邮箱前端预校验 |
+| P00 登录注册 | `/login` | 登录 / 注册 / 验证码三步；注册含学号与邮箱前端预校验；新增"忘记密码"（发码→重置）与"账号被禁用？申诉"两个入口 |
 | P01 首页 | `/` | 指标卡、近半年新增、待办（管理员）、身份与菜单（学生）、后台动态（系统管理员） |
-| P09 统计 | `/stats` | 生物/资金/效率三块 + 项目明细 + 区间筛选 |
-| P10 后台 | `/admin` | 四个页签：操作日志 / 用户与申请 / 数据字典 / 角色权限 |
-| P11 个人中心 | `/me` | 资料、改密、身份申请、我的申请、登录日志 |
+| P09 统计 | `/stats` | 生物/资金/效率三块 + 项目明细 + 区间筛选；"导出报表"接真实接口，>5 万行自动转异步并轮询 |
+| P10 后台 | `/admin` | 四个页签：操作日志 / 用户与申请 / 数据字典 / 角色权限（角色页可在线改：勾选 → 预览差异 → 确认保存） |
+| P11 个人中心 | `/me` | 资料、改密、身份申请、我的申请、**账号申诉**、登录日志 |
 
 **B/C 的页面已留占位路由**（`/animals` `/adopt` `/report` `/fund` `/medical` `/tasks` `/messages`），占位页列出该页契约接口与共享资产，接上自己的视图即可。侧栏菜单、面包屑、权限判断全部由后端 `menus` 驱动，**不要在前端写死角色判断**。
 
@@ -141,16 +165,23 @@ cd critter-frontend && npm install && npm run dev
 | 密码强度 | 只写"加盐哈希" | 8—32 位且同时含字母与数字 | 教学项目的最低可辩护强度，前端同步提示 |
 | 系统管理员码 | §10 为 `SYS_ADMIN`，代码 `Role` 枚举为 `SYSTEM_ADMIN` | 两码等价（`MenuMatrix.isSystemAdmin`、`@RequireRoles` 同时列） | 库里两套种子都在用，不能只认一个 |
 | 统计认养数 | 只写"走 B 的视图" | 取 `animal.adopted`，不查 `adoption` 表 | C 域 `adoption` 表尚未建，直接查会让统计整体 500；该字段与列表同源 |
-| 角色权限在线配置 | `PUT /roles/{id}/permissions` | 本期只读矩阵（矩阵在 `MenuMatrix` 常量） | 库中暂无角色-权限关联表；待基础稳定后再建表迁移 |
+| 角色权限在线配置 | `PUT /roles/{id}/permissions` | 已实现：V7 建 `sys_role_permission`，矩阵以库为准（无记录回退常量），改完即时生效 | 预览差异为同一接口的 `preview=true`，不额外加路径 |
+| 统计导出响应 | `GET /stats/export` 未写同步返回形态 | 阈值内直接回 xlsx 二进制（不走统一信封），超阈值回 `{taskId, pollUrl}`；另加 `GET /stats/export/{taskId}/download` | 二进制无法塞进 `{code,data}`；下载地址需要一个实际接口 |
+| 目击记录鉴权 | `/sightings` 标注"登录" | 暂并入"可选鉴权"（WebConfig.OPTIONAL_AUTH）：有令牌解析身份，无令牌放行 | B 的控制器仍用 `X-User-Id` 占位且用例匿名调用；待 B 切到令牌后从该表移除 |
+| 字典类型命名 | 未规定命名 | 大小写已由 V6 归一到大写；但 B 的 `gender`/`coat_color`/`expense_category` 与 A 的 `ANIMAL_GENDER`/`ANIMAL_COLOR`/`EXPENSE_PURPOSE` 是**不同名**，会并存为两组 | 只做大小写归一不改语义映射，避免改坏 B 已用的 key；建议后续统一 |
+| 演示账号密码 | 无 | 种子密码 `Qy@2026` 只有 7 位，不满足 8 位强度；重置密码接口会拒绝它 | 演示"找回密码"请重设为 8 位以上（如 `Qy@2026x`），或直接改库还原 |
 
-## 5 需要 B、C 注意的三件事
+## 5 需要 B、C 注意的几件事
 
-1. **本机库与 `V1__init.sql` 不一致**：本机库是历史库，Flyway 以 baseline 接管（`flyway_schema_history` 只有 baseline 与 V2—V4），`V1__init.sql` 从未真正执行，因此 `v_animal_overview` 等三个视图原本不存在。A 在 `V3` 里用 `CREATE OR REPLACE` 按 V1 的定义补齐，未改口径。**建议 B 把本机库与 V1 对齐（或重建库），否则新克隆的库与本机库字段会有差异**（如 `sys_user_role.created_by` 本机没有）。
-2. **`adoption` 表尚未建**：`GET /stats/efficiency` 的 `pendingAdoptions` 在缺表时降级为 0（`StatsService.safePendingAdoptions`），C 建表后自动生效。
-3. **A 不写 B/C 的表**：除 `V2/V3` 的字典、角色、学籍、账号种子外，A 的代码对 `animal`、`project`、`adoption`、`report`、`rescue_order` 等只读。统计接口不缓存，B/C 改数据后刷新即变。
+1. **Flyway 历史需要 repair（重要）**：B 的 `V2__seed_reference_data.sql` 已改名为 `V5`（两条 V2 会让 Flyway 拒绝启动）。**B 本地库执行过旧 V2 的话，会看到 `Validate failed: Detected resolved migration not applied / description mismatch`**，两种处理：① 重建库（推荐，脚本已能一次跑完 V1→V7）；② 手工执行 `DELETE FROM flyway_schema_history WHERE version='2' AND script='V2__seed_reference_data.sql';` 后重启（相当于 `flyway repair`），再让 V5 执行一次。
+2. **本机库与 `V1__init.sql` 不一致**：本机是历史库，Flyway 以 baseline 接管，`V1__init.sql` 从未执行，缺 20 张表（`base_species`/`base_clinic`/`sighting`/`health_record`/`adoption` 等）。A 已在本机按 V1 的 `CREATE TABLE IF NOT EXISTS` 补齐（并把 `base_point.id`、`adoption_plan.id` 从 INT 对齐到 BIGINT，否则外键类型冲突），现 43 张表。**新克隆的库直接跑 Flyway 即可，不要再手工建表**；`sys_user_role.created_by` 这类字段差异仍然存在，要彻底统一得和 B 一起重构 V1。
+3. **V7 会重置 `sys_role_permission`**：该表是派生配置（可从 `MenuMatrix` 重建），V7 先清空再按当前矩阵回填；如果 B/C 本地改过这张表，升级后会被覆盖。
+4. **`adoption` 表**：本机已随 V1 补齐，`GET /stats/efficiency` 的 `pendingAdoptions` 改为读真实数据；缺表环境仍降级为 0（`StatsService.safePendingAdoptions`）。
+5. **A 不写 B/C 的表**：除 `V2/V3` 的字典、角色、学籍、账号种子外，A 的代码对 `animal`、`project`、`adoption`、`report`、`rescue_order` 等只读。统计接口不缓存，B/C 改数据后刷新即变。
 
 ## 6 测试与验证
 
-- 后端：`mvn test` → **81 例全绿**（原有 63 + A 新增 18：JWT 4、AES 4、内存缓存 4、菜单矩阵 5、其他）。
+- 后端：`mvn test` → **159 例全绿**（合并 B 的 54 例后基线 135；本期新增 24：找回密码 7、申诉 4、角色权限 10、导出 3）。
 - 接口：curl 逐条走过注册→验证→登录→刷新→注销、改密失效、锁定、越权 403、字段错误 30301、字典增改即时生效、附件上传/审核/匿名访问控制、三个统计接口。
-- 前端：`npm run build`（`vue-tsc` 类型检查 + 打包）通过；headless 浏览器走查登录、首页（管理员/学生两种菜单）、统计、个人中心、后台四个页签，无 console 报错；学生访问 `/stats` `/admin` 被守卫拦回首页。
+- 本期接口 curl 实测（正常 + 两条失败分支）：找回密码（30105/30410/30301、5 次锁定 30103、重置后新密码可登录且旧令牌失效）、申诉（30402/30410/幂等）、角色权限（30301 自锁拦截、预览不落库、落库后登录菜单即时变化、学生越权 20003）、导出（200 + `application/vnd...sheet` + 6390 字节 + 四张 sheet；学生 20003）。
+- 前端：`npm run build`（`vue-tsc` 类型检查 + 打包）通过；headless（Edge + puppeteer-core）走查"忘记密码→重置→申诉→系统管理员登录→后台角色页预览差异→统计页导出→个人中心申诉卡片"，控制台无报错；导出请求实测 200 且 MIME 正确（无头模式下 blob 不落磁盘，属浏览器行为，非前端缺陷）。

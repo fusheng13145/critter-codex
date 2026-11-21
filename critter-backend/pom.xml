@@ -36,11 +36,6 @@
 			<version>${mybatis-plus.version}</version>
 		</dependency>
 		<dependency>
-			<groupId>com.baomidou</groupId>
-			<artifactId>mybatis-plus-jsqlparser</artifactId>
-			<version>${mybatis-plus.version}</version>
-		</dependency>
-		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-redis</artifactId>
 		</dependency>
@@ -87,6 +82,12 @@
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
+		</dependency>
+		<!-- 统计导出 xlsx（GET /stats/export）：只用 XSSF，不引 poi-scratchpad -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.4.0</version>
 		</dependency>
 
 		<dependency>
