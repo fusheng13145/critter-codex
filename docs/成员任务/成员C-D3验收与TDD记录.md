@@ -88,3 +88,33 @@
 - 整合后单元测试 205/205 通过；全部真库 IT 23/23 通过（含 `MySqlSchemaIT` 5/5、`SeedReferenceDataIT` 4/4、上报 4/4、工单 2/2）。日志中字典去重告警来自幂等清理路径，迁移最终成功。
 - 尚未覆盖：认养 Mapper 真库读写/行锁集成测试、前端 D3 页面、审核与缴费主链路。
 
+### 第三轮：认养审核（2026-11-21）
+
+**验收标准**
+
+- `PUT /api/v1/adoptions/{no}/audit` 仅 `ANIMAL_ADMIN`、`SYS_ADMIN`、`SYSTEM_ADMIN` 可调用，审核人从 Bearer 上下文读取。
+- 只允许 `PENDING_AUDIT` 单进入审核；同一单被他人处理后返回 30407。
+- `APPROVE` 后状态为 `PENDING_PAYMENT`，返回 `payDeadline` 为审核时刻加 7 天，带 `+08:00` 时区；绝不在此步写 `ACTIVE`。
+- 审核通过前对动物行加锁，并检查同一动物是否已有其他 `PENDING_PAYMENT`/`ACTIVE` 单；有则返回 30407 与原单号。
+- `REJECT` 必须填写去空格后不少于 5 字的理由，返回状态 `REJECTED`，`payDeadline` 为空。
+- 调整金额时必须给出不少于 5 字的说明；金额不得小于等于 0；单不存在返回 30410。
+
+**RED**
+
+- 新增 7 个服务测试和 2 个控制器测试，首次运行出现 7 个编译错误：`AdoptionAuditService`、`AuditedAdoption`、`AdoptionAuditCommand`、`AdoptionDecision` 均不存在。
+
+**GREEN 与重构**
+
+- 新增 `AdoptionDecision`、`AdoptionAuditCommand`、`AuditedAdoption`。
+- `AdoptionRepository` 增加 `findByNoForUpdate`、`findBlockingAdoptionNo`、`updateAudit`；Mapper 使用 `SELECT ... FOR UPDATE` 与带 `status='PENDING_AUDIT'` 条件的更新，更新 0 行仍按 30407 处理。
+- `AdoptionAuditService` 先做命令校验，再锁单、锁动物、查占用、条件更新；通过后计算 7 天缴费期限。
+- `AdoptionController` 增加审核路由与角色注解；请求 DTO 使用枚举 `APPROVE/REJECT`。
+- 新增 `AdoptionAuditIT`：真实 MySQL 落审核通过/驳回、审核人、金额、说明与状态。
+
+**测试结果**
+
+- 审核相关 9/9 通过。
+- 完整单元测试 214/214 通过，0 失败、0 错误、0 跳过。
+- 全部真库 IT 25/25 通过，包含 `AdoptionAuditIT` 2/2。
+- 当前未覆盖：缴费入账（含凭证）、我的认养/详情/终止/证书、前端审核页与联调。
+
