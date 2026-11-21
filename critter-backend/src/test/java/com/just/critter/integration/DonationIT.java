@@ -115,6 +115,13 @@ class DonationIT extends MySqlIntegrationTestSupport {
         assertThat(detail.raisedAmount()).isEqualTo(20_000);
         assertThat(detail.progressPercent()).isEqualTo(6);
         assertThat(detail.donationCount()).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM message WHERE receiver_id = 1 "
+                        + "AND type = 'DONATION_PROGRESS' AND biz_id = ?",
+                Integer.class, created.donationNo())).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT title FROM message WHERE receiver_id = 1 AND biz_id = ? ORDER BY id DESC LIMIT 1",
+                String.class, created.donationNo())).contains("已入账");
     }
 
     @Test
@@ -239,7 +246,7 @@ class DonationIT extends MySqlIntegrationTestSupport {
     }
 
     private CurrentUser student() {
-        return new CurrentUser(1001L, "U2026001", "小林", "STUDENT",
+        return new CurrentUser(1L, "U2026001", "青檐一号", "STUDENT",
                 Set.of("STUDENT"), "软件工程", "jti-student", null);
     }
 

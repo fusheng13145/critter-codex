@@ -5,6 +5,9 @@ import com.just.critter.service.archive.AnimalChangeLogView;
 import com.just.critter.service.archive.AnimalDetail;
 import com.just.critter.service.archive.AnimalFilter;
 import com.just.critter.service.archive.AnimalService;
+import com.just.critter.service.archive.AnimalStatusLogView;
+import com.just.critter.service.archive.AnimalStatusResult;
+import com.just.critter.service.archive.AnimalStatusService;
 import com.just.critter.service.archive.AnimalSummary;
 import com.just.critter.service.archive.CreatedAnimal;
 import com.just.critter.support.api.PageQuery;
@@ -34,9 +37,11 @@ import java.util.List;
 public class AnimalController {
 
     private final AnimalService service;
+    private final AnimalStatusService statusService;
 
-    public AnimalController(AnimalService service) {
+    public AnimalController(AnimalService service, AnimalStatusService statusService) {
         this.service = service;
+        this.statusService = statusService;
     }
 
     @PostMapping
@@ -60,7 +65,8 @@ public class AnimalController {
 
     @GetMapping("/{code}")
     public Result<AnimalDetail> detail(@PathVariable String code) {
-        return Result.ok(service.detail(code, false));
+        var current = AuthContext.get();
+        return Result.ok(service.detail(code, current != null && current.isAdmin()));
     }
 
     @PutMapping("/{code}")
@@ -68,6 +74,19 @@ public class AnimalController {
     public Result<AnimalDetail> update(@PathVariable String code,
                                        @RequestBody UpdateAnimalRequest request) {
         return Result.ok(service.update(code, request.toCommand(), AuthContext.require().id()));
+    }
+
+    @PutMapping("/{code}/status")
+    @RequireRoles({"ANIMAL_ADMIN"})
+    public Result<AnimalStatusResult> changeStatus(@PathVariable String code,
+                                                   @RequestBody ChangeAnimalStatusRequest request) {
+        return Result.ok(statusService.change(code, request.toCommand(), AuthContext.require().id()));
+    }
+
+    @GetMapping("/{code}/status-history")
+    @RequireRoles({"ANIMAL_ADMIN"})
+    public Result<List<AnimalStatusLogView>> statusHistory(@PathVariable String code) {
+        return Result.ok(statusService.history(code));
     }
 
     @GetMapping("/{code}/history")

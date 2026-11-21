@@ -4,25 +4,22 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as rescueApi from '@/api/rescue'
 import { BizError } from '@/api/http'
-import { useAuthStore } from '@/stores/auth'
 import CampusPointMap from '@/components/CampusPointMap.vue'
 import PhotoUploader from '@/components/PhotoUploader.vue'
-import { REPORT_TYPE_OPTIONS, reportTypeLabel } from '@/utils/domain'
+import { REPORT_TYPE_OPTIONS } from '@/utils/domain'
 import { dateTime } from '@/utils/format'
-import { saveReportReceipt } from '@/utils/reportReceipts'
 import type { CreatedReport, PointView } from '@/api/types'
 
 /**
  * P06 上报表单。
  * 后端硬约束：五类枚举、点位存在、至少 1 张照片、描述 ≥10 字。
- * 提交成功只生成本地回执（后端暂无上报人自查列表），并明确提示“登记 ≠ 受理”。
+ * 提交成功后由服务端 /reports/mine 提供实时列表，本页只展示本次回执。
  */
 const props = defineProps<{
   points: PointView[]
 }>()
 
 const router = useRouter()
-const auth = useAuthStore()
 
 const form = reactive({
   type: 'INJURED',
@@ -79,22 +76,6 @@ async function submit(): Promise<void> {
     })
     lastCreated.value = result
     lastPointName.value = point?.name ?? ''
-    saveReportReceipt(auth.user?.userNo ?? 'guest', {
-      reportNo: result.reportNo,
-      type: form.type,
-      typeLabel: reportTypeLabel(form.type),
-      pointId: form.pointId as number,
-      pointName: point?.name ?? '',
-      description: form.description.trim(),
-      photos: [...form.photos],
-      animalCode: form.animalCode.trim() || null,
-      contact: form.contact.trim() || null,
-      status: result.status,
-      deadline: result.deadline,
-      duplicated: result.duplicated,
-      duplicateOf: result.duplicateOf,
-      createdAt: new Date().toISOString(),
-    })
     ElMessage.success(`上报已提交：${result.reportNo}`)
   } catch (error) {
     if (error instanceof BizError) {

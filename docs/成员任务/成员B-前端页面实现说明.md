@@ -2,7 +2,9 @@
 
 > 范围：P02 档案中心、P04 资金、P06 上报与工单  
 > 技术栈：Vue 3.5 + TypeScript + Element Plus + Pinia + vue-router  
-> 分支：`feature/b-frontend-pages`（基于远端 main `bba4211`）
+> 前端首版分支：`feature/b-frontend-pages`（基于远端 main `bba4211`）
+>
+> 后端闭环接入分支：`feature/b-remaining-p0`（基于 main `d595e2e`，见 §9）
 
 ## 1. 页面范围与优先级
 
@@ -16,9 +18,9 @@
 | P1 | 项目详情 | `/projects/:id` | 预算、已入账捐赠、审核、捐赠登记与管理员核对 |
 | P2 | 群体档案 | `/groups` | 群体筛选、区间规模、详情抽屉；管理员新建 |
 | P2 | 物种名录 | `/species` | 物种卡片、筛选、关联群体与出现记录抽屉 |
-| P2 | 资金台账 | `/ledger` | 真实汇总指标、分项目汇总、月度收支；逐笔流水待 T3.5 |
-| P3 / 阻塞 | 支出复核 | `/expenses` | 仅接 `/stats/efficiency` 的真实待复核计数，列表为骨架并禁用 |
-| P3 / 阻塞 | 我的上报 | `/report/mine` | 后端无 `GET /reports/mine`，当前读本机回执，并明确标注不是实时列表 |
+| P2 | 资金台账 | `/ledger` | 已接 `GET /ledger`：日期/项目/方向筛选、逐笔流水与合计；管理员只读 |
+| P2 | 支出复核 | `/expenses` | 已接 `POST/GET /expenses` 与 `PUT /expenses/{no}/review`：登记、筛选、分页、双签复核 |
+| P2 | 我的上报 | `/report/mine` | 已接 `GET /reports/mine`：服务端分页、详情抽屉，不再依赖本机回执 |
 
 ## 2. 路由与菜单接入
 
@@ -34,7 +36,7 @@
 | `/ledger` | `LedgerView` | `fund` | 资金台账 |
 | `/expenses` | `ExpensesView` | `fund` | 支出复核 |
 | `/report` | `ReportView` | `report` | 提交上报 / 上报处理 |
-| `/report/mine` | `MyReportsView` | `report` | 本机回执 |
+| `/report/mine` | `MyReportsView` | `report` | 本人上报服务端列表 |
 | `/orders` | `OrdersView` | `report` | 工单看板 |
 
 - 路由 meta 继续使用 `title`、`menu`、`public`、`owner`，没有另建权限体系。
@@ -60,15 +62,17 @@
 - 发起项目：名称、用途、对象类型、目标金额、起止日期、预算明细、封面；金额统一按整数分提交。
 - 捐赠登记：金额、匿名、留言、凭证；提交只生成 `PENDING_VERIFY`，页面明确提示“登记不等于入账”。
 - 管理员核对：单笔可填实收金额、到账时间、备注；金额不一致转 `ABNORMAL`；批量核对按登记金额入账，逐条回显失败项；凭证可预览。
-- 资金台账：使用 `/stats/fund` 展示已筹、已支出、账面余额、未结项项目、分项目汇总、月度收支；逐笔流水区块标注 T3.5 待接入，不造假数据。
-- 支出复核：使用 `/stats/efficiency` 的真实 `pendingExpenses` 计数；列表与筛选保留骨架并禁用，明确 T3.2/T3.3 未实现。
+- 资金台账：接 `GET /ledger`，按日期、项目、方向筛选；收入只显示 VERIFIED 捐赠、支出只显示 APPROVED 支出，页面合计与后端 `summary` 一致，不再拼假流水。
+- 支出复核：接 `GET /expenses` 列表、`POST /expenses` 登记、`PUT /expenses/{expenseNo}/review` 复核；余额不足回显差额，登记人自我复核前置拦截，>500 元显示“待二签”，复核弹窗可预览票据。
+- 项目编辑与结项：草稿/驳回状态可重新编辑；`PENDING_SETTLE` 可提交结项报告、结余去向与附件；结项公示页只读展示收支与报告。
+- 群体与物种：群体详情支持编辑与登记目击，目击时间线展示时间、点位、数量、行为与照片；物种详情支持登记出现记录。
 
 ### P06 上报与工单
 
 - 提交上报：五类枚举、示意点位图选点、最多 3 张照片、描述至少 10 字、关联档案与联系方式可选。
-- 提交结果：展示上报编号、受理截止、疑似重复提示；同时写入本机回执。
-- 上报处理：管理员可切换“提交上报/上报处理”；队列默认待受理，支持状态、类型、超时筛选；详情抽屉可看照片与联系方式；`ANIMAL_ADMIN` 可受理生成工单或关闭上报。
-- 我的上报：读取 `localStorage` 回执，明确标注“不是后端实时列表”；支持查看回执详情、照片与清空本机回执。
+- 提交结果：展示上报编号、受理截止、疑似重复提示；本次提交在当前页面展示回执，正式记录统一在“我的上报”查询。
+- 上报处理：管理员可切换“提交上报/上报处理”；队列默认待受理，支持状态、类型、超时筛选；详情抽屉可看照片与联系方式；`ANIMAL_ADMIN` 可受理复用 PENDING 工单或关闭上报。
+- 我的上报：读取 `GET /reports/mine` 服务端列表，支持分页与详情抽屉；不再写入 `localStorage`，清理缓存或换设备不会丢失。
 - 工单看板：状态、类型、超时筛选；详情抽屉展示工单信息、现场照片、处置记录与时间线；只渲染后端 `allowed` 中的目标状态；`ANIMAL_ADMIN` 可流转，`SYSTEM_ADMIN` 只读。
 
 ## 4. 共享能力与数据口径
@@ -113,10 +117,10 @@
 
 - API：`src/api/archive.ts`、`src/api/fund.ts`、`src/api/rescue.ts`
 - 共享组件：`src/components/AuthImage.vue`、`CampusPointMap.vue`、`PageState.vue`、`PhotoGallery.vue`、`PhotoUploader.vue`、`SectionTabs.vue`、`StatusTag.vue`
-- 工具：`src/utils/domain.ts`、`src/utils/reportReceipts.ts`
-- P02：`src/views/archive/` 下 8 个文件（列表、详情、群体、物种及 4 个对话框/面板）
-- P04：`src/views/fund/` 下 9 个文件（项目列表/详情、台账、支出、项目卡及 4 个对话框/面板）
-- P06：`src/views/rescue/` 下 5 个文件（上报页、我的上报、工单、表单、队列）
+- 工具：`src/utils/domain.ts`
+- P02：`src/views/archive/` 下列表、详情、群体、物种及对话框/面板；本轮新增 `AnimalStatusDialog.vue`、`SightingDialog.vue`、`OccurrenceCreateDialog.vue`
+- P04：`src/views/fund/` 下项目列表/详情、台账、支出、项目卡及对话框；本轮新增 `ExpenseCreateDialog.vue`、`ExpenseReviewDialog.vue`、`SettlementCreateDialog.vue`、`SettlementView.vue`
+- P06：`src/views/rescue/` 下上报页、我的上报、工单、表单、队列；本轮删除 `src/utils/reportReceipts.ts`
 
 ## 6. 验证记录
 
@@ -127,7 +131,7 @@ cd critter-frontend
 npm run build
 ```
 
-结果：`vue-tsc -b` 无类型错误，Vite 1793 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
+结果：`vue-tsc -b` 无类型错误，Vite 1843 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
 
 ### 浏览器走查
 
@@ -159,7 +163,9 @@ npm run build
 - `vite.config.ts` 的 `/api` 代理已从走查用的 `8081` 恢复为 `http://127.0.0.1:8080`。
 - `git status` 中的 `vite.config.ts` 已无改动，未把临时调试配置带入提交。
 
-## 7. 待确认 / 已知阻塞
+## 7. 待确认 / 已知阻塞（前端首版阶段快照）
+
+> 下列是前端首版提交时的阻塞记录，供追溯。`internalNote`、`GET /reports/mine`、支出、逐笔台账已在 §9 闭环；`/projects` 菜单已确认学生角色具备 `fund` 菜单。
 
 | 事项 | 现状与影响 | 建议 |
 | --- | --- | --- |
@@ -179,3 +185,31 @@ npm run build
 2. 准备至少 1 条档案、1 个 `FUNDING` 项目、1 条待受理上报，才能覆盖列表、详情与操作闭环；空库只能验证空态。
 3. 管理员账号验证管理动作；另用学生账号验证上报提交、捐赠登记与“无管理入口”。
 4. 重点回归：档案编辑必须填原因、捐赠登记后不得直接计入进度、上报受理后工单状态与队列同步、工单只出现后端 `allowed` 的目标状态。
+
+## 9. 后端闭环接入（2026-11-21）
+
+### 9.1 本轮新增/重写页面
+
+| 页面/组件 | 变化 | 依赖接口 |
+| --- | --- | --- |
+| `AnimalDetailView.vue` + `AnimalStatusDialog.vue` | 管理员可发起状态迁移；时间线展示 from/to/事件/原因；按钮仅 `ANIMAL_ADMIN` 可见 | `PUT /animals/{code}/status`、`GET /animals/{code}/status-history`、`AnimalDetail.allowedStatuses` |
+| `ExpensesView.vue` + 两个弹窗 | 支出列表/筛选/分页；登记表单含项目、动物、用途、金额、收款方、发生时间、票据；复核支持通过/驳回、差额提示、票据预览 | `POST/GET /expenses`、`PUT /expenses/{expenseNo}/review` |
+| `LedgerView.vue` | 改为 `GET /ledger` 真实逐笔流水，支持日期/项目/方向筛选与合计 | `GET /ledger` |
+| `MyReportsView.vue` | 改为服务端分页列表 + 详情抽屉；删除本机回执 | `GET /reports/mine`、`GET /reports/{id}` |
+| `ProjectCreateDialog.vue` | 新建/编辑双模式，`DRAFT`/`REJECTED` 可回填并保存 | `PUT /projects/{projectNo}` |
+| `SettlementCreateDialog.vue` + `SettlementView.vue` | 提交结项报告/结余去向/附件；公示页只读展示收支、报告与附件 | `PUT /projects/{projectNo}/settle`、`GET /projects/{projectNo}/settlement` |
+| `GroupsView.vue` + `SightingDialog.vue` | 群体详情增加编辑、登记目击、目击时间线 | `PUT /groups/{code}`、`POST /groups/{code}/sightings`、`GET /sightings` |
+| `SpeciesView.vue` + `OccurrenceCreateDialog.vue` | 物种详情增加“登记出现记录”，创建后刷新关联记录 | `POST /occurrences` |
+
+### 9.2 口径与权限
+
+- 金额仍全部按整数分提交与展示；支出 >50000 分显示“待二签”，复核弹窗提示“还需另一名管理员”。
+- `RecordStatus` 与页面按钮不自行推断权限：状态迁移按钮限 `ANIMAL_ADMIN`，支出/结项限 `ANIMAL_ADMIN`，台账限 `ANIMAL_ADMIN`/`SYSTEM_ADMIN` 只读。
+- `ExpenseReviewResult.message` 直接作为成功提示，避免前端另写一套文案。
+- 结项公示页不要求管理员身份，但应用路由仍要求登录；后端匿名只读契约已通过真库验证。
+
+### 9.3 验证边界
+
+- 本轮只做了 `npm run build` 与真实 API 闭环验证，未重新进行浏览器点击走查；§6 的走查记录属于前端首版阶段。
+- 真库验证覆盖：动物状态、支出登记/自复核拦截/两签、台账、我的上报、工单超时与再受理、结项公示、群体编辑/目击、物种出现记录。
+- 前端构建：`vue-tsc -b` 无类型错误，1843 modules，BUILD 成功。

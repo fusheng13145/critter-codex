@@ -13,6 +13,7 @@ import com.just.critter.support.api.PageResult;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.security.AuthContext;
+import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -66,6 +67,7 @@ public class BiodiversityController {
     }
 
     @PostMapping("/occurrences")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<CreatedOccurrence> createOccurrence(@RequestBody CreateOccurrenceRequest request) {
         return Result.ok(service.createOccurrence(request.toCommand(), AuthContext.require().id()));
     }

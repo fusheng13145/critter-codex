@@ -62,6 +62,13 @@ public class ReportController {
         return Result.ok(service.search(filter, new PageQuery(page, size)));
     }
 
+    @GetMapping("/mine")
+    public Result<PageResult<ReportSummary>> mine(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(service.mine(AuthContext.require().id(), new PageQuery(page, size)));
+    }
+
     @GetMapping("/{id}")
     public Result<ReportDetail> detail(@PathVariable Long id) {
         return Result.ok(service.detail(id, AuthContext.require()));

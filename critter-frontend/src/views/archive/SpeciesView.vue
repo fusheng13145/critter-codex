@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as archiveApi from '@/api/archive'
 import { BizError } from '@/api/http'
+import { useAuthStore } from '@/stores/auth'
 import PageHero from '@/components/PageHero.vue'
 import SectionTabs from '@/components/SectionTabs.vue'
 import PageState from '@/components/PageState.vue'
 import PanelCard from '@/components/PanelCard.vue'
+import OccurrenceCreateDialog from '@/views/archive/OccurrenceCreateDialog.vue'
 import { dateOnly } from '@/utils/format'
 import { SPECIES_CATEGORY_OPTIONS, groupStatusLabel, occurrenceScaleLabel } from '@/utils/domain'
 import type {
   GroupSummary,
   OccurrenceView,
+  PointView,
   SpeciesView as SpeciesItem,
 } from '@/api/types'
 
@@ -21,9 +25,13 @@ import type {
  */
 
 const query = reactive({ keyword: '', category: '' })
+const auth = useAuthStore()
 const species = ref<SpeciesItem[]>([])
+const points = ref<PointView[]>([])
 const loading = ref(false)
 const errorText = ref('')
+const occurrenceVisible = ref(false)
+const presetSpeciesId = ref<number | null>(null)
 
 const drawerVisible = ref(false)
 const selected = ref<SpeciesItem | null>(null)
@@ -47,11 +55,15 @@ async function load(): Promise<void> {
   }
 }
 
-async function openSpecies(item: SpeciesItem): Promise<void> {
-  selected.value = item
-  drawerVisible.value = true
-  groups.value = []
-  occurrences.value = []
+async function loadPoints(): Promise<void> {
+  try {
+    points.value = await archiveApi.fetchPoints()
+  } catch {
+    points.value = []
+  }
+}
+
+async function loadRelations(item: SpeciesItem): Promise<void> {
   relationError.value = ''
   relationLoading.value = true
   try {
@@ -68,13 +80,34 @@ async function openSpecies(item: SpeciesItem): Promise<void> {
   }
 }
 
+async function openSpecies(item: SpeciesItem): Promise<void> {
+  selected.value = item
+  drawerVisible.value = true
+  groups.value = []
+  occurrences.value = []
+  await loadRelations(item)
+}
+
+function openOccurrence(item?: SpeciesItem): void {
+  presetSpeciesId.value = item?.id ?? null
+  occurrenceVisible.value = true
+}
+
+function onOccurrenceCreated(speciesId: number): void {
+  ElMessage.success('出现记录已登记')
+  if (selected.value?.id === speciesId) loadRelations(selected.value)
+}
+
 function reset(): void {
   query.keyword = ''
   query.category = ''
   load()
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  loadPoints()
+})
 </script>
 
 <template>
@@ -85,6 +118,7 @@ onMounted(load)
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新名录</button>
+        <button v-if="auth.isAdmin" class="btn" type="button" @click="openOccurrence()">登记出现记录</button>
       </template>
     </PageHero>
 
@@ -152,6 +186,9 @@ onMounted(load)
         <div class="tag-row">
           <span class="tag gray">{{ selected.category }}</span>
           <span class="tag">{{ selected.protectionLevel }}</span>
+          <button v-if="auth.isAdmin" class="btn sm" type="button" @click="openOccurrence(selected)">
+            登记出现
+          </button>
         </div>
       </div>
 
@@ -195,10 +232,18 @@ onMounted(load)
         </PanelCard>
 
         <div class="footnote" style="text-align: left">
-          关联条件：GET /groups?speciesId=… 与 GET /occurrences?speciesId=…，均只读。
+          关联条件：GET /groups?speciesId=… 与 GET /occurrences?speciesId=…；出现记录由管理员登记。
         </div>
       </PageState>
     </el-drawer>
+
+    <OccurrenceCreateDialog
+      v-model="occurrenceVisible"
+      :species="species"
+      :points="points"
+      :preset-species-id="presetSpeciesId"
+      @created="onOccurrenceCreated"
+    />
   </div>
 </template>
 

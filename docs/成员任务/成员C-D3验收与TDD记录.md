@@ -302,6 +302,37 @@
 - 前端 `npm run build` 通过，仅有 chunk 体积告警。
 - UI 仅完成构建校验，未做浏览器端手工点验；后续交付前应在真实数据下检查档案详情面板。
 
+## 第九轮：募捐/工单消息生产与认养到期任务（2026-11-21）
+
+### 验收标准
+
+- `DONATION_PROGRESS`：捐赠核对为 `VERIFIED` 或 `ABNORMAL` 时写消息；只通知实名捐赠人，匿名不写。
+- `ORDER_PROGRESS`：工单每次有效状态流转后通知上报人，标题含工单号与状态中文。
+- `ADOPTION_EXPIRY`：每天 02:00 扫 `end_date = today+7` 且 `ACTIVE` 的认养，发一次提醒；扫 `end_date < today` 且 `ACTIVE` 的认养，转 `EXPIRED` 并把动物恢复 `ON_CAMPUS`、`adopted=0`。
+- 三类消息均与业务同事务；消息写入 0 行返回 50002，整笔回滚。到期任务按 `(type,biz_id,receiver_id)` 去重，同一天重跑不重复。
+- 任务执行结果写 `sys_log`（`JOB_ADOPTION_EXPIRY`），便于验收演示。
+
+### RED
+
+- `DonationServiceTest` 新增 3 例、`OrderServiceTest` 新增 1 例、新建 `AdoptionExpiryServiceTests` 5 例；`DonationIT`、`OrderIT` 增加消息行断言并新建 `AdoptionExpiryIT`。
+- 首次定向运行因 `AdoptionExpiryRepository`、`AdoptionExpiryService`、`ExpiringAdoption`、`MessageRepository.exists` 不存在而编译失败，确认 RED。
+
+### GREEN
+
+- `MessageMapper` 新增 `countByBiz(type,bizId,receiverId)`，仓储暴露 `exists` 供到期任务去重。
+- `DonationService` 在核对成功/异常后写 `DONATION_PROGRESS`；`OrderService` 在每次流转后写 `ORDER_PROGRESS`，两者都在写入 0 行时抛 50002。
+- 新增 `AdoptionExpiryMapper / MyBatisAdoptionExpiryRepository`、`AdoptionExpiryService`、`AdoptionExpiryJob`；`CritterBackendApplication` 开启 `@EnableScheduling`，任务按 `Asia/Shanghai` 每日 02:00 触发。
+- 到期释放只更新 `ACTIVE` 认养与 `ADOPTED` 动物，SQL 条件保证重跑幂等；提醒先查 `message` 去重再插入。
+- 真库用例踩到两处夹具问题并修正：接收人必须用种子用户 `id=1`，否则 `fk_message_receiver` 拒绝；动物编号必须控制在 `VARCHAR(20)` 内。
+
+### 测试结果
+
+- 新增 9 例通过：捐赠 3、工单 1、到期任务 5。
+- 真实 MySQL：`DonationIT` 验证入账消息、`OrderIT` 验证两次流转两条消息、`AdoptionExpiryIT` 验证提醒去重与过期释放。
+- 完整后端：单元 / 控制器 338、真实 MySQL IT 41，合计 379，0 失败、0 错误、0 跳过。
+- 前端无新增页面，沿用消息中心已有跳转；未重新构建前端（本轮无前端改动）。
+- 未做手工触发定时任务验收；测试通过 `process(LocalDate)` 直接覆盖规则。
+
 ## 第十轮：新增合作医院与就诊纠错（2026-11-21）
 
 ### 验收标准
@@ -330,8 +361,7 @@
 
 - 新增 14 例单元/控制器：`ClinicServiceTests` 5、`VisitServiceTests` 5、`MedicalControllerTests` 4。
 - `MedicalIT` 追加 1 例：真实 MySQL 新增医院、自增编号、纠错字段、影像 JSON 与 `sys_log` 前后快照。
-- 本分支完整后端：单元 / 控制器 343、真实 MySQL IT 41，合计 384，0 失败、0 错误、0 跳过。
+- 合并 `origin/main`（PR #15、PR #17）后完整后端：单元 / 控制器 353 例、62 suites，真实 MySQL IT 42 例、15 suites，合计 395 例，0 失败、0 错误、0 跳过。
+- 合并时 C 验收记录按“第九轮 → 第十轮”顺序解决 EOF 冲突；同时发现 `main` 出现两个 `V14` 迁移（`message_type_width` 与 B 的 `expense_double_sign_stage`），Flyway 启动即失败。已将 B 的支出迁移顺延为 `V17__expense_double_sign_stage.sql`，不改既有业务 SQL，清理构建产物后全量 IT 恢复通过。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
-- 该分支基于 `main`，尚未包含 PR #15 的消息任务用例；PR #15 合入后需重跑全量并按主线更新总数。
 - 未做浏览器端手工点验；后续演示前应实际新增一家医院并纠错一条就诊，确认审计日志可在库中查到。
-

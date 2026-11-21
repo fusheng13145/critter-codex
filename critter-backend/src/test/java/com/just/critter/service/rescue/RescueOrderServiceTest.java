@@ -31,6 +31,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,6 +60,8 @@ class RescueOrderServiceTest {
     void setUp() {
         service = new RescueOrderService(reportMapper, animalMapper, orderMapper,
                 new OrderCodeGenerator((bizType, year) -> 7, CLOCK), auditLogService, CLOCK);
+        lenient().when(orderMapper.update(any(Order.class), any())).thenReturn(1);
+        lenient().when(reportMapper.update(any(Report.class), any())).thenReturn(1);
     }
 
     @Test
@@ -90,7 +93,7 @@ class RescueOrderServiceTest {
         assertThat(saved.getCreatedBy()).isEqualTo(9001L);
 
         assertThat(report.getStatus()).isEqualTo(ReportStatus.PROCESSING);
-        verify(reportMapper).updateById(report);
+        verify(reportMapper).update(any(Report.class), any());
         verify(auditLogService).success(any(), any(), any(), any(), any());
     }
 
@@ -110,6 +113,36 @@ class RescueOrderServiceTest {
         verify(orderMapper).insert(captor.capture());
         assertThat(captor.getValue().getAnimalId()).isEqualTo(42L);
         assertThat(captor.getValue().getHandlerId()).isEqualTo(9001L);
+    }
+
+    @Test
+    @DisplayName("受理：上报创建时已有 PENDING 工单则复用，不重新发号")
+    void accept_reuses_pending_order() {
+        Report report = pendingReport(5L);
+        when(reportMapper.selectById(5L)).thenReturn(report);
+        Order pending = new Order();
+        pending.setId(11L);
+        pending.setOrderNo("RO20261121003");
+        pending.setReportId(5L);
+        pending.setType(ReportType.INJURED);
+        pending.setStatus(OrderStatus.PENDING);
+        pending.setDeadlineAt(LocalDateTime.parse("2026-11-22T10:31:00"));
+        pending.setCreatedAt(LocalDateTime.parse("2026-11-21T10:31:00"));
+        when(orderMapper.selectOne(any())).thenReturn(pending);
+        Animal animal = new Animal();
+        animal.setId(42L);
+        animal.setCode("CAT-2026-001");
+        when(animalMapper.selectByCode("CAT-2026-001")).thenReturn(animal);
+
+        AcceptedReport accepted = service.acceptReport(5L,
+                new AcceptReportCommand(null, "CAT-2026-001", null), admin());
+
+        assertThat(accepted.orderNo()).isEqualTo("RO20261121003");
+        assertThat(accepted.orderStatus()).isEqualTo(OrderStatus.PROCESSING);
+        assertThat(pending.getAnimalId()).isEqualTo(42L);
+        assertThat(pending.getStatus()).isEqualTo(OrderStatus.PROCESSING);
+        verify(orderMapper, never()).insert(any(Order.class));
+        verify(orderMapper).update(any(Order.class), any());
     }
 
     @Test

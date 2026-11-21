@@ -96,4 +96,15 @@ public interface MessageMapper extends BaseMapper<MessageEntity> {
     int markRead(@Param("id") long id,
                  @Param("receiverId") long receiverId,
                  @Param("readAt") LocalDateTime readAt);
+
+    @Select("""
+            SELECT COUNT(*)
+            FROM message
+            WHERE type = #{type}
+              AND biz_id = #{bizId}
+              AND receiver_id = #{receiverId}
+            """)
+    long countByBiz(@Param("type") String type,
+                    @Param("bizId") String bizId,
+                    @Param("receiverId") long receiverId);
 }

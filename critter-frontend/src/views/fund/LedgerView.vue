@@ -1,22 +1,18 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
-import * as statsApi from '@/api/stats'
+import { computed, onMounted, reactive, ref } from 'vue'
+import * as fundApi from '@/api/fund'
 import { BizError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import PageHero from '@/components/PageHero.vue'
 import SectionTabs from '@/components/SectionTabs.vue'
-import PageState from '@/components/PageState.vue'
 import PanelCard from '@/components/PanelCard.vue'
-import { money } from '@/utils/format'
-import { projectStatusLabel } from '@/utils/domain'
-import type { FundStats } from '@/api/types'
+import { dateTime, money, statusLabel } from '@/utils/format'
+import type { LedgerResult, ProjectSummary } from '@/api/types'
 
 /**
- * P04 资金台账（汇总预览）。
- * 真正的逐笔借贷流水需要 T3.5 的 /ledger 接口；本页只展示 /stats/fund 的真实汇总，
- * 不拿项目列表拼假流水。
+ * P04 资金台账：收入只取已入账捐赠，支出只取已复核支出；
+ * 现有记录均由后端 GET /ledger 合成，不在前端拼假流水。
  */
-
 const auth = useAuthStore()
 
 function isoDate(offset = 0): string {
@@ -25,57 +21,75 @@ function isoDate(offset = 0): string {
   return date.toISOString().slice(0, 10)
 }
 
-const query = reactive({ from: isoDate(-365), to: isoDate() })
-const data = ref<FundStats | null>(null)
+const query = reactive({ from: isoDate(-365), to: isoDate(), projectNo: '' })
+const typeFilter = ref('')
+const data = ref<LedgerResult | null>(null)
+const projects = ref<ProjectSummary[]>([])
 const loading = ref(false)
 const errorText = ref('')
 
+const entries = computed(() => {
+  const list = data.value?.entries ?? []
+  return typeFilter.value ? list.filter((item) => item.type === typeFilter.value) : list
+})
+
 async function load(): Promise<void> {
-  if (!auth.isAdmin) return
   loading.value = true
   errorText.value = ''
   try {
-    data.value = await statsApi.fetchFund({
+    data.value = await fundApi.fetchLedger({
       from: query.from || undefined,
       to: query.to || undefined,
+      projectNo: query.projectNo || undefined,
     })
   } catch (error) {
-    errorText.value = error instanceof BizError ? error.message : '资金汇总加载失败'
+    errorText.value = error instanceof BizError ? error.message : '资金台账加载失败'
     data.value = null
   } finally {
     loading.value = false
   }
 }
 
+async function loadProjects(): Promise<void> {
+  try {
+    const result = await fundApi.fetchProjects({ page: 1, size: 100 })
+    projects.value = result.list
+  } catch {
+    projects.value = []
+  }
+}
+
 function reset(): void {
   query.from = isoDate(-365)
   query.to = isoDate()
+  query.projectNo = ''
+  typeFilter.value = ''
   load()
 }
 
-onMounted(load)
+onMounted(() => {
+  loadProjects()
+  load()
+})
 </script>
 
 <template>
   <div>
-    <PageHero
-      title="资金台账"
-      desc="当前展示项目维度的资金汇总；逐笔流水、凭证与借贷方向等待 T3.5 台账接口接入。"
-    >
+    <PageHero title="资金台账" desc="逐笔核对每一笔入账与支出；合计恒等于已入账捐赠减已复核支出。">
       <template #actions>
-        <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新汇总</button>
+        <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新台账</button>
       </template>
     </PageHero>
 
     <SectionTabs
       :items="[
         { label: '募捐项目', path: '/projects', matchPrefix: true },
-        { label: '资金台账', path: '/ledger', adminOnly: true },
+        { label: '资金台账', path: '/ledger' },
         { label: '支出复核', path: '/expenses', adminOnly: true },
       ]"
     />
 
-    <div v-if="!auth.isAdmin" class="notice">资金台账仅 ANIMAL_ADMIN / SYSTEM_ADMIN 可见。</div>
+    <div v-if="!auth.isAdmin" class="notice">资金台账含捐赠人展示名与支出详情，仅管理员可查看。</div>
 
     <template v-else>
       <div class="toolbar">
@@ -83,104 +97,101 @@ onMounted(load)
         <input v-model="query.from" class="input date" type="date" />
         <span class="muted">至</span>
         <input v-model="query.to" class="input date" type="date" />
-        <button class="btn sm" type="button" @click="load">查询</button>
-        <button class="btn sm ghost" type="button" @click="reset">近一年</button>
-        <span class="muted result-count">口径：/stats/fund</span>
+        <select v-model="query.projectNo" class="select project-select">
+          <option value="">全部项目</option>
+          <option v-for="project in projects" :key="project.projectNo" :value="project.projectNo">
+            {{ project.projectNo }} · {{ project.name }}
+          </option>
+        </select>
+        <button class="btn sm" type="button" :disabled="loading" @click="load">查询</button>
+        <button class="btn sm ghost" type="button" :disabled="loading" @click="reset">近一年</button>
+        <span class="muted result-count">口径：GET /ledger</span>
       </div>
 
-      <PageState :loading="loading" :error="errorText" :empty="!data" empty-text="区间内暂无资金数据">
-        <template v-if="data">
-          <div class="metrics">
-            <div class="metric">
-              <div class="label">已筹金额</div>
-              <div class="num accent">{{ money(data.summary.raisedAmount) }}</div>
-              <div class="sub">{{ data.summary.donationCount }} 笔已入账捐赠</div>
-            </div>
-            <div class="metric">
-              <div class="label">已支出</div>
-              <div class="num">{{ money(data.summary.spentAmount) }}</div>
-              <div class="sub">{{ data.summary.expenseCount }} 笔已复核支出</div>
-            </div>
-            <div class="metric">
-              <div class="label">账面余额</div>
-              <div class="num">{{ money(data.summary.balanceAmount) }}</div>
-              <div class="sub">已筹 − 已支出</div>
-            </div>
-            <div class="metric">
-              <div class="label">未结项项目</div>
-              <div class="num">{{ data.unsettled.length }}</div>
-              <div class="sub">待结项或已结束未结算</div>
-            </div>
+      <div v-if="errorText" class="notice">{{ errorText }}</div>
+      <div v-else-if="loading" class="notice">台账加载中…</div>
+
+      <template v-else-if="data">
+        <div class="metrics">
+          <div class="metric">
+            <div class="label">已入账捐赠</div>
+            <div class="num accent">{{ money(data.summary.income) }}</div>
+            <div class="sub">{{ data.summary.donationCount }} 笔 VERIFIED</div>
+          </div>
+          <div class="metric">
+            <div class="label">已复核支出</div>
+            <div class="num">{{ money(data.summary.expense) }}</div>
+            <div class="sub">{{ data.summary.expenseCount }} 笔 APPROVED</div>
+          </div>
+          <div class="metric">
+            <div class="label">账面余额</div>
+            <div class="num">{{ money(data.summary.balance) }}</div>
+            <div class="sub">收入 − 支出</div>
+          </div>
+          <div class="metric">
+            <div class="label">逐笔流水</div>
+            <div class="num">{{ data.entries.length }}</div>
+            <div class="sub">当前筛选 {{ entries.length }} 笔</div>
+          </div>
+        </div>
+
+        <PanelCard title="逐笔流水" :more="`${entries.length} 笔`">
+          <div class="toolbar inner">
+            <select v-model="typeFilter" class="select">
+              <option value="">全部方向</option>
+              <option value="INCOME">收入</option>
+              <option value="EXPENSE">支出</option>
+            </select>
+            <span class="muted small">方向由后端按状态判定，前端不推断。</span>
           </div>
 
-          <div class="ledger-grid">
-            <PanelCard title="分项目汇总" :more="`${data.byProject.length} 个项目`">
-              <div v-if="!data.byProject.length" class="muted empty-line">区间内没有项目</div>
-              <div v-else class="table-wrap ledger-table">
-                <table class="native">
-                  <thead>
-                    <tr>
-                      <th>项目</th>
-                      <th>状态</th>
-                      <th>目标</th>
-                      <th>已筹</th>
-                      <th>已支出</th>
-                      <th>余额</th>
-                      <th>进度</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="project in data.byProject" :key="project.no">
-                      <td>
-                        <div class="mono small">{{ project.no }}</div>
-                        <div class="project-name">{{ project.name }}</div>
-                      </td>
-                      <td><span class="tag gray">{{ projectStatusLabel(project.status) }}</span></td>
-                      <td>{{ money(project.targetAmount) }}</td>
-                      <td class="accent">{{ money(project.raisedAmount) }}</td>
-                      <td>{{ money(project.spentAmount) }}</td>
-                      <td>{{ money(project.balanceAmount) }}</td>
-                      <td>{{ project.progress }}%</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </PanelCard>
-
-            <PanelCard title="月度收支" :more="`${data.byMonth.length} 个月`">
-              <div v-if="!data.byMonth.length" class="muted empty-line">区间内没有月度数据</div>
-              <div v-else class="month-list">
-                <div v-for="month in data.byMonth" :key="month.month" class="month-row">
-                  <span class="mono month">{{ month.month }}</span>
-                  <div class="month-values">
-                    <span class="accent">收 {{ money(month.raisedAmount) }}</span>
-                    <span>支 {{ money(month.spentAmount) }}</span>
-                  </div>
-                </div>
-              </div>
-            </PanelCard>
+          <div v-if="!entries.length" class="muted empty-line">当前条件下没有流水</div>
+          <div v-else class="table-wrap ledger-table">
+            <table class="native">
+              <thead>
+                <tr>
+                  <th>发生时间</th>
+                  <th>方向</th>
+                  <th>单号</th>
+                  <th>项目</th>
+                  <th>摘要</th>
+                  <th>关联动物</th>
+                  <th>金额</th>
+                  <th>状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="entry in entries" :key="`${entry.type}-${entry.refNo}`">
+                  <td class="muted small">{{ dateTime(entry.occurredAt) }}</td>
+                  <td>
+                    <span class="tag" :class="entry.type === 'INCOME' ? 'income' : 'expense'">
+                      {{ entry.type === 'INCOME' ? '收入' : '支出' }}
+                    </span>
+                  </td>
+                  <td class="mono small">{{ entry.refNo }}</td>
+                  <td>
+                    <div class="mono small">{{ entry.projectNo }}</div>
+                    <div class="muted small">{{ entry.projectName }}</div>
+                  </td>
+                  <td>
+                    <div>{{ entry.title }}</div>
+                    <div class="muted small">{{ entry.party }}</div>
+                  </td>
+                  <td class="mono small">{{ entry.animalCode || '—' }}</td>
+                  <td class="amount" :class="entry.type === 'INCOME' ? 'plus' : 'minus'">
+                    {{ entry.type === 'INCOME' ? '+' : '−' }}{{ money(entry.amount) }}
+                  </td>
+                  <td><span class="tag gray">{{ statusLabel(entry.status) }}</span></td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+        </PanelCard>
 
-          <PanelCard title="逐笔流水" more="T3.5 待接入">
-            <div class="planned">
-              <div>
-                <h3>接口尚未开放</h3>
-                <p>后端暂未提供 <span class="mono">GET /api/v1/ledger</span>，本页不会用项目汇总伪造逐笔流水。</p>
-              </div>
-              <div class="planned-fields">
-                <span>流水号</span>
-                <span>发生日期</span>
-                <span>项目</span>
-                <span>借贷方向</span>
-                <span>金额</span>
-                <span>凭证</span>
-                <span>关联单据</span>
-                <span>操作人</span>
-              </div>
-            </div>
-          </PanelCard>
-        </template>
-      </PageState>
+        <div class="footnote" style="text-align: left">
+          收入 = 已核对入账捐赠（VERIFIED）；支出 = 已复核支出（APPROVED）。待核对与待复核均不进入台账。
+        </div>
+      </template>
     </template>
   </div>
 </template>
@@ -195,9 +206,20 @@ onMounted(load)
   width: 150px;
 }
 
+.project-select {
+  min-width: 220px;
+}
+
 .result-count {
   margin-left: auto;
   font-size: 11px;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .accent {
@@ -205,99 +227,60 @@ onMounted(load)
   font-weight: 600;
 }
 
-.ledger-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-  align-items: start;
+.inner {
+  margin-bottom: 10px;
 }
 
 .ledger-table {
   box-shadow: none;
 }
 
+.tag.income {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.tag.expense {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.amount {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.amount.plus {
+  color: var(--accent);
+}
+
+.amount.minus {
+  color: var(--danger);
+}
+
 .small {
   font-size: 11px;
 }
 
-.project-name {
-  font-weight: 600;
-  margin-top: 1px;
-}
-
 .empty-line {
-  padding: 8px 0;
+  padding: 22px 0;
   font-size: 12px;
+  text-align: center;
 }
 
-.month-list {
-  display: grid;
-  gap: 6px;
+@media (max-width: 1100px) {
+  .metrics {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
-.month-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px dashed var(--line);
-  font-size: 12px;
-}
-
-.month-row:last-child {
-  border-bottom: 0;
-}
-
-.month-values {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.month-values .accent {
-  font-weight: 600;
-}
-
-.month {
-  color: var(--muted);
-}
-
-.planned {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 20px;
-  align-items: start;
-}
-
-.planned h3 {
-  margin-bottom: 5px;
-}
-
-.planned p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.planned-fields {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.planned-fields span {
-  padding: 4px 8px;
-  border: 1px dashed var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 11px;
-}
-
-@media (max-width: 1000px) {
-  .ledger-grid,
-  .planned {
+@media (max-width: 720px) {
+  .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .result-count {
+    margin-left: 0;
   }
 }
 </style>

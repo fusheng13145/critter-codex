@@ -130,12 +130,16 @@ class OrderIT extends MySqlIntegrationTestSupport {
             assertThat(item.action()).isEqualTo("ORDER_REVISIT_OK");
             assertThat(item.toStatus()).isEqualTo(OrderStatus.CLOSED);
         });
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM message WHERE receiver_id = 1 "
+                        + "AND type = 'ORDER_PROGRESS' AND biz_id = ?",
+                Integer.class, accepted.orderNo())).isEqualTo(2);
     }
 
     private AcceptedReport createAndAccept() {
         Long pointId = jdbc.queryForObject("SELECT id FROM base_point ORDER BY id LIMIT 1", Long.class);
         CreatedReport created = reportService.create(new CreateReportCommand(
-                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null), 1001L);
+                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null), 1L);
         Long reportId = jdbc.queryForObject("SELECT id FROM report WHERE report_no = ?", Long.class,
                 created.reportNo());
         return rescueOrderService.acceptReport(reportId,

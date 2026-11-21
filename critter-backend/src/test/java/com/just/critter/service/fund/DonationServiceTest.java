@@ -10,6 +10,8 @@ import com.just.critter.domain.model.SysUser;
 import com.just.critter.mapper.DonationMapper;
 import com.just.critter.mapper.ProjectMapper;
 import com.just.critter.mapper.SysUserMapper;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import com.just.critter.support.log.AuditLogService;
@@ -37,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -62,6 +65,8 @@ class DonationServiceTest {
     private AuditLogService auditLog;
     @Mock
     private TransactionTemplate transactionTemplate;
+    @Mock
+    private MessageRepository messages;
 
     private DonationService service;
 
@@ -69,7 +74,8 @@ class DonationServiceTest {
     void setUp() {
         service = new DonationService(donationMapper, projectMapper, userMapper,
                 new DonationCodeGenerator((bizType, year) -> 1, CLOCK),
-                auditLog, transactionTemplate, CLOCK);
+                auditLog, transactionTemplate, messages, CLOCK);
+        lenient().when(messages.insert(any(MessageWrite.class))).thenReturn(1);
     }
 
     @Test
@@ -188,6 +194,64 @@ class DonationServiceTest {
         assertThat(project.getRaisedAmount()).isEqualTo(60_000);
         verify(projectMapper).updateById(project);
         verify(donationMapper).updateById(donation);
+    }
+
+    @Test
+    @DisplayName("入账成功后向实名捐赠人写 DONATION_PROGRESS")
+    void confirm_writes_donation_progress_message() {
+        Donation donation = donation("DN202611210001", DonationStatus.PENDING_VERIFY, 10_000);
+        Project project = project(ProjectStatus.FUNDING, 50_000);
+        when(donationMapper.selectByDonationNoForUpdate("DN202611210001")).thenReturn(donation);
+        when(projectMapper.selectByIdForUpdate(11L)).thenReturn(project);
+        when(donationMapper.sumVerifiedByProjectId(11L)).thenReturn(50_000);
+
+        service.confirm("DN202611210001",
+                new ConfirmDonationCommand(10_000, null, null, "到账"), user());
+
+        ArgumentCaptor<MessageWrite> captor = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(captor.capture());
+        MessageWrite message = captor.getValue();
+        assertThat(message.receiverId()).isEqualTo(9001L);
+        assertThat(message.type()).isEqualTo("DONATION_PROGRESS");
+        assertThat(message.bizType()).isEqualTo("DONATION");
+        assertThat(message.bizId()).isEqualTo("DN202611210001");
+        assertThat(message.title()).contains("已入账");
+        assertThat(message.title()).contains("100.00");
+    }
+
+    @Test
+    @DisplayName("核对异常时向实名捐赠人写 DONATION_PROGRESS")
+    void abnormal_writes_donation_progress_message() {
+        Donation donation = donation("DN202611210001", DonationStatus.PENDING_VERIFY, 10_000);
+        Project project = project(ProjectStatus.FUNDING, 50_000);
+        when(donationMapper.selectByDonationNoForUpdate("DN202611210001")).thenReturn(donation);
+        when(projectMapper.selectByIdForUpdate(11L)).thenReturn(project);
+        when(donationMapper.sumVerifiedByProjectId(11L)).thenReturn(50_000);
+
+        service.confirm("DN202611210001",
+                new ConfirmDonationCommand(8_000, null, null, "少 20 元"), user());
+
+        ArgumentCaptor<MessageWrite> captor = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo("DONATION_PROGRESS");
+        assertThat(captor.getValue().title()).contains("核对异常");
+    }
+
+    @Test
+    @DisplayName("匿名捐赠没有接收人，核对后不写消息")
+    void anonymous_donation_writes_no_message() {
+        Donation donation = donation("DN202611210001", DonationStatus.PENDING_VERIFY, 10_000);
+        donation.setUserId(null);
+        donation.setAnonymous(true);
+        Project project = project(ProjectStatus.FUNDING, 50_000);
+        when(donationMapper.selectByDonationNoForUpdate("DN202611210001")).thenReturn(donation);
+        when(projectMapper.selectByIdForUpdate(11L)).thenReturn(project);
+        when(donationMapper.sumVerifiedByProjectId(11L)).thenReturn(50_000);
+
+        service.confirm("DN202611210001",
+                new ConfirmDonationCommand(10_000, null, null, "到账"), user());
+
+        verify(messages, never()).insert(any(MessageWrite.class));
     }
 
     @Test
