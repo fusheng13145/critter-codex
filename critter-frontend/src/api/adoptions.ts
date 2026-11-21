@@ -4,6 +4,7 @@ import type {
   AdoptionDetail,
   AdoptionPaymentResult,
   AdoptionPlan,
+  AdoptionPlanPayload,
   AdoptionSummary,
   AuditedAdoption,
   PageData,
@@ -12,8 +13,16 @@ import type {
 
 /** 认养域接口（D3）：方案、申请、审核、缴费、我的认养、终止、证书。 */
 
-export function fetchPlans(): Promise<AdoptionPlan[]> {
-  return get<AdoptionPlan[]>('/plans')
+export function fetchPlans(includeDisabled = false): Promise<AdoptionPlan[]> {
+  return get<AdoptionPlan[]>('/plans', includeDisabled ? { includeDisabled: true } : undefined)
+}
+
+export function createPlan(payload: AdoptionPlanPayload): Promise<AdoptionPlan> {
+  return post<AdoptionPlan>('/plans', payload)
+}
+
+export function updatePlan(planId: number, payload: AdoptionPlanPayload): Promise<AdoptionPlan> {
+  return put<AdoptionPlan>(`/plans/${planId}`, payload)
 }
 
 export function applyAdoption(payload: {
