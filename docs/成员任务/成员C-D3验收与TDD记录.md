@@ -333,3 +333,35 @@
 - 前端无新增页面，沿用消息中心已有跳转；未重新构建前端（本轮无前端改动）。
 - 未做手工触发定时任务验收；测试通过 `process(LocalDate)` 直接覆盖规则。
 
+## 第十轮：新增合作医院与就诊纠错（2026-11-21）
+
+### 验收标准
+
+- `POST /api/v1/clinics` 仅管理员可用，新增医院返回自增 `clinicId`，并写 `CLINIC_CREATE` 审计。
+- 医院名称必填且 trim 后 ≤64 字；联系人、电话各 ≤32 字；地址、报价各 ≤255 字；空白可选字段落库为 `NULL`。
+- `PUT /api/v1/visits/{no}` 仅管理员可用，只改主诉、诊断、处置、费用与影像；动物、医院、到院时间与来源备注不变。
+- 纠错原因必填且 ≤255 字；未填返回 30401，记录不存在 30410，字段非法 30301，更新 0 行 50002。
+- 纠错成功写 `VISIT_CORRECT` 审计，`before_json` 与 `after_json` 能还原修改前后内容。
+
+### RED
+
+- 新增 `ClinicServiceTests` 5 例，`VisitServiceTests` 增加 5 例，`MedicalControllerTests` 增加 4 例。
+- 首次 `mvn test-compile` 因 `ClinicService`、`ClinicCommand`、`ClinicWrite`、`VisitUpdateCommand`、`VisitUpdateWrite` 不存在而编译失败，确认 RED。
+- 第二次编译暴露测试自身问题：`insertClinic` 返回 `long`，Mockito 需要 `thenReturn(0L)` 而不是 `thenReturn(0)`。
+
+### GREEN
+
+- 新增 `ClinicService`、`ClinicCommand`、`ClinicWrite`、`ClinicCreateRequest`、`ClinicEntity`；`MedicalMapper.insertClinic` 用 `@Options(useGeneratedKeys)` 回填 `clinicId`。
+- `VisitService` 注入 `AuditLogService`，新增 `update`；`VisitUpdateCommand` 与 `VisitUpdateWrite` 分离，原因不落 `visit` 表。
+- `MedicalMapper.updateVisit` 以 `visit_no` 更新五个可编辑字段与 `updated_at`；`MedicalRepository` 增加 `insertClinic` 与 `updateVisit`。
+- `VisitController` 增加 `PUT /{no}`，`ClinicController` 增加 `POST`，均用 `@RequireRoles` 限制管理员。
+- 前端 `medical.ts` 增加 `createClinic` 与 `updateVisit`；`MedicalView.vue` 增加新增医院弹窗和就诊详情纠错弹窗，普通用户不可见入口。
+
+### 测试结果
+
+- 新增 14 例单元/控制器：`ClinicServiceTests` 5、`VisitServiceTests` 5、`MedicalControllerTests` 4。
+- `MedicalIT` 追加 1 例：真实 MySQL 新增医院、自增编号、纠错字段、影像 JSON 与 `sys_log` 前后快照。
+- 合并 `origin/main`（PR #15、PR #17）后完整后端：单元 / 控制器 353 例、62 suites，真实 MySQL IT 42 例、15 suites，合计 395 例，0 失败、0 错误、0 跳过。
+- 合并时 C 验收记录按“第九轮 → 第十轮”顺序解决 EOF 冲突；同时发现 `main` 出现两个 `V14` 迁移（`message_type_width` 与 B 的 `expense_double_sign_stage`），Flyway 启动即失败。已将 B 的支出迁移顺延为 `V17__expense_double_sign_stage.sql`，不改既有业务 SQL，清理构建产物后全量 IT 恢复通过。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 未做浏览器端手工点验；后续演示前应实际新增一家医院并纠错一条就诊，确认审计日志可在库中查到。

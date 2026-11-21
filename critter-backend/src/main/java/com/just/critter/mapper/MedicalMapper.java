@@ -2,13 +2,17 @@ package com.just.critter.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.just.critter.domain.model.AnimalRefRow;
+import com.just.critter.domain.model.ClinicEntity;
 import com.just.critter.domain.model.ClinicRow;
 import com.just.critter.domain.model.OrderRefRow;
 import com.just.critter.domain.model.VisitDetailRow;
 import com.just.critter.domain.model.VisitEntity;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -21,6 +25,16 @@ public interface MedicalMapper extends BaseMapper<VisitEntity> {
             ORDER BY id ASC
             """)
     List<ClinicRow> findClinics();
+
+    @Insert("""
+            INSERT INTO base_clinic
+                (clinic_name, contact, phone, address, price_note, created_at, updated_at, created_by)
+            VALUES
+                (#{clinicName}, #{contact}, #{phone}, #{address}, #{priceNote},
+                 #{createdAt}, #{updatedAt}, #{createdBy})
+            """)
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insertClinic(ClinicEntity entity);
 
     @Select("""
             SELECT id, code, name
@@ -100,4 +114,16 @@ public interface MedicalMapper extends BaseMapper<VisitEntity> {
             ORDER BY v.visited_at DESC, v.visit_no DESC
             """)
     List<VisitDetailRow> findVisitsByAnimal(@Param("animalCode") String animalCode);
+
+    @Update("""
+            UPDATE visit
+            SET complaint = #{entity.complaint},
+                diagnosis = #{entity.diagnosis},
+                treatment = #{entity.treatment},
+                cost = #{entity.cost},
+                file_ids = #{entity.fileIds},
+                updated_at = #{entity.updatedAt}
+            WHERE visit_no = #{entity.visitNo}
+            """)
+    int updateVisit(@Param("entity") VisitEntity entity);
 }

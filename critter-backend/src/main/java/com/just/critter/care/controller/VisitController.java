@@ -11,6 +11,7 @@ import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -43,6 +44,13 @@ public class VisitController {
     public Result<List<VisitDetail>> visitsByAnimal(
             @RequestParam(required = false) String animalCode) {
         return Result.ok(queryService.visitsByAnimal(animalCode));
+    }
+
+    @PutMapping("/{no}")
+    @RequireRoles({"ANIMAL_ADMIN", "SYS_ADMIN", "SYSTEM_ADMIN"})
+    public Result<VisitDetail> update(@PathVariable String no,
+                                      @RequestBody VisitUpdateRequest request) {
+        return Result.ok(visitService.update(no, request.toCommand(), AuthContext.require().id()));
     }
 
     @GetMapping("/{no}")

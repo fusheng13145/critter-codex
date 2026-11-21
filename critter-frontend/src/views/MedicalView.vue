@@ -21,6 +21,11 @@ const detailVisible = ref(false)
 
 const registerVisible = ref(false)
 const registering = ref(false)
+const clinicVisible = ref(false)
+const clinicSaving = ref(false)
+const editVisible = ref(false)
+const editSaving = ref(false)
+
 const form = reactive({
   animalId: null as number | null,
   orderId: null as number | null,
@@ -32,6 +37,23 @@ const form = reactive({
   costYuan: 0,
   fileIdText: '',
   sourceNote: '',
+})
+
+const clinicForm = reactive({
+  clinicName: '',
+  contact: '',
+  phone: '',
+  address: '',
+  priceNote: '',
+})
+
+const editForm = reactive({
+  complaint: '',
+  diagnosis: '',
+  treatment: '',
+  costYuan: 0,
+  fileIdText: '',
+  reason: '',
 })
 
 const detailClinic = computed(
@@ -130,6 +152,87 @@ async function submitRegister(): Promise<void> {
   }
 }
 
+function openCreateClinic(): void {
+  clinicForm.clinicName = ''
+  clinicForm.contact = ''
+  clinicForm.phone = ''
+  clinicForm.address = ''
+  clinicForm.priceNote = ''
+  clinicVisible.value = true
+}
+
+async function submitClinic(): Promise<void> {
+  if (!clinicForm.clinicName.trim()) {
+    ElMessage.warning('医院名称必填')
+    return
+  }
+  clinicSaving.value = true
+  try {
+    const created = await medicalApi.createClinic({
+      clinicName: clinicForm.clinicName.trim(),
+      contact: clinicForm.contact.trim() || undefined,
+      phone: clinicForm.phone.trim() || undefined,
+      address: clinicForm.address.trim() || undefined,
+      priceNote: clinicForm.priceNote.trim() || undefined,
+    })
+    clinicVisible.value = false
+    ElMessage.success(`已新增合作医院 ${created.clinicName}`)
+    await loadClinics()
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '新增合作医院失败')
+  } finally {
+    clinicSaving.value = false
+  }
+}
+
+function openEditVisit(): void {
+  if (!detail.value) {
+    return
+  }
+  editForm.complaint = detail.value.complaint || ''
+  editForm.diagnosis = detail.value.diagnosis || ''
+  editForm.treatment = detail.value.treatment || ''
+  editForm.costYuan = detail.value.cost / 100
+  editForm.fileIdText = detail.value.fileIds.join(', ')
+  editForm.reason = ''
+  editVisible.value = true
+}
+
+async function submitEditVisit(): Promise<void> {
+  if (!detail.value) {
+    return
+  }
+  if (!editForm.reason.trim()) {
+    ElMessage.warning('请填写纠错原因，便于审计留痕')
+    return
+  }
+  if (editForm.costYuan === null || editForm.costYuan < 0) {
+    ElMessage.warning('费用不能为负数')
+    return
+  }
+
+  editSaving.value = true
+  try {
+    detail.value = await medicalApi.updateVisit(detail.value.visitNo, {
+      complaint: editForm.complaint.trim() || undefined,
+      diagnosis: editForm.diagnosis.trim() || undefined,
+      treatment: editForm.treatment.trim() || undefined,
+      cost: Math.round(editForm.costYuan * 100),
+      fileIds: editForm.fileIdText
+        .split(/[,，\s]+/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+      reason: editForm.reason.trim(),
+    })
+    editVisible.value = false
+    ElMessage.success('就诊记录已更正，变更已写入审计日志')
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '就诊纠错失败')
+  } finally {
+    editSaving.value = false
+  }
+}
+
 /** 后端 visitedAt 为 OffsetDateTime，提交时携带本机时区偏移。 */
 function toOffsetIso(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -181,7 +284,10 @@ onMounted(loadClinics)
           <h2 class="section-title">合作医院</h2>
           <p class="muted">报价为课程示例，仅作内部协作参考，不构成真实价格承诺。</p>
         </div>
-        <el-button text :loading="loadingClinics" @click="loadClinics">刷新</el-button>
+        <div class="section-actions">
+          <el-button v-if="auth.isAdmin" type="primary" plain @click="openCreateClinic">新增医院</el-button>
+          <el-button text :loading="loadingClinics" @click="loadClinics">刷新</el-button>
+        </div>
       </div>
 
       <el-table v-loading="loadingClinics" :data="clinics" stripe>
@@ -200,6 +306,38 @@ onMounted(loadClinics)
         </el-table-column>
       </el-table>
     </div>
+
+    <el-dialog v-model="clinicVisible" title="新增合作医院" width="560px" :close-on-click-modal="false">
+      <el-form label-width="100px">
+        <el-form-item label="医院名称" required>
+          <el-input v-model="clinicForm.clinicName" maxlength="64" show-word-limit placeholder="如校园东门合作医院（示例）" />
+        </el-form-item>
+        <el-form-item label="联系人">
+          <el-input v-model="clinicForm.contact" maxlength="32" show-word-limit placeholder="可空" />
+        </el-form-item>
+        <el-form-item label="电话">
+          <el-input v-model="clinicForm.phone" maxlength="32" show-word-limit placeholder="可空" />
+        </el-form-item>
+        <el-form-item label="地址">
+          <el-input v-model="clinicForm.address" maxlength="255" show-word-limit placeholder="可空" />
+        </el-form-item>
+        <el-form-item label="报价备注">
+          <el-input
+            v-model="clinicForm.priceNote"
+            type="textarea"
+            :rows="2"
+            maxlength="255"
+            show-word-limit
+            placeholder="如绝育 280 元、疫苗 60 元/针（示例价）"
+          />
+          <span class="field-hint">仅作内部协作参考，页面不构成真实价格承诺。</span>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="clinicVisible = false">取消</el-button>
+        <el-button type="primary" :loading="clinicSaving" @click="submitClinic">保存</el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="registerVisible" title="登记就诊" width="640px" :close-on-click-modal="false">
       <el-form label-width="110px">
@@ -269,6 +407,48 @@ onMounted(loadClinics)
       </template>
     </el-dialog>
 
+    <el-dialog v-model="editVisible" title="纠错就诊记录" width="620px" :close-on-click-modal="false">
+      <el-alert
+        type="warning"
+        :closable="false"
+        show-icon
+        title="仅更正主诉、诊断、处置、费用与影像；动物、医院与到院时间不可改，变更原因写入审计日志。"
+        class="edit-alert"
+      />
+      <el-form label-width="100px">
+        <el-form-item label="主诉">
+          <el-input v-model="editForm.complaint" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="诊断">
+          <el-input v-model="editForm.diagnosis" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="处置">
+          <el-input v-model="editForm.treatment" type="textarea" :rows="2" maxlength="255" show-word-limit />
+        </el-form-item>
+        <el-form-item label="费用（元）">
+          <el-input-number v-model="editForm.costYuan" :min="0" :precision="2" :step="10" />
+          <span class="field-hint">提交时换算为整数分。</span>
+        </el-form-item>
+        <el-form-item label="影像编号">
+          <el-input v-model="editForm.fileIdText" placeholder="多个编号用逗号分隔，清空表示无影像" />
+        </el-form-item>
+        <el-form-item label="纠错原因" required>
+          <el-input
+            v-model="editForm.reason"
+            type="textarea"
+            :rows="2"
+            maxlength="255"
+            show-word-limit
+            placeholder="如费用按实际票据更正、诊断复核"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSaving" @click="submitEditVisit">保存更正</el-button>
+      </template>
+    </el-dialog>
+
     <el-drawer v-model="detailVisible" title="就诊记录详情" size="480px">
       <template v-if="detail">
         <div class="detail-hero">
@@ -276,6 +456,9 @@ onMounted(loadClinics)
           <div class="detail-no mono">{{ detail.visitNo }}</div>
           <div class="detail-animal">
             {{ detail.animalName || '未命名' }} · {{ detail.animalCode }}
+          </div>
+          <div v-if="auth.isAdmin" class="detail-actions">
+            <el-button type="primary" plain size="small" @click="openEditVisit">纠错记录</el-button>
           </div>
         </div>
 
@@ -346,6 +529,12 @@ onMounted(loadClinics)
   margin-bottom: 14px;
 }
 
+.section-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .section-title {
   margin: 0 0 4px;
   font-size: 18px;
@@ -378,6 +567,14 @@ onMounted(loadClinics)
 
 .detail-animal {
   color: #4d5a6a;
+}
+
+.detail-actions {
+  margin-top: 10px;
+}
+
+.edit-alert {
+  margin-bottom: 14px;
 }
 
 .detail-grid {

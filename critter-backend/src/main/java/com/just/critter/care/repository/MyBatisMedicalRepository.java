@@ -3,12 +3,15 @@ package com.just.critter.care.repository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.just.critter.care.service.ClinicView;
+import com.just.critter.care.service.ClinicWrite;
 import com.just.critter.care.service.ReferenceAnimal;
 import com.just.critter.care.service.ReferenceClinic;
 import com.just.critter.care.service.ReferenceOrder;
 import com.just.critter.care.service.VisitDetail;
+import com.just.critter.care.service.VisitUpdateWrite;
 import com.just.critter.care.service.VisitWrite;
 import com.just.critter.domain.model.AnimalRefRow;
+import com.just.critter.domain.model.ClinicEntity;
 import com.just.critter.domain.model.ClinicRow;
 import com.just.critter.domain.model.OrderRefRow;
 import com.just.critter.domain.model.VisitDetailRow;
@@ -36,6 +39,21 @@ public class MyBatisMedicalRepository implements MedicalRepository {
     @Override
     public List<ClinicView> findClinics() {
         return mapper.findClinics().stream().map(this::toClinicView).toList();
+    }
+
+    @Override
+    public long insertClinic(ClinicWrite write) {
+        ClinicEntity entity = new ClinicEntity();
+        entity.setClinicName(write.clinicName());
+        entity.setContact(write.contact());
+        entity.setPhone(write.phone());
+        entity.setAddress(write.address());
+        entity.setPriceNote(write.priceNote());
+        entity.setCreatedAt(write.createdAt());
+        entity.setUpdatedAt(write.createdAt());
+        entity.setCreatedBy(write.createdBy());
+        int inserted = mapper.insertClinic(entity);
+        return inserted == 1 && entity.getId() != null ? entity.getId() : 0;
     }
 
     @Override
@@ -85,6 +103,19 @@ public class MyBatisMedicalRepository implements MedicalRepository {
         entity.setUpdatedAt(write.createdAt());
         entity.setCreatedBy(write.createdBy());
         return mapper.insert(entity);
+    }
+
+    @Override
+    public int updateVisit(String visitNo, VisitUpdateWrite write) {
+        VisitEntity entity = new VisitEntity();
+        entity.setVisitNo(visitNo);
+        entity.setComplaint(write.complaint());
+        entity.setDiagnosis(write.diagnosis());
+        entity.setTreatment(write.treatment());
+        entity.setCost(write.cost());
+        entity.setFileIds(writeJson(write.fileIds()));
+        entity.setUpdatedAt(write.updatedAt());
+        return mapper.updateVisit(entity);
     }
 
     @Override
