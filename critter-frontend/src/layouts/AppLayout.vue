@@ -37,8 +37,11 @@ const today = computed(() => {
 
 const collapsed = ref(false)
 
-function isActive(path: string): boolean {
-  return route.path === path || (path !== '/' && route.path.startsWith(path))
+function isActive(menu: { code: string; path: string }): boolean {
+  // 详情页与二级页（/animals/:id、/groups、/species、/ledger…）由 route.meta.menu 归位，
+  // 不能只靠 path 前缀，否则 /groups 不会点亮 archive、/projects 不会点亮 fund。
+  if (route.meta.menu) return route.meta.menu === menu.code
+  return route.path === menu.path || (menu.path !== '/' && route.path.startsWith(menu.path))
 }
 
 function go(path: string): void {
@@ -90,7 +93,7 @@ onMounted(() => {
           v-for="menu in menus"
           :key="menu.code"
           class="nav-item"
-          :class="{ active: isActive(menu.path) }"
+          :class="{ active: isActive(menu) }"
           type="button"
           @click="go(menu.path)"
         >
