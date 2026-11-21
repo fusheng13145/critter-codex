@@ -154,5 +154,5 @@
 - 新增 `AdoptionLifecycleIT` 2/2，覆盖审核 → 入账 → ACTIVE → 详情 / 我的 / 管理员列表 → 终止 → 证书。
 - 前端 `npm ci` 后 `npm run build` 通过（`vue-tsc` 类型检查 + Vite 构建）；chunk 体积告警不影响功能。
 - 仍未完成：消息中心通知落库、到期自动提醒 / 释放、PDF 服务端直接输出；证书当前由前端打印生成 PDF。
-- PR 创建受 GitHub 登录态阻塞，浏览器接管页面被跳过；代码已可推送功能分支。
+- 第四轮提交 `125a43c` 已推送至 `origin/feature/d3-adoption`，并创建 PR #9：https://github.com/fusheng13145/critter-codex/pull/9 。
 
