@@ -15,6 +15,8 @@ import com.just.critter.mapper.BasePointMapper;
 import com.just.critter.mapper.OrderMapper;
 import com.just.critter.mapper.ReportMapper;
 import com.just.critter.mapper.SysLogMapper;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.exception.BusinessException;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,13 +70,16 @@ class OrderServiceTest {
     private SysLogMapper sysLogMapper;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private MessageRepository messages;
 
     private OrderService service;
 
     @BeforeEach
     void setUp() {
         service = new OrderService(orderMapper, reportMapper, pointMapper, animalMapper,
-                sysLogMapper, auditLogService, new ObjectMapper(), CLOCK);
+                sysLogMapper, auditLogService, messages, new ObjectMapper(), CLOCK);
+        lenient().when(messages.insert(any(MessageWrite.class))).thenReturn(1);
     }
 
     @Test
@@ -140,6 +147,26 @@ class OrderServiceTest {
         verify(orderMapper).updateById(order);
         verify(auditLogService).successAs(anyLong(), anyString(), anyString(), anyString(), anyString(),
                 any(), any());
+    }
+
+    @Test
+    @DisplayName("流转成功后向上报人写 ORDER_PROGRESS")
+    void transition_writes_order_progress_message() {
+        Order order = order(5L, OrderStatus.PROCESSING, LocalDateTime.parse("2026-11-22T10:31:00"));
+        when(orderMapper.selectOne(any())).thenReturn(order);
+        when(reportMapper.selectById(5L)).thenReturn(report());
+
+        service.transition("RO20261121001",
+                new OrderStatusCommand(OrderStatus.TO_REVISIT, "已送医观察", null, null), admin());
+
+        ArgumentCaptor<MessageWrite> captor = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(captor.capture());
+        MessageWrite message = captor.getValue();
+        assertThat(message.receiverId()).isEqualTo(1001L);
+        assertThat(message.type()).isEqualTo("ORDER_PROGRESS");
+        assertThat(message.bizType()).isEqualTo("RESCUE_ORDER");
+        assertThat(message.bizId()).isEqualTo("RO20261121001");
+        assertThat(message.title()).contains("待回访");
     }
 
     @Test

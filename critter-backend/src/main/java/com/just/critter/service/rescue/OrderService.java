@@ -23,6 +23,8 @@ import com.just.critter.mapper.BasePointMapper;
 import com.just.critter.mapper.OrderMapper;
 import com.just.critter.mapper.ReportMapper;
 import com.just.critter.mapper.SysLogMapper;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.exception.BusinessException;
@@ -61,6 +63,7 @@ public class OrderService {
     private final AnimalMapper animals;
     private final SysLogMapper sysLogs;
     private final AuditLogService auditLog;
+    private final MessageRepository messages;
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
@@ -70,6 +73,7 @@ public class OrderService {
                         AnimalMapper animals,
                         SysLogMapper sysLogs,
                         AuditLogService auditLog,
+                        MessageRepository messages,
                         ObjectMapper objectMapper,
                         Clock clock) {
         this.orders = orders;
@@ -78,6 +82,7 @@ public class OrderService {
         this.animals = animals;
         this.sysLogs = sysLogs;
         this.auditLog = auditLog;
+        this.messages = messages;
         this.objectMapper = objectMapper;
         this.clock = clock;
     }
@@ -240,6 +245,8 @@ public class OrderService {
                 actor == null || actor.primaryRole() == null ? "GUEST" : actor.primaryRole(),
                 actionFor(event), BIZ_TYPE, order.getOrderNo(), beforeData, afterData);
 
+        notifyReporter(order, next, actor, now);
+
         return new OrderTransitionResult(order.getOrderNo(), next, allowedTargets(next),
                 order.getAcceptedAt(), toOffset(order.getDeadlineAt()),
                 order.getHandlerId(), order.getDisposeNote(), order.getCloseReason());
@@ -252,6 +259,22 @@ public class OrderService {
         return StateMachines.order().allowedTargets(current).stream()
                 .filter(status -> status != OrderStatus.TIMEOUT)
                 .toList();
+    }
+
+    /** 工单每次有效流转都向上报人写一条进展，便于其不看列表也知道处理到哪一步。 */
+    private void notifyReporter(Order order, OrderStatus next, CurrentUser actor, LocalDateTime now) {
+        Report report = order.getReportId() == null ? null : reports.selectById(order.getReportId());
+        Long receiverId = report == null ? null : report.getReporterId();
+        if (receiverId == null) {
+            return;
+        }
+        String title = "工单 " + order.getOrderNo() + " 有新进展：" + next.label();
+        int rows = messages.insert(new MessageWrite(
+                receiverId, "ORDER_PROGRESS", title, BIZ_TYPE, order.getOrderNo(),
+                actor == null ? null : actor.id(), now));
+        if (rows <= 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT);
+        }
     }
 
     private OrderSummary toSummary(Order order, Report report, Map<Long, BasePoint> points, LocalDateTime now) {

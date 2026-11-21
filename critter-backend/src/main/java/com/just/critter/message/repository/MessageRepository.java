@@ -25,5 +25,7 @@ public interface MessageRepository {
 
     int markRead(long id, long receiverId, LocalDateTime readAt);
 
+    boolean exists(String type, String bizId, long receiverId);
+
     int insert(MessageWrite message);
 }
