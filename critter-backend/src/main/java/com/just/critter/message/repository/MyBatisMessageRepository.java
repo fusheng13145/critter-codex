@@ -57,6 +57,11 @@ public class MyBatisMessageRepository implements MessageRepository {
     }
 
     @Override
+    public boolean exists(String type, String bizId, long receiverId) {
+        return mapper.countByBiz(type, bizId, receiverId) > 0;
+    }
+
+    @Override
     public int insert(MessageWrite message) {
         MessageEntity entity = new MessageEntity();
         entity.setReceiverId(message.receiverId());

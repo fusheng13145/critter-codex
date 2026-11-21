@@ -12,6 +12,8 @@ import com.just.critter.domain.model.SysUser;
 import com.just.critter.mapper.DonationMapper;
 import com.just.critter.mapper.ProjectMapper;
 import com.just.critter.mapper.SysUserMapper;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.exception.BusinessException;
@@ -66,6 +68,7 @@ public class DonationService {
     private final DonationCodeGenerator codeGenerator;
     private final AuditLogService auditLog;
     private final TransactionTemplate transactionTemplate;
+    private final MessageRepository messages;
     private final Clock clock;
 
     public DonationService(DonationMapper donations,
@@ -74,6 +77,7 @@ public class DonationService {
                            DonationCodeGenerator codeGenerator,
                            AuditLogService auditLog,
                            TransactionTemplate transactionTemplate,
+                           MessageRepository messages,
                            Clock clock) {
         this.donations = donations;
         this.projects = projects;
@@ -81,6 +85,7 @@ public class DonationService {
         this.codeGenerator = codeGenerator;
         this.auditLog = auditLog;
         this.transactionTemplate = transactionTemplate;
+        this.messages = messages;
         this.clock = clock;
     }
 
@@ -277,6 +282,7 @@ public class DonationService {
             after.put("note", abnormalNote);
             after.put("paidAt", command == null ? null : command.paidAt());
             audit(actor, "DONATION_ABNORMAL", donation.getDonationNo(), before, after);
+            notifyDonor(donation, actor, false, actualAmount, now);
             return new DonationConfirmation(donation.getDonationNo(), donation.getStatus(),
                     donation.getAmount(), null, progress(project), abnormalNote);
         }
@@ -304,8 +310,34 @@ public class DonationService {
         after.put("paidAt", command == null ? null : command.paidAt());
         after.put("note", note);
         audit(actor, "DONATION_CONFIRM", donation.getDonationNo(), before, after);
+        notifyDonor(donation, actor, true, actualAmount, now);
         return new DonationConfirmation(donation.getDonationNo(), donation.getStatus(),
                 donation.getAmount(), toOffset(now), progress(project), note);
+    }
+
+    /**
+     * 只通知实名捐赠人；匿名捐赠没有 receiver_id，跳过。消息与入账同事务，失败整笔回滚。
+     */
+    private void notifyDonor(Donation donation, CurrentUser actor,
+                             boolean verified, int actualAmount, LocalDateTime now) {
+        Long receiverId = donation.getUserId();
+        if (receiverId == null) {
+            return;
+        }
+        String title = verified
+                ? "捐赠已入账：" + yuan(actualAmount) + " 元"
+                : "捐赠核对异常：登记 " + yuan(donation.getAmount())
+                        + " 元，实收 " + yuan(actualAmount) + " 元";
+        int rows = messages.insert(new MessageWrite(
+                receiverId, "DONATION_PROGRESS", title,
+                "DONATION", donation.getDonationNo(), actor == null ? null : actor.id(), now));
+        if (rows <= 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT);
+        }
+    }
+
+    private String yuan(int cents) {
+        return String.format(java.util.Locale.ROOT, "%.2f", cents / 100.0);
     }
 
     private Project requireFundingProject(String projectNo) {
