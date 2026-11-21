@@ -1118,3 +1118,65 @@ export interface FollowRemoval {
   followId: number
   removed: boolean
 }
+
+export type TaskType = 'FEED' | 'CLEAN' | 'RESCUE' | 'PUBLICITY' | 'TNR' | 'OTHER'
+export type TaskStatus = 'OPEN' | 'FULL' | 'CLOSED' | 'FINISHED'
+export type VolunteerStatus = 'PENDING' | 'ACTIVE' | 'REJECTED'
+
+export interface TaskView {
+  taskId: number
+  taskNo: string
+  title: string
+  type: TaskType
+  description: string | null
+  pointId: number | null
+  pointName: string | null
+  startAt: string
+  quota: number
+  joined: number
+  durationHours: number
+  status: TaskStatus
+  joinedByMe: boolean
+  signedAt: string | null
+  checkinAt: string | null
+}
+
+export interface TaskCreatePayload {
+  title: string
+  type: TaskType
+  pointId?: number | null
+  startAt: string
+  quota: number
+  durationHours: number
+  description?: string | null
+}
+
+export interface TaskCheckinResult {
+  taskId: number
+  taskNo: string
+  title: string
+  checkinAt: string
+  hours: number
+  totalHours: number
+}
+
+export interface TaskSignupView {
+  signupId: number
+  taskId: number
+  taskNo: string
+  title: string
+  startAt: string
+  signedAt: string
+  checkinAt: string | null
+  hours: number
+  taskStatus: TaskStatus
+  checkedIn: boolean
+  absent: boolean
+}
+
+export interface VolunteerTaskView {
+  volunteerStatus: VolunteerStatus
+  totalHours: number
+  total: number
+  tasks: TaskSignupView[]
+}
