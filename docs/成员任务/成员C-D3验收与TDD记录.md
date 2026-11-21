@@ -491,3 +491,11 @@
 - 真实 MySQL `TaskIT` 1 例通过：发布、报名、打卡、2.0 小时累计、我的任务反查。
 - 后端全量：单元 / 控制器 414 例、70 suites；真实 MySQL IT 45 例、18 suites；合计 459 例，0 失败、0 错误、0 跳过。
 - 前端 `npm run build` 通过；未做浏览器端手工点验。
+
+## 第十五轮：变基到最新 main 与发号器修复（2026-11-21）
+
+- 将 `feature/d3-p1-volunteer-tasks` 变基到 `origin/main`（含 PR #22 与 B 的 T4 收尾），冲突只在接口文档修订表与本文档尾部，保留 v1.3/v1.4 与第十三/十四轮。
+- 变基后全量 IT 暴露 `AnimalArchiveIT` 与 `GroupAndBiodiversityIT` 编号非递增：`DatabaseSequencePort` 先 upsert 再 `SELECT LAST_INSERT_ID()`，连接池下取号与读值可能落在不同连接，读到其它会话的旧值。
+- 修复：改为同一事务内 upsert 后按 `(biz_type, seq_year)` 读取 `current_no`，不再依赖会话级 `LAST_INSERT_ID()`。
+- 复跑：单元 / 控制器 430 例、71 suites；真实 MySQL IT 52 例、20 suites；合计 482 例，0 失败、0 错误、0 跳过。
+- 该修复属于公共发号器，不改变编号格式与业务事务边界，只保证返回值来自本次事务。
