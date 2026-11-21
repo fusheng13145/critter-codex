@@ -681,9 +681,7 @@ export interface CreatedProject {
   projectNo: string
   status: string
   createdAt: string
-}
-
-export interface ProjectAuditResult {
+}export interface ProjectAuditResult {
   projectNo: string
   status: string
   auditReason: string | null
@@ -1070,4 +1068,44 @@ export interface NoticeCreatePayload {
   title: string
   content: string
   pinned?: boolean
+}
+
+export type InteractionBizType = 'ANIMAL' | 'PROJECT'
+export type CommentStatus = 'VISIBLE' | 'PENDING_AUDIT'
+
+export interface CommentView {
+  commentId: number
+  bizType: InteractionBizType
+  bizId: string
+  authorId: number
+  authorName: string | null
+  content: string
+  status: CommentStatus
+  replyContent: string | null
+  replyVisible: boolean
+  createdAt: string
+}
+
+export interface CommentCreatePayload {
+  bizType: InteractionBizType
+  bizId: string
+  content: string
+}
+
+export interface CommentReplyPayload {
+  replyContent: string
+  visible: boolean
+}
+
+export interface FollowView {
+  followId: number
+  bizType: InteractionBizType
+  bizId: string
+  createdAt: string
+  newlyCreated: boolean
+}
+
+export interface FollowRemoval {
+  followId: number
+  removed: boolean
 }
