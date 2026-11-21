@@ -263,23 +263,27 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T0.1 技术栈 ADR | 完成 | `docs/adr/ADR-001-backend-stack.md`：Boot 3.5.16 / MyBatis-Plus 3.5.18.1 / MySQL 8.4 / Redis / `com.just.critter` / HTTP 映射 / 30505+40108 |
 | T0.2 统一响应体、异常映射、requestId | 完成 | `support/api`、`support/exception`，`ApiContractTest` 4 例 |
 | T0.3 Flyway 建表 | 完成 | `V1__init.sql`：37 张业务表 + `seq_no` + 3 视图；`MySqlSchemaIT` 5/5 通过（真实 MySQL 8.4） |
-| T0.4 枚举常量与字典种子 | 完成 | 新增 `Gender`/`ReportType`/`DonationStatus`/`ExpenseStatus`/`OccurrenceScale`/`HealthType`；`V2__seed_reference_data.sql` 落 48 条字典、10 物种、3 示例医院、12 点位；`DomainEnumCatalogTest` 6 例、`SeedReferenceDataIT` 4/4 |
+| T0.4 枚举常量与字典种子 | 完成 | 新增 `Gender`/`ReportType`/`DonationStatus`/`ExpenseStatus`/`OccurrenceScale`/`HealthType`；`V5__seed_reference_data.sql` 落 48 条字典、10 物种、3 示例医院、12 点位；`DomainEnumCatalogTest` 6 例、`SeedReferenceDataIT` 4/4 |
 | T1.1 编号器 / T1.3 状态机 | 完成 | `AnimalCodeGeneratorTest` 5 例、状态机 25 例；真库发号走 `seq_no` 行锁 |
 | T1.2 档案 CRUD | 完成（一期） | `POST/GET/PUT /animals`、`GET /animals/{code}/history`；建档发号、五条件筛选、编辑留痕、公开详情裁剪；`AnimalServiceTest` 8 例、`AnimalControllerTest` 5 例、`AnimalArchiveIT` 3 例 |
 | T1.4 健康与防疫 | 完成（一期） | `GET/POST /animals/{code}/health`；记录日期不早于建档日、计划日期不早于记录日、疫苗三天内到期提醒；`HealthServiceTest` 6 例、`HealthControllerTest` 4 例、`HealthRecordIT` 2 例 |
 | T1.5 群体与基础数据 | 完成（P0） | 群体建档/列表/详情/编辑、目击登记与列表、物种/点位只读、出现记录；规模区间 30504、JSON 点位、季节筛选；`GroupServiceTest` 8 例、`GroupControllerTest` 7 例、`BiodiversityServiceTest` 5 例、`BiodiversityControllerTest` 5 例、`GroupAndBiodiversityIT` 3 例 |
 | W1 档案纵切 | 完成 | 个体档案、健康、群体、目击、出现记录、基础数据只读全部可联调 |
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
+| D1 合并集成 | 完成（本地） | 去重 POM/`MybatisPlusInterceptor`；`AuthInterceptor` 增加匿名只读白名单；档案域 4 个控制器改用 `AuthContext` + `@RequireRoles`；迁移统一为 V1→V2 身份→V3 统计→V4 去重→V5 基础数据 |
+| T2.1 学生上报 | 完成（一期；30503 待接口补物种字段） | `POST /reports`：五类枚举、点位、至少 1 张照片、描述 ≥10 字；RP 当日发号、24 小时时限；同点位 24 小时内未关闭上报返回 `duplicated/duplicateOf`；合并 main 后迁移重排为 V8 补 `animal_id/contact`、V9 字典兼容、V10 规范类型归并；`ReportCodeGeneratorTest` 3 例、`ReportServiceTest` 6 例、`ReportControllerTest` 2 例、`ReportIT` 2 例 |
+| T2.2 上报管理与受理 | 完成（一期；工单看板/流转下一轮） | `GET /reports` 状态/类型/点位/时限筛选、`GET /reports/{id}` 联系方式按角色脱敏、`POST /reports/{id}/accept` 生成 PROCESSING 工单、`PUT /reports/{id}/close` 关闭无效上报；工单号 RO 当日发号、状态机 PENDING→PROCESSING、截止时间沿用上报 +24h；`OrderCodeGeneratorTest` 3 例、`RescueOrderServiceTest` 3 例、`ReportServiceTest` 10 例、`ReportControllerTest` 6 例、`ReportIT` 4 例 |
+| T2.3 工单看板与流转 | 完成（超时扫描下一轮） | `GET /orders` 状态/类型/超时筛选、`GET /orders/{no}` 来源上报与 sys_log 时间线、`PUT /orders/{no}/status` 表驱动流转；TIMEOUT 只留给系统任务；处置完成/无法处置/回访正常/回访异常四类事件；`OrderServiceTest` 7 例、`OrderControllerTest` 4 例、`OrderIT` 2 例 |
 
-测试基线：`mvn -B test` **117 例全绿**；真库测试另计 17 例（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。
+测试基线：`mvn -B test` **195 例全绿**；真库测试另计 **23 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。合并 main 后主库/联调库均迁到 V10。
 
-T1.2 遗留：`X-User-Id` / `X-Debug-Role` 只是占位，等 A 的令牌与角色落地后换成 `@AuthenticationPrincipal`；`GET /animals/{code}/history` 目前未做管理员拦截，联调前必须补；`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
+T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
-T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNext` 供前端角标，真正投递站内消息要等 C 的消息通道（`POST /messages` 或事件订阅），B 不直接写 `message` 表；`GET /animals/{code}/health` 登录可见、`POST` 管理员，鉴权落地前同 T1.2 占位。
+T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNext` 供前端角标，真正投递站内消息要等 C 的消息通道（`POST /messages` 或事件订阅），B 不直接写 `message` 表；`GET /animals/{code}/health` 登录可见、`POST` 管理员，鉴权已统一走 `AuthContext`。
 
 T1.5 遗留：归并/拆分、目击归属修正、群体状态接口、物种/点位写接口均为 P1；`30501 群体不可认养` 需 C 在认养提交处拦截，B 只保证群体编号可识别；目击归属状态暂用字符串 `ASSIGNED/UNASSIGNED`；鉴权同前。
 
-Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1+V2），`critter_ro@localhost` 只读，详见《联调环境说明》。
+Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V10），`critter_ro@localhost` 只读，详见《联调环境说明》。
 
 ## 13 本轮治理结果（2026-11-21）
 

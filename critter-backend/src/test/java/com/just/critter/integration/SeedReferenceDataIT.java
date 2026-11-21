@@ -36,20 +36,20 @@ class SeedReferenceDataIT {
         List<String> types = jdbc.queryForList("SELECT DISTINCT dict_type FROM sys_dict", String.class);
 
         assertThat(types).contains(
-                "animal_category", "gender", "coat_color", "point_area",
-                "protection_level", "report_type", "expense_category",
-                "health_type", "occurrence_scale");
+                "ANIMAL_CATEGORY", "ANIMAL_GENDER", "ANIMAL_COLOR", "POINT_AREA",
+                "PROTECTION_LEVEL", "REPORT_TYPE", "EXPENSE_PURPOSE",
+                "HEALTH_TYPE", "OCCURRENCE_SCALE");
     }
 
     @Test
     @DisplayName("花色与支出用途条目够用")
     void dict_items_are_enough_for_forms() {
-        assertThat(countOfDict("coat_color")).isGreaterThanOrEqualTo(9);
-        assertThat(countOfDict("expense_category")).isGreaterThanOrEqualTo(7);
-        assertThat(countOfDict("protection_level")).isGreaterThanOrEqualTo(5);
+        assertThat(countOfDict("ANIMAL_COLOR")).isGreaterThanOrEqualTo(9);
+        assertThat(countOfDict("EXPENSE_PURPOSE")).isGreaterThanOrEqualTo(7);
+        assertThat(countOfDict("PROTECTION_LEVEL")).isGreaterThanOrEqualTo(5);
         assertThat(jdbc.queryForList(
-                "SELECT dict_label FROM sys_dict WHERE dict_type = 'report_type' ORDER BY sort_no", String.class))
-                .containsExactly("受伤", "新出现", "被遗弃", "扰民", "死亡");
+                "SELECT dict_label FROM sys_dict WHERE dict_type = 'REPORT_TYPE' ORDER BY sort_no", String.class))
+                .containsExactly("受伤", "新出现", "疑似遗弃", "扰民", "死亡");
     }
 
     @Test

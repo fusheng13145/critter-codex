@@ -42,13 +42,14 @@ class MySqlSchemaIT {
             "report", "rescue_order", "visit", "tnr_task",
             "volunteer", "task", "task_signup",
             "notice", "message", "comment", "follow",
+            "sys_appeal", "sys_role_permission",
             "seq_no");
 
     @Autowired
     private JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("37 张业务表 + seq_no 全部建出")
+    @DisplayName("39 张业务表 + seq_no 全部建出")
     void all_tables_exist() {
         List<String> tables = jdbc.queryForList(
                 "SELECT table_name FROM information_schema.tables "
@@ -56,7 +57,7 @@ class MySqlSchemaIT {
                         + "AND table_name <> 'flyway_schema_history'",
                 String.class);
 
-        assertThat(tables).hasSize(38).containsAll(TABLES);
+        assertThat(tables).hasSize(40).containsAll(TABLES);
     }
 
     @Test

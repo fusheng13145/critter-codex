@@ -37,6 +37,10 @@ public class AuthInterceptor implements HandlerInterceptor {
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
+        // 文档明确公开的只读接口：匿名可看，写操作仍要求令牌。
+        if (isPublicGet(request)) {
+            return true;
+        }
 
         String authorization = request.getHeader("Authorization");
         if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
@@ -97,6 +101,28 @@ public class AuthInterceptor implements HandlerInterceptor {
         } catch (BusinessException ex) {
             return null;
         }
+    }
+
+    /**
+     * 公开只读路径：个体列表/详情、群体列表/详情、物种、点位、出现记录。
+     * 用正则限制为"单段编号"，避免把 /health、/history 等登录接口一起放行。
+     */
+    private boolean isPublicGet(HttpServletRequest request) {
+        if (!"GET".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String path = request.getRequestURI();
+        String context = request.getContextPath();
+        if (context != null && !context.isEmpty() && path.startsWith(context)) {
+            path = path.substring(context.length());
+        }
+        return path.equals("/api/v1/animals")
+                || path.equals("/api/v1/groups")
+                || path.equals("/api/v1/species")
+                || path.equals("/api/v1/points")
+                || path.equals("/api/v1/occurrences")
+                || path.matches("^/api/v1/animals/[^/]+$")
+                || path.matches("^/api/v1/groups/[^/]+$");
     }
 
     private void checkRoles(Object handler) {

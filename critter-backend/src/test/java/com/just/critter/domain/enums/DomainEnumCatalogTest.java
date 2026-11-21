@@ -28,7 +28,7 @@ class DomainEnumCatalogTest {
         assertThat(ReportType.values()).extracting(Enum::name)
                 .containsExactly("INJURED", "NEW_ARRIVAL", "ABANDONED", "DISTURB", "DEAD");
         assertThat(labels(ReportType.values()))
-                .containsExactly("受伤", "新出现", "被遗弃", "扰民", "死亡");
+                .containsExactly("受伤", "新出现", "疑似遗弃", "扰民", "死亡");
     }
 
     @Test

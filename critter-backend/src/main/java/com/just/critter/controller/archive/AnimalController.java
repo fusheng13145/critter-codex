@@ -11,12 +11,13 @@ import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
+import com.just.critter.support.security.AuthContext;
+import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,8 +26,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 档案接口（03 §6.2 #1—#6）。权限注解等 A 的鉴权落地后再补，
- * 当前用 X-User-Id 占位，禁止把该头当成可信身份对外暴露。
+ * 档案接口（03 §6.2 #1—#6）。列表与公开详情匿名可看，
+ * 建档、编辑、变更历史要求管理员；操作人取当前登录上下文，不再信任客户端头。
  */
 @RestController
 @RequestMapping("/api/v1/animals")
@@ -39,9 +40,9 @@ public class AnimalController {
     }
 
     @PostMapping
-    public Result<CreatedAnimal> create(@RequestBody CreateAnimalRequest request,
-                                        @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.create(request.toCommand(), userId));
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<CreatedAnimal> create(@RequestBody CreateAnimalRequest request) {
+        return Result.ok(service.create(request.toCommand(), AuthContext.require().id()));
     }
 
     @GetMapping
@@ -63,13 +64,14 @@ public class AnimalController {
     }
 
     @PutMapping("/{code}")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<AnimalDetail> update(@PathVariable String code,
-                                       @RequestBody UpdateAnimalRequest request,
-                                       @RequestHeader(value = "X-User-Id", defaultValue = "0") Long userId) {
-        return Result.ok(service.update(code, request.toCommand(), userId));
+                                       @RequestBody UpdateAnimalRequest request) {
+        return Result.ok(service.update(code, request.toCommand(), AuthContext.require().id()));
     }
 
     @GetMapping("/{code}/history")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<List<AnimalChangeLogView>> history(@PathVariable String code) {
         return Result.ok(service.history(code));
     }

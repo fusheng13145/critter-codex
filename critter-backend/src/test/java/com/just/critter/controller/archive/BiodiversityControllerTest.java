@@ -8,6 +8,11 @@ import com.just.critter.service.archive.PointRef;
 import com.just.critter.service.archive.PointView;
 import com.just.critter.service.archive.SpeciesView;
 import com.just.critter.support.api.PageResult;
+import com.just.critter.support.security.AuthContext;
+import com.just.critter.support.security.AuthInterceptor;
+import com.just.critter.support.security.CurrentUser;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -38,6 +44,21 @@ class BiodiversityControllerTest {
 
     @Autowired
     private MockMvc mvc;
+
+    @MockBean
+    private AuthInterceptor authInterceptor;
+
+    @BeforeEach
+    void auth() {
+        when(authInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+        AuthContext.set(new CurrentUser(1001L, "2023019001", "学生", "STUDENT",
+                Set.of("STUDENT"), "计算机学院", "jti", null));
+    }
+
+    @AfterEach
+    void clearAuth() {
+        AuthContext.clear();
+    }
 
     @MockBean
     private BiodiversityService biodiversityService;

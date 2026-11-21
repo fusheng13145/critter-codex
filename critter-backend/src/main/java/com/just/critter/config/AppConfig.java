@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import com.just.critter.domain.archive.AnimalCodeGenerator;
 import com.just.critter.domain.archive.GroupCodeGenerator;
 import com.just.critter.domain.archive.SequencePort;
+import com.just.critter.domain.rescue.OrderCodeGenerator;
+import com.just.critter.domain.rescue.ReportCodeGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -38,10 +40,22 @@ public class AppConfig {
     }
 
     @Bean
+    public ReportCodeGenerator reportCodeGenerator(SequencePort sequences, Clock clock) {
+        return new ReportCodeGenerator(sequences, clock);
+    }
+
+    @Bean
+    public OrderCodeGenerator orderCodeGenerator(SequencePort sequences, Clock clock) {
+        return new OrderCodeGenerator(sequences, clock);
+    }
+
+    @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
         interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        PaginationInnerInterceptor pagination = new PaginationInnerInterceptor(DbType.MYSQL);
+        pagination.setMaxLimit(100L);
+        interceptor.addInnerInterceptor(pagination);
         return interceptor;
     }
 }
