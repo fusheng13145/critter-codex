@@ -32,20 +32,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * T2.4 真库验收：项目与预算落库、预算 40101、提交审核、审核上架、公开详情。
- * 使用本地 critter_codex（Flyway V10），事务回滚，不留下测试数据。
+ * 使用独立 critter_codex_it（当前 Flyway V12），事务回滚，不留下测试数据。
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex"
+        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex_it"
                 + "?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8"
                 + "&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true",
-        "spring.datasource.username=root",
-        "spring.datasource.password=1234",
+        "spring.datasource.username=${CRITTER_MYSQL_USER:root}",
+        "spring.datasource.password=${CRITTER_MYSQL_PASSWORD:}",
         "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
         "spring.flyway.enabled=true"
 })
 @EnabledIfEnvironmentVariable(named = "CRITTER_MYSQL_IT", matches = "true")
 @Transactional
-class ProjectIT {
+class ProjectIT extends MySqlIntegrationTestSupport {
 
     @Autowired
     private ProjectService service;
