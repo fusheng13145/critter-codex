@@ -24,4 +24,14 @@ public class MyBatisAdoptableAnimalRepository implements AdoptableAnimalReposito
         }
         return Optional.of(new AdoptableAnimal(animal.getId(), animal.getCode(), animal.getStatus()));
     }
+
+    @Override
+    public int markAdopted(long animalId) {
+        return mapper.markAdopted(animalId);
+    }
+
+    @Override
+    public int markOnCampus(long animalId) {
+        return mapper.markOnCampus(animalId);
+    }
 }

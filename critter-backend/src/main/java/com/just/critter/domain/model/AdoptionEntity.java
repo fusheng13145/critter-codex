@@ -29,6 +29,9 @@ public class AdoptionEntity {
     private String status;
     private Long auditorId;
     private String auditReason;
+    private String certificateNo;
+    private LocalDateTime payDeadline;
+    private String terminationReason;
     private String contact;
     private String remark;
     private LocalDateTime promiseAcceptedAt;
