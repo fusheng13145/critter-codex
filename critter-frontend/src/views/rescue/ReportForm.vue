@@ -1,14 +1,15 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as rescueApi from '@/api/rescue'
+import { fetchSpecies } from '@/api/archive'
 import { BizError } from '@/api/http'
 import CampusPointMap from '@/components/CampusPointMap.vue'
 import PhotoUploader from '@/components/PhotoUploader.vue'
 import { REPORT_TYPE_OPTIONS } from '@/utils/domain'
 import { dateTime } from '@/utils/format'
-import type { CreatedReport, PointView } from '@/api/types'
+import type { CreatedReport, PointView, SpeciesView } from '@/api/types'
 
 /**
  * P06 上报表单。
@@ -27,8 +28,11 @@ const form = reactive({
   photos: [] as string[],
   description: '',
   animalCode: '',
+  speciesId: null as number | null,
   contact: '',
 })
+
+const speciesOptions = ref<SpeciesView[]>([])
 
 const submitting = ref(false)
 const uploaded = ref(false)
@@ -42,12 +46,21 @@ function resetForm(): void {
   form.photos = []
   form.description = ''
   form.animalCode = ''
+  form.speciesId = null
   form.contact = ''
   uploaded.value = false
   Object.keys(errors).forEach((key) => delete errors[key])
   lastCreated.value = null
   lastPointName.value = ''
 }
+
+onMounted(async () => {
+  try {
+    speciesOptions.value = await fetchSpecies()
+  } catch {
+    // 物种字典加载失败不影响上报；仍可按档案编号或不填物种提交。
+  }
+})
 
 function validate(): boolean {
   Object.keys(errors).forEach((key) => delete errors[key])
@@ -72,6 +85,7 @@ async function submit(): Promise<void> {
       photos: form.photos,
       description: form.description.trim(),
       animalCode: form.animalCode.trim() || undefined,
+      speciesId: form.speciesId ?? undefined,
       contact: form.contact.trim() || undefined,
     })
     lastCreated.value = result
@@ -174,6 +188,17 @@ async function submit(): Promise<void> {
       </div>
 
       <div class="field">
+        <label>疑似物种</label>
+        <select v-model="form.speciesId" class="select">
+          <option :value="null">不确定</option>
+          <option v-for="item in speciesOptions" :key="item.id" :value="item.id">
+            {{ item.commonName }}{{ item.scientificName ? ` · ${item.scientificName}` : '' }}
+          </option>
+        </select>
+        <div class="field-hint">选择野猪等大型野生动物时，平台会提示联系后勤，不会生成自行处置工单。</div>
+      </div>
+
+      <div class="field">
         <label>联系方式</label>
         <input v-model="form.contact" class="input" maxlength="40" placeholder="手机号 / 微信号，可不填" />
       </div>
@@ -191,7 +216,6 @@ async function submit(): Promise<void> {
     </div>
   </div>
 </template>
-
 <style scoped>
 .form-shell {
   display: grid;

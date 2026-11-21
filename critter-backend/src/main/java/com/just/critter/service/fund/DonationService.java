@@ -210,11 +210,67 @@ public class DonationService {
                             donation.getStatus(),
                             donation.getVerifierId(),
                             toOffset(donation.getVerifiedAt()),
+                            donation.getAbnormalReason(),
                             toOffset(donation.getCreatedAt()),
                             toOffset(donation.getUpdatedAt()));
                 })
                 .toList();
         return PageResult.of(list, safe.getPage(), safe.getSize(), result.getTotal());
+    }
+
+    /**
+     * 管理员标记凭证异常。已入账流水不能直接改 ABNORMAL（会把已计入的 raised_amount
+     * 变成“已入账但没有凭证”），必须先走冲正；此处只允许 PENDING_VERIFY/ABNORMAL。
+     */
+    @Transactional
+    public DonationFlagResult flag(String donationNo, FlagDonationCommand command, CurrentUser actor) {
+        requireActor(actor);
+        String no = trimToNull(donationNo);
+        if (no == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "捐赠单号必填");
+        }
+        if (command == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "请求体不能为空");
+        }
+        Donation donation = donations.selectByDonationNoForUpdate(no);
+        if (donation == null) {
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "捐赠记录不存在：" + no);
+        }
+        if (donation.getStatus() == DonationStatus.VERIFIED) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "已入账捐赠不可直接标记异常，请先冲正");
+        }
+        if (donation.getStatus() != DonationStatus.PENDING_VERIFY
+                && donation.getStatus() != DonationStatus.ABNORMAL) {
+            throw new BusinessException(ErrorCode.STATE_TRANSITION_INVALID, "当前捐赠状态不可标记异常");
+        }
+        String reason = optionalText(command.reason(), MAX_NOTE, "异常原因最多 255 个字符");
+        if (reason == null || reason.length() < 5) {
+            throw new BusinessException(ErrorCode.CHANGE_REASON_REQUIRED, "异常原因至少 5 个字");
+        }
+        List<String> vouchers = optionalVouchers(command.voucherFileIds());
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
+        DonationStatus beforeStatus = donation.getStatus();
+        donation.setStatus(DonationStatus.ABNORMAL);
+        donation.setAbnormalReason(reason);
+        donation.setVerifierId(actor.id());
+        donation.setVerifiedAt(null);
+        donation.setUpdatedAt(now);
+        if (vouchers != null) {
+            donation.setVoucherFileIds(vouchers);
+        }
+        donations.updateById(donation);
+
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("status", beforeStatus.name());
+        before.put("abnormalReason", null);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", donation.getStatus().name());
+        after.put("abnormalReason", reason);
+        after.put("voucherFileIds", donation.getVoucherFileIds());
+        audit(actor, "DONATION_FLAG", donation.getDonationNo(), before, after);
+        notifyAbnormal(donation, actor, reason, now);
+        return new DonationFlagResult(donation.getDonationNo(), donation.getStatus(), reason,
+                donation.getVoucherFileIds(), toOffset(now));
     }
 
     private DonationConfirmation doConfirm(String donationNo, ConfirmDonationCommand command, CurrentUser actor) {
@@ -338,6 +394,23 @@ public class DonationService {
 
     private String yuan(int cents) {
         return String.format(java.util.Locale.ROOT, "%.2f", cents / 100.0);
+    }
+
+    /**
+     * 凭证异常只通知实名捐赠人；匿名捐赠没有 receiver，仍会写审计日志。
+     */
+    private void notifyAbnormal(Donation donation, CurrentUser actor, String reason, LocalDateTime now) {
+        Long receiverId = donation.getUserId();
+        if (receiverId == null) {
+            return;
+        }
+        String suffix = reason.length() <= 60 ? reason : reason.substring(0, 60) + "…";
+        int rows = messages.insert(new MessageWrite(
+                receiverId, "DONATION_PROGRESS", "捐赠凭证异常：" + suffix,
+                "DONATION", donation.getDonationNo(), actor == null ? null : actor.id(), now));
+        if (rows <= 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT);
+        }
     }
 
     private Project requireFundingProject(String projectNo) {

@@ -147,3 +147,23 @@
 | C | 动物状态查询与状态流转接口、项目进度与余额查询 | 认养状态、就诊与 TNR 记录、消息通道（进展反馈） |
 
 B 不直接改认养表、就诊表与消息表；需要数据时调用 C 的接口。资金与档案是 B 唯一可写的数据域。
+
+## 后续增强接口实现记录（2026-11-21）
+
+| 能力 | 接口 | 实现口径 |
+|---|---|---|
+| 重复档案合并 | `POST /animals/{code}/merge` | 主编号在路径，请求 `sourceCodes`（≤20）+ `reason`（≥5 字）；副档不逻辑删除、不物理删除，写 `merged_into_id/merged_at`；副编号写 `animal_alias`，详情/搜索/二维码解析到主档；健康记录与变更历史迁主档；存在 `PENDING_PAYMENT`/`ACTIVE` 认养时返回 30403 |
+| 档案二维码 | `GET /animals/{code}/qrcode` | `image/png`，300×300，UTF-8，纠错 M，margin 1；内容为 `critter.qrcode.animal-url-prefix` + 编号，默认 `http://localhost:5173/animals/` |
+| 目击归属修正 | `PUT /sightings/{id}` | `pending=true` 清空为 `UNASSIGNED`；否则按 `groupId`/`groupCode` 置 `ASSIGNED` 并刷新群体 `last_seen_at`；已消失/已合并群体返回 30505 |
+| 群体合并 | `POST /groups/merge` | 仅同物种、主副群体非 GONE；主群体合并点位、规模区间、最近目击时间与 `mergedFrom`；副群体置 `GONE` + `mergedIntoCode`；目击迁主群体 |
+| 群体拆分 | `POST /groups/{code}/split` | 新群体由服务端发号；请求显式给新群体/源群体规模区间与计数依据；可迁移指定目击记录 |
+| 点位维护 | `POST/PUT /points` | 坐标 0–100；名称唯一；`enabled=false` 停用不删除 |
+| 物种维护 | `POST/PUT /species` | 俗名唯一；支持学名、类别、保护级别、备注 |
+| 台账导出 | `GET /ledger/export`、`GET /ledger/export/{taskId}`、`GET .../download` | 复用 `LedgerService` 口径，xlsx 含汇总与逐笔流水；≤5 万行同步，超阈值异步返回 taskId |
+| 凭证异常 | `PUT /donations/{no}/flag` | 仅 `PENDING_VERIFY`/`ABNORMAL` 可标记；`VERIFIED` 拒绝并提示先冲正；写 `abnormal_reason`、可替换凭证、通知实名捐赠人、审计 `DONATION_FLAG` |
+| 捐赠证书 | `GET /donations/{no}/certificate` | 仅 `VERIFIED`；实名本人或 `ANIMAL_ADMIN`/`SYS_ADMIN` 可下载；PDFBox 横版 A4，含捐赠人、项目、金额、单号、证书编号、入账日期 |
+| 公示追加说明 | `POST /projects/{projectNo}/settlement/notes` | 仅 `ANIMAL_ADMIN`；只能追加，不能改公示正文；`ProjectSettlementView` 末尾返回 `appendNotes` |
+| 野猪拦截 | `POST /reports` | 可选 `speciesId`；俗名含“野猪”或学名 `Sus scrofa` 返回 `30503 WILDLIFE_FORBIDDEN`，不落上报、不生成工单 |
+| 疫苗提醒 | `HealthReminderJob` | 每天扫描 `VACCINE` 且 `next_date ∈ [今天, 今天+3]` 的记录，按 `operatorId` 投递 `HEALTH_REMINDER`，`biz_id=健康记录 id` 幂等去重 |
+
+数据库变更集中在 `V19__p1_merge_alias_and_extensions.sql`：`animal` 加合并字段、新建 `animal_alias`、`animal_group.merged_into_code`、`report.species_id`、`donation.abnormal_reason`、`project_settlement_note`。

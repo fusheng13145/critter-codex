@@ -4,5 +4,6 @@ public record MessageUnreadCount(
         long adoptionExpiry,
         long donationProgress,
         long orderProgress,
-        long approvalResult) {
+        long approvalResult,
+        long healthReminder) {
 }

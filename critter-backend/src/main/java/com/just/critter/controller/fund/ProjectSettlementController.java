@@ -10,6 +10,7 @@ import com.just.critter.support.security.CurrentUser;
 import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,5 +46,15 @@ public class ProjectSettlementController {
     @GetMapping("/{projectNo}/settlement")
     public Result<ProjectSettlementView> detail(@PathVariable String projectNo) {
         return Result.ok(service.detail(projectNo));
+    }
+
+    @PostMapping("/{projectNo}/settlement/notes")
+    @RequireRoles({"ANIMAL_ADMIN"})
+    public Result<ProjectSettlementView> appendNote(@PathVariable String projectNo,
+                                                    @RequestBody(required = false) AppendSettlementNoteRequest request) {
+        if (request == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "请求体不能为空");
+        }
+        return Result.ok(service.appendNote(projectNo, request.toCommand(), AuthContext.require()));
     }
 }

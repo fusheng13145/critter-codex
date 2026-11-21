@@ -34,6 +34,7 @@ public class AnimalGroup {
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<String> mergedFrom;
     private String splitFrom;
+    private String mergedIntoCode;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long createdBy;
@@ -132,6 +133,14 @@ public class AnimalGroup {
 
     public void setSplitFrom(String splitFrom) {
         this.splitFrom = splitFrom;
+    }
+
+    public String getMergedIntoCode() {
+        return mergedIntoCode;
+    }
+
+    public void setMergedIntoCode(String mergedIntoCode) {
+        this.mergedIntoCode = mergedIntoCode;
     }
 
     public LocalDateTime getCreatedAt() {

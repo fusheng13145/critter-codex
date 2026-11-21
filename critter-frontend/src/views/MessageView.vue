@@ -25,6 +25,7 @@ const counts = ref<MessageUnreadCount>({
   donationProgress: 0,
   orderProgress: 0,
   approvalResult: 0,
+  healthReminder: 0,
 })
 
 const typeOptions = [
@@ -33,6 +34,7 @@ const typeOptions = [
   { value: 'ADOPTION_EXPIRY', label: '认养到期' },
   { value: 'DONATION_PROGRESS', label: '募捐进度' },
   { value: 'ORDER_PROGRESS', label: '工单进展' },
+  { value: 'HEALTH_REMINDER', label: '健康提醒' },
 ]
 
 const cards = computed(() => [
@@ -68,6 +70,14 @@ const cards = computed(() => [
     icon: '↗',
     tone: 'slate',
   },
+  {
+    type: 'HEALTH_REMINDER',
+    label: '健康提醒',
+    desc: '疫苗到期前三天提醒',
+    count: counts.value.healthReminder,
+    icon: '✚',
+    tone: 'rose',
+  },
 ])
 
 const unreadTotal = computed(
@@ -75,7 +85,8 @@ const unreadTotal = computed(
     counts.value.approvalResult +
     counts.value.adoptionExpiry +
     counts.value.donationProgress +
-    counts.value.orderProgress,
+    counts.value.orderProgress +
+    counts.value.healthReminder,
 )
 
 async function loadMessages(): Promise<void> {
@@ -186,6 +197,10 @@ async function openMessage(row: MessageItem): Promise<void> {
     await router.push('/report')
     return
   }
+  if (row.type === 'HEALTH_REMINDER') {
+    await router.push('/animals')
+    return
+  }
   await loadMessages()
 }
 
@@ -196,7 +211,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHero title="消息中心" desc="审批结果、认养到期、募捐进度与工单进展，四类消息在此汇总。">
+    <PageHero title="消息中心" desc="审批结果、认养到期、募捐进度、工单进展与健康提醒，五类消息在此汇总。">
       <template #actions>
         <el-tag type="warning" effect="plain">未读 {{ unreadTotal }} 条</el-tag>
         <el-button @click="router.push('/notices')">校园公告</el-button>
@@ -363,6 +378,11 @@ onMounted(async () => {
 .message-card.slate .message-icon {
   background: #eef1f3;
   color: #53636b;
+}
+
+.message-card.rose .message-icon {
+  background: #fbe9ec;
+  color: #a34b5c;
 }
 
 .message-copy {

@@ -21,6 +21,7 @@ public record DonationSummary(
         DonationStatus status,
         Long verifierId,
         OffsetDateTime verifiedAt,
+        String abnormalReason,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }

@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * T0.3 验收：Flyway 在真实 MySQL 8 上建出 40 张业务表 + seq_no + 3 视图，
+ * T0.3 验收：Flyway 在真实 MySQL 8 上建出 42 张业务表 + seq_no + 3 视图，
  * 且 CHECK / 唯一索引 / 生成列真实生效。
  * 默认跳过；需要真库时设 CRITTER_MYSQL_IT=true 运行。
  */
@@ -36,10 +36,11 @@ class MySqlSchemaIT extends MySqlIntegrationTestSupport {
             "sys_user", "sys_role", "sys_user_role", "sys_permission", "sys_dict", "sys_file", "sys_log",
             "sys_role_permission", "sys_appeal",
             "base_roster", "base_point", "base_species", "base_clinic",
-            "animal", "animal_status_log", "animal_change_log", "health_record",
+            "animal", "animal_status_log", "animal_change_log", "health_record", "animal_alias",
             "animal_group", "sighting", "occurrence",
             "adoption_plan", "adoption", "adoption_payment",
             "project", "project_budget", "donation", "expense", "project_settlement",
+            "project_settlement_note",
             "report", "rescue_order", "visit", "tnr_task", "tnr_node",
             "volunteer", "task", "task_signup",
             "notice", "message", "comment", "follow",
@@ -49,7 +50,7 @@ class MySqlSchemaIT extends MySqlIntegrationTestSupport {
     private JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("40 张业务表 + seq_no 全部建出")
+    @DisplayName("42 张业务表 + seq_no 全部建出")
     void all_tables_exist() {
         List<String> tables = jdbc.queryForList(
                 "SELECT table_name FROM information_schema.tables "
@@ -57,7 +58,7 @@ class MySqlSchemaIT extends MySqlIntegrationTestSupport {
                         + "AND table_name <> 'flyway_schema_history'",
                 String.class);
 
-        assertThat(tables).hasSize(41).containsAll(TABLES);
+        assertThat(tables).hasSize(43).containsAll(TABLES);
     }
 
     @Test

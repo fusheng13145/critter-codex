@@ -12,6 +12,7 @@ import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.AnimalChangeLog;
 import com.just.critter.domain.model.BasePoint;
 import com.just.critter.domain.statemachine.StateMachines;
+import com.just.critter.mapper.AnimalAliasMapper;
 import com.just.critter.mapper.AnimalChangeLogMapper;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
@@ -48,17 +49,20 @@ public class AnimalService {
     private static final int MAX_AGE = 25;
 
     private final AnimalMapper animals;
+    private final AnimalAliasMapper aliases;
     private final BasePointMapper points;
     private final AnimalChangeLogMapper changeLogs;
     private final AnimalCodeGenerator codeGenerator;
     private final Clock clock;
 
     public AnimalService(AnimalMapper animals,
+                         AnimalAliasMapper aliases,
                          BasePointMapper points,
                          AnimalChangeLogMapper changeLogs,
                          AnimalCodeGenerator codeGenerator,
                          Clock clock) {
         this.animals = animals;
+        this.aliases = aliases;
         this.points = points;
         this.changeLogs = changeLogs;
         this.codeGenerator = codeGenerator;
@@ -99,10 +103,17 @@ public class AnimalService {
         Page<Animal> page = new Page<>(safe.getPage(), safe.getSize());
 
         LambdaQueryWrapper<Animal> query = new LambdaQueryWrapper<>();
+        query.isNull(Animal::getMergedIntoId);
         if (filter != null) {
             String keyword = trimToNull(filter.keyword());
             if (keyword != null) {
-                query.and(w -> w.like(Animal::getCode, keyword).or().like(Animal::getFeatures, keyword));
+                List<Long> aliasAnimalIds = aliases.selectAnimalIdsByAliasLike(keyword);
+                query.and(w -> {
+                    w.like(Animal::getCode, keyword).or().like(Animal::getFeatures, keyword);
+                    if (!aliasAnimalIds.isEmpty()) {
+                        w.or().in(Animal::getId, aliasAnimalIds);
+                    }
+                });
             }
             if (filter.statuses() != null && !filter.statuses().isEmpty()) {
                 query.in(Animal::getStatus, filter.statuses());
@@ -282,7 +293,21 @@ public class AnimalService {
     }
 
     private Animal findByCode(String code) {
-        Animal animal = animals.selectByCode(code);
+        String normalized = code == null ? null : code.trim();
+        if (normalized == null || normalized.isEmpty()) {
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND);
+        }
+        Animal animal = animals.selectByCode(normalized);
+        if (animal == null) {
+            var alias = aliases.selectByAliasCode(normalized);
+            animal = alias == null ? null : animals.selectById(alias.getAnimalId());
+        }
+        if (animal != null && animal.getMergedIntoId() != null) {
+            Animal main = animals.selectById(animal.getMergedIntoId());
+            if (main != null) {
+                return main;
+            }
+        }
         if (animal == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND);
         }

@@ -23,6 +23,6 @@ public class DatabaseSequencePort implements SequencePort {
     @Transactional(propagation = Propagation.REQUIRED)
     public int next(String bizType, int year) {
         mapper.nextValue(bizType, year);
-        return mapper.lastInsertId();
+        return mapper.currentValue(bizType, year);
     }
 }

@@ -5,7 +5,10 @@ import com.just.critter.service.archive.CreatedGroup;
 import com.just.critter.service.archive.CreatedSighting;
 import com.just.critter.service.archive.GroupDetail;
 import com.just.critter.service.archive.GroupFilter;
+import com.just.critter.service.archive.GroupMaintenanceService;
+import com.just.critter.service.archive.GroupMergeResult;
 import com.just.critter.service.archive.GroupService;
+import com.just.critter.service.archive.GroupSplitResult;
 import com.just.critter.service.archive.GroupSummary;
 import com.just.critter.service.archive.SightingFilter;
 import com.just.critter.service.archive.SightingView;
@@ -25,17 +28,18 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 群体与目击接口（03 §6.2 #11—#19 的 P0 部分：建档、列表、详情、编辑、目击登记与列表）。
- * 归并、拆分、归属修正为 P1，后续迭代补。
+ * 群体与目击接口（03 §6.2 #11—#19）。P1 的合并、拆分、目击归属修正也在本控制器。
  */
 @RestController
 @RequestMapping("/api/v1")
 public class GroupController {
 
     private final GroupService service;
+    private final GroupMaintenanceService maintenance;
 
-    public GroupController(GroupService service) {
+    public GroupController(GroupService service, GroupMaintenanceService maintenance) {
         this.service = service;
+        this.maintenance = maintenance;
     }
 
     @PostMapping("/groups")
@@ -81,6 +85,19 @@ public class GroupController {
         return Result.ok(service.recordSighting(code, request.toCommand(), AuthContext.require().id()));
     }
 
+    @PostMapping("/groups/merge")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<GroupMergeResult> merge(@RequestBody GroupMergeRequest request) {
+        return Result.ok(maintenance.merge(request.toCommand(), AuthContext.require().id()));
+    }
+
+    @PostMapping("/groups/{code}/split")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<GroupSplitResult> split(@PathVariable String code,
+                                          @RequestBody SplitGroupRequest request) {
+        return Result.ok(maintenance.split(request.toCommand(code), AuthContext.require().id()));
+    }
+
     @GetMapping("/sightings")
     public Result<PageResult<SightingView>> listSightings(
             @RequestParam(required = false) String groupCode,
@@ -88,5 +105,12 @@ public class GroupController {
             @RequestParam(required = false) Long pointId,
             PageQuery pageQuery) {
         return Result.ok(service.searchSightings(new SightingFilter(groupCode, assignStatus, pointId), pageQuery));
+    }
+
+    @PutMapping("/sightings/{id}")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<SightingView> assignSighting(@PathVariable Long id,
+                                               @RequestBody UpdateSightingRequest request) {
+        return Result.ok(maintenance.assignSighting(id, request.toCommand(), AuthContext.require().id()));
     }
 }

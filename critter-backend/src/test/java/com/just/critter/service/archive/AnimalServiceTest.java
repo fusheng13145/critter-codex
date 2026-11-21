@@ -7,6 +7,7 @@ import com.just.critter.domain.enums.Gender;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.AnimalChangeLog;
 import com.just.critter.domain.model.BasePoint;
+import com.just.critter.mapper.AnimalAliasMapper;
 import com.just.critter.mapper.AnimalChangeLogMapper;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
@@ -46,6 +47,8 @@ class AnimalServiceTest {
     @Mock
     private AnimalMapper animalMapper;
     @Mock
+    private AnimalAliasMapper aliasMapper;
+    @Mock
     private BasePointMapper pointMapper;
     @Mock
     private AnimalChangeLogMapper changeLogMapper;
@@ -55,7 +58,7 @@ class AnimalServiceTest {
     @BeforeEach
     void setUp() {
         AnimalCodeGenerator generator = new AnimalCodeGenerator((bizType, year) -> 1, CLOCK);
-        service = new AnimalService(animalMapper, pointMapper, changeLogMapper, generator, CLOCK);
+        service = new AnimalService(animalMapper, aliasMapper, pointMapper, changeLogMapper, generator, CLOCK);
         BasePoint point = new BasePoint();
         point.setId(7L);
         point.setPointName("东区宿舍七号楼");

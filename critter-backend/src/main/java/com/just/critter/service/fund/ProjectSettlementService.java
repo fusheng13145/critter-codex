@@ -1,15 +1,18 @@
 package com.just.critter.service.fund;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.just.critter.domain.enums.ProjectEvent;
 import com.just.critter.domain.enums.ProjectStatus;
 import com.just.critter.domain.enums.Role;
 import com.just.critter.domain.model.Project;
 import com.just.critter.domain.model.ProjectSettlement;
+import com.just.critter.domain.model.ProjectSettlementNote;
 import com.just.critter.domain.statemachine.StateMachines;
 import com.just.critter.domain.statemachine.TransitionContext;
 import com.just.critter.mapper.ExpenseMapper;
 import com.just.critter.mapper.ProjectMapper;
 import com.just.critter.mapper.ProjectSettlementMapper;
+import com.just.critter.mapper.ProjectSettlementNoteMapper;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import com.just.critter.support.log.AuditLogService;
@@ -36,22 +39,27 @@ public class ProjectSettlementService {
     private static final int MAX_REPORT = 10000;
     private static final int MAX_BALANCE_TO = 255;
     private static final int MAX_ATTACHMENTS = 10;
+    private static final int MIN_NOTE = 2;
+    private static final int MAX_NOTE = 2000;
     private static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
 
     private final ProjectMapper projects;
     private final ExpenseMapper expenses;
     private final ProjectSettlementMapper settlements;
+    private final ProjectSettlementNoteMapper notes;
     private final AuditLogService auditLog;
     private final Clock clock;
 
     public ProjectSettlementService(ProjectMapper projects,
                                     ExpenseMapper expenses,
                                     ProjectSettlementMapper settlements,
+                                    ProjectSettlementNoteMapper notes,
                                     AuditLogService auditLog,
                                     Clock clock) {
         this.projects = projects;
         this.expenses = expenses;
         this.settlements = settlements;
+        this.notes = notes;
         this.auditLog = auditLog;
         this.clock = clock;
     }
@@ -149,13 +157,61 @@ public class ProjectSettlementService {
         return view(project, settlement);
     }
 
+    /**
+     * 公示发布后只能追加说明，正文、金额、附件与去向都不可再改。
+     */
+    @Transactional
+    public ProjectSettlementView appendNote(String projectNo, AppendSettlementNoteCommand command,
+                                            CurrentUser actor) {
+        if (actor == null || !actor.hasRole("ANIMAL_ADMIN")) {
+            throw new BusinessException(ErrorCode.ROLE_MISMATCH, "仅动物管理员可追加公示说明");
+        }
+        String noteText = command == null ? null : trimToNull(command.note());
+        if (noteText == null || noteText.length() < MIN_NOTE) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "追加说明至少 " + MIN_NOTE + " 个字");
+        }
+        if (noteText.length() > MAX_NOTE) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "追加说明最多 " + MAX_NOTE + " 个字");
+        }
+        Project project = projects.selectByProjectNo(projectNo);
+        if (project == null) {
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "项目不存在：" + projectNo);
+        }
+        ProjectSettlement settlement = settlements.selectByProjectId(project.getId());
+        if (settlement == null) {
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND, "项目尚未发布结项公示");
+        }
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
+        ProjectSettlementNote note = new ProjectSettlementNote();
+        note.setSettlementId(settlement.getId());
+        note.setNote(noteText);
+        note.setOperatorId(actor.id());
+        note.setCreatedAt(now);
+        note.setUpdatedAt(now);
+        note.setCreatedBy(actor.id());
+        notes.insert(note);
+        auditLog.success("PROJECT_SETTLEMENT_APPEND", "PROJECT", project.getProjectNo(),
+                Map.of("settlementId", String.valueOf(settlement.getId())),
+                Map.of("noteId", String.valueOf(note.getId()), "length", String.valueOf(noteText.length())));
+        return view(project, settlement);
+    }
+
     private ProjectSettlementView view(Project project, ProjectSettlement settlement) {
         int balance = settlement.getTotalRaised() - settlement.getTotalSpent();
+        List<SettlementNoteView> appendNotes = notes.selectList(
+                        new LambdaQueryWrapper<ProjectSettlementNote>()
+                                .eq(ProjectSettlementNote::getSettlementId, settlement.getId())
+                                .orderByAsc(ProjectSettlementNote::getCreatedAt)
+                                .orderByAsc(ProjectSettlementNote::getId))
+                .stream()
+                .map(row -> new SettlementNoteView(row.getNote(), row.getOperatorId(),
+                        toOffset(row.getCreatedAt())))
+                .toList();
         return new ProjectSettlementView(project.getProjectNo(), project.getName(),
                 settlement.getReportText(), settlement.getTotalRaised(), settlement.getTotalSpent(),
                 balance, settlement.getBalanceTo(),
                 settlement.getAttachments() == null ? List.of() : settlement.getAttachments(),
-                toOffset(settlement.getPublishedAt()));
+                toOffset(settlement.getPublishedAt()), appendNotes);
     }
 
     private boolean reachedTarget(Project project) {

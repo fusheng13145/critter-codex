@@ -28,6 +28,7 @@ public class Report {
     private List<String> fileIds;
     private Long reporterId;
     private Long animalId;
+    private Long speciesId;
     private ReportStatus status;
     private String closeReason;
     private String contact;
@@ -97,6 +98,14 @@ public class Report {
 
     public void setAnimalId(Long animalId) {
         this.animalId = animalId;
+    }
+
+    public Long getSpeciesId() {
+        return speciesId;
+    }
+
+    public void setSpeciesId(Long speciesId) {
+        this.speciesId = speciesId;
     }
 
     public ReportStatus getStatus() {

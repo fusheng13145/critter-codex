@@ -9,12 +9,14 @@ import com.just.critter.domain.enums.ReportStatus;
 import com.just.critter.domain.enums.ReportType;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.BasePoint;
+import com.just.critter.domain.model.BaseSpecies;
 import com.just.critter.domain.model.Order;
 import com.just.critter.domain.model.Report;
 import com.just.critter.domain.rescue.OrderCodeGenerator;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
+import com.just.critter.mapper.BaseSpeciesMapper;
 import com.just.critter.mapper.OrderMapper;
 import com.just.critter.mapper.ReportMapper;
 import com.just.critter.support.api.PageQuery;
@@ -48,6 +50,7 @@ public class ReportService {
 
     private final ReportMapper reports;
     private final BasePointMapper points;
+    private final BaseSpeciesMapper species;
     private final AnimalMapper animals;
     private final ReportCodeGenerator codeGenerator;
     private final OrderCodeGenerator orderCodeGenerator;
@@ -57,6 +60,7 @@ public class ReportService {
 
     public ReportService(ReportMapper reports,
                          BasePointMapper points,
+                         BaseSpeciesMapper species,
                          AnimalMapper animals,
                          ReportCodeGenerator codeGenerator,
                          OrderCodeGenerator orderCodeGenerator,
@@ -65,6 +69,7 @@ public class ReportService {
                          Clock clock) {
         this.reports = reports;
         this.points = points;
+        this.species = species;
         this.animals = animals;
         this.codeGenerator = codeGenerator;
         this.orderCodeGenerator = orderCodeGenerator;
@@ -91,6 +96,7 @@ public class ReportService {
             throw new BusinessException(30410, "点位不存在");
         }
         Long animalId = resolveAnimalId(command.animalCode());
+        Long speciesId = resolveSpeciesId(command.speciesId());
 
         LocalDateTime now = LocalDateTime.now(clock).withNano(0);
         Report duplicate = findDuplicate(point.getId(), now);
@@ -103,6 +109,7 @@ public class ReportService {
         report.setFileIds(List.copyOf(photos));
         report.setReporterId(reporterId);
         report.setAnimalId(animalId);
+        report.setSpeciesId(speciesId);
         report.setStatus(ReportStatus.PENDING);
         report.setContact(contact);
         report.setCreatedAt(now);
@@ -314,6 +321,25 @@ public class ReportService {
         return contact;
     }
 
+    private Long resolveSpeciesId(Long speciesId) {
+        if (speciesId == null) {
+            return null;
+        }
+        BaseSpecies row = species.selectById(speciesId);
+        if (row == null) {
+            throw new BusinessException(30410, "物种不存在：" + speciesId);
+        }
+        String common = trimToNull(row.getCommonName());
+        String scientific = trimToNull(row.getScientificName());
+        boolean wildBoar = (common != null && common.contains("野猪"))
+                || (scientific != null && scientific.replace(" ", "").equalsIgnoreCase("Susscrofa"));
+        if (wildBoar) {
+            throw new BusinessException(ErrorCode.WILDLIFE_FORBIDDEN,
+                    "野猪属于大型野生动物，请勿自行处置，请立即联系后勤或保卫处");
+        }
+        return speciesId;
+    }
+
     private Long resolveAnimalId(String rawCode) {
         String code = trimToNull(rawCode);
         if (code == null) {
@@ -322,6 +348,10 @@ public class ReportService {
         Animal animal = animals.selectByCode(code);
         if (animal == null) {
             throw new BusinessException(30410, "档案不存在：" + code);
+        }
+        if (animal.getMergedIntoId() != null) {
+            Animal main = animals.selectById(animal.getMergedIntoId());
+            return main == null ? animal.getId() : main.getId();
         }
         return animal.getId();
     }
