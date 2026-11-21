@@ -6,7 +6,7 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/critter_codex?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
-    password: "1234"
+    password: "123456"
 
   flyway:
     enabled: true
@@ -19,6 +19,11 @@ spring:
       port: 6379
       timeout: 2s
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -29,3 +34,30 @@ mybatis-plus:
 logging:
   level:
     root: INFO
+    com.just.critter: DEBUG
+
+critter:
+  # 本机没有 Redis 时用 memory（进程内，重启即失效）；有 Redis 改成 redis 即切到真实实现
+  cache:
+    mode: memory
+  security:
+    # 生产环境必须换成环境变量注入；长度不足 32 字节 jjwt 会拒绝签发
+    jwt-secret: "qingyan-wanling-ce-campus-critter-codex-2026-secret-key"
+    access-token-seconds: 7200
+    refresh-token-seconds: 604800
+    # AES-128/GCM 密钥（Base64），用于手机号加密存储
+    aes-key: "qyWL2026CritterAESKey0123456789=="
+    cors-allowed-origins: "http://localhost:5173,http://127.0.0.1:5173"
+  register:
+    # 学号必须 10 位数字；邮箱必须命中下列域名之一
+    allowed-email-domains: "just.edu.cn,stu.just.edu.cn"
+    # 课程演示环境没有邮件通道：验证码直接回传在 data.devCode，生产置 false
+    expose-verification-code: true
+    code-ttl-seconds: 300
+  login:
+    max-failures: 5
+    lock-seconds: 600
+  file:
+    # 附件根目录，相对启动目录；生产可换对象存储
+    storage-dir: "data/files"
+    max-size-bytes: 5242880
