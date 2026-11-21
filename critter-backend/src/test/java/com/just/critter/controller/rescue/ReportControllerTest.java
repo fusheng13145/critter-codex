@@ -1,9 +1,20 @@
 package com.just.critter.controller.rescue;
 
+import com.just.critter.domain.enums.OrderStatus;
 import com.just.critter.domain.enums.ReportStatus;
+import com.just.critter.domain.enums.ReportType;
+import com.just.critter.service.rescue.AcceptedReport;
+import com.just.critter.service.rescue.AcceptReportCommand;
+import com.just.critter.service.rescue.ClosedReport;
 import com.just.critter.service.rescue.CreateReportCommand;
 import com.just.critter.service.rescue.CreatedReport;
+import com.just.critter.service.rescue.ReportDetail;
+import com.just.critter.service.rescue.ReportFilter;
 import com.just.critter.service.rescue.ReportService;
+import com.just.critter.service.rescue.ReportSummary;
+import com.just.critter.service.rescue.RescueOrderService;
+import com.just.critter.support.api.PageQuery;
+import com.just.critter.support.api.PageResult;
 import com.just.critter.support.security.AuthContext;
 import com.just.critter.support.security.AuthInterceptor;
 import com.just.critter.support.security.CurrentUser;
@@ -28,7 +39,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -47,6 +60,9 @@ class ReportControllerTest {
 
     @MockBean
     private ReportService reportService;
+
+    @MockBean
+    private RescueOrderService rescueOrderService;
 
     @BeforeEach
     void auth() {
@@ -90,6 +106,93 @@ class ReportControllerTest {
         assertThat(command.description()).isEqualTo("右后腿受伤无法正常站立");
         assertThat(command.animalCode()).isEqualTo("CAT-2026-001");
         assertThat(command.contact()).isEqualTo("13800000000");
+    }
+
+    @Test
+    @DisplayName("GET /reports 按状态/类型/时限过滤并返回分页")
+    void list_returns_page_and_parses_filters() throws Exception {
+        when(reportService.search(any(), any())).thenReturn(PageResult.of(List.of(
+                new ReportSummary(5L, "RP20261121007", ReportType.INJURED, 7L, "东区宿舍七号楼",
+                        "右后腿受伤无法正常站立", List.of("F1"), ReportStatus.PENDING, true,
+                        java.time.LocalDateTime.parse("2026-11-20T10:31:00"),
+                        OffsetDateTime.parse("2026-11-21T10:31:00+08:00"), 1001L)), 1, 10, 1));
+
+        mvc.perform(get("/api/v1/reports")
+                        .param("status", "PENDING")
+                        .param("type", "INJURED")
+                        .param("pointId", "7")
+                        .param("overdue", "true")
+                        .param("page", "1")
+                        .param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.list[0].reportNo").value("RP20261121007"))
+                .andExpect(jsonPath("$.data.list[0].overdue").value(true))
+                .andExpect(jsonPath("$.data.page.total").value(1));
+
+        ArgumentCaptor<ReportFilter> filterCaptor = ArgumentCaptor.forClass(ReportFilter.class);
+        ArgumentCaptor<PageQuery> pageCaptor = ArgumentCaptor.forClass(PageQuery.class);
+        verify(reportService).search(filterCaptor.capture(), pageCaptor.capture());
+        assertThat(filterCaptor.getValue().statuses()).containsExactly(ReportStatus.PENDING);
+        assertThat(filterCaptor.getValue().type()).isEqualTo(ReportType.INJURED);
+        assertThat(filterCaptor.getValue().pointId()).isEqualTo(7L);
+        assertThat(filterCaptor.getValue().overdue()).isTrue();
+        assertThat(pageCaptor.getValue().getPage()).isEqualTo(1);
+        assertThat(pageCaptor.getValue().getSize()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("GET /reports/{id} 返回详情")
+    void detail_returns_report() throws Exception {
+        when(reportService.detail(eq(5L), any())).thenReturn(new ReportDetail(
+                5L, "RP20261121007", ReportType.INJURED, 7L, "东区宿舍七号楼",
+                "右后腿受伤无法正常站立", List.of("F1"), ReportStatus.PENDING, false,
+                java.time.LocalDateTime.parse("2026-11-20T10:31:00"),
+                OffsetDateTime.parse("2026-11-21T10:31:00+08:00"),
+                1001L, null, null, null, null));
+
+        mvc.perform(get("/api/v1/reports/5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.reportNo").value("RP20261121007"))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
+    }
+
+    @Test
+    @DisplayName("POST /reports/{id}/accept 受理并返回工单号")
+    void accept_returns_order_no() throws Exception {
+        when(rescueOrderService.acceptReport(eq(5L), any(), any())).thenReturn(new AcceptedReport(
+                "RO20261121001", "RP20261121007", ReportStatus.PROCESSING, OrderStatus.PROCESSING,
+                OffsetDateTime.parse("2026-11-22T10:31:00+08:00")));
+
+        mvc.perform(post("/api/v1/reports/5/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"handlerId":3001,"animalCode":"CAT-2026-001","note":"已联系处置人"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.orderNo").value("RO20261121001"))
+                .andExpect(jsonPath("$.data.orderStatus").value("PROCESSING"));
+
+        ArgumentCaptor<AcceptReportCommand> captor = ArgumentCaptor.forClass(AcceptReportCommand.class);
+        verify(rescueOrderService).acceptReport(eq(5L), captor.capture(), any());
+        assertThat(captor.getValue().handlerId()).isEqualTo(3001L);
+        assertThat(captor.getValue().animalCode()).isEqualTo("CAT-2026-001");
+        assertThat(captor.getValue().note()).isEqualTo("已联系处置人");
+    }
+
+    @Test
+    @DisplayName("PUT /reports/{id}/close 关闭无效上报")
+    void close_returns_closed_status() throws Exception {
+        when(reportService.close(eq(5L), any()))
+                .thenReturn(new ClosedReport("RP20261121007", ReportStatus.CLOSED, "重复上报"));
+
+        mvc.perform(put("/api/v1/reports/5/close")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"重复上报\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("CLOSED"))
+                .andExpect(jsonPath("$.data.closeReason").value("重复上报"));
     }
 
     @Test

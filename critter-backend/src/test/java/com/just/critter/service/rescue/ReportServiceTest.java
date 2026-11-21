@@ -4,12 +4,18 @@ import com.just.critter.domain.enums.ReportStatus;
 import com.just.critter.domain.enums.ReportType;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.BasePoint;
+import com.just.critter.domain.model.Order;
 import com.just.critter.domain.model.Report;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
+import com.just.critter.mapper.OrderMapper;
 import com.just.critter.mapper.ReportMapper;
+import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.exception.BusinessException;
+import com.just.critter.support.log.AuditLogService;
+import com.just.critter.support.security.CurrentUser;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,17 +54,22 @@ class ReportServiceTest {
     private BasePointMapper pointMapper;
     @Mock
     private AnimalMapper animalMapper;
+    @Mock
+    private OrderMapper orderMapper;
+    @Mock
+    private AuditLogService auditLogService;
 
     private ReportService service;
 
     @BeforeEach
     void setUp() {
         service = new ReportService(reportMapper, pointMapper, animalMapper,
-                new ReportCodeGenerator((bizType, year) -> 7, CLOCK), CLOCK);
+                new ReportCodeGenerator((bizType, year) -> 7, CLOCK), orderMapper, auditLogService, CLOCK);
         BasePoint point = new BasePoint();
         point.setId(7L);
         point.setPointName("东区宿舍七号楼");
         lenient().when(pointMapper.selectById(7L)).thenReturn(point);
+        lenient().when(pointMapper.selectBatchIds(any())).thenReturn(List.of(point));
         lenient().when(reportMapper.selectList(any())).thenReturn(List.of());
     }
 
@@ -147,6 +158,88 @@ class ReportServiceTest {
         assertThat(created.duplicated()).isTrue();
         assertThat(created.duplicateOf()).isEqualTo("RP20261121001");
         verify(reportMapper).insert(any(Report.class));
+    }
+
+    @Test
+    @DisplayName("列表：按状态/类型/点位/时限过滤，返回点位名与超时标记")
+    void search_returns_summary_with_point_and_overdue() {
+        Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-20T10:30:00"), 1001L);
+        Page<Report> page = new Page<>(1, 10);
+        page.setRecords(List.of(report));
+        page.setTotal(1);
+        when(reportMapper.selectPage(any(), any())).thenReturn(page);
+
+        var result = service.search(new ReportFilter(List.of(ReportStatus.PENDING), ReportType.INJURED, 7L, true),
+                new PageQuery(1, 10));
+
+        assertThat(result.getPage().getTotal()).isEqualTo(1);
+        assertThat(result.getList()).singleElement().satisfies(summary -> {
+            assertThat(summary.reportNo()).isEqualTo("RP20261121007");
+            assertThat(summary.pointName()).isEqualTo("东区宿舍七号楼");
+            assertThat(summary.overdue()).isTrue();
+        });
+    }
+
+    @Test
+    @DisplayName("详情：管理员可见联系方式，普通学生不可见")
+    void detail_masks_contact_for_non_admin() {
+        Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        report.setContact("13800000000");
+        when(reportMapper.selectById(5L)).thenReturn(report);
+        Order order = new Order();
+        order.setOrderNo("RO20261121001");
+        when(orderMapper.selectOne(any())).thenReturn(order);
+
+        CurrentUser admin = new CurrentUser(9001L, "admin", "管理员", "ANIMAL_ADMIN",
+                java.util.Set.of("ANIMAL_ADMIN"), "后勤处", "jti", null);
+        ReportDetail adminView = service.detail(5L, admin);
+        assertThat(adminView.contact()).isEqualTo("13800000000");
+        assertThat(adminView.orderNo()).isEqualTo("RO20261121001");
+
+        CurrentUser otherStudent = new CurrentUser(2002L, "2023020002", "学生", "STUDENT",
+                java.util.Set.of("STUDENT"), "计算机学院", "jti2", null);
+        assertThat(service.detail(5L, otherStudent).contact()).isNull();
+    }
+
+    @Test
+    @DisplayName("关闭：必须填原因，成功后回 CLOSED 并写审计")
+    void close_requires_reason_and_updates_status() {
+        Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        when(reportMapper.selectById(5L)).thenReturn(report);
+
+        ClosedReport closed = service.close(5L, "  重复上报  ");
+
+        assertThat(closed.status()).isEqualTo(ReportStatus.CLOSED);
+        assertThat(closed.closeReason()).isEqualTo("重复上报");
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.CLOSED);
+        verify(reportMapper).updateById(report);
+        verify(auditLogService).success(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("关闭：空原因 30401，已受理 30602")
+    void close_rejects_empty_reason_and_non_pending() {
+        Report pending = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        when(reportMapper.selectById(5L)).thenReturn(pending);
+        assertCode(() -> service.close(5L, " "), 30401);
+
+        Report processing = report(6L, ReportStatus.PROCESSING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        when(reportMapper.selectById(6L)).thenReturn(processing);
+        assertCode(() -> service.close(6L, "重复"), 30602);
+    }
+
+    private Report report(Long id, ReportStatus status, LocalDateTime createdAt, Long reporterId) {
+        Report report = new Report();
+        report.setId(id);
+        report.setReportNo("RP20261121007");
+        report.setType(ReportType.INJURED);
+        report.setPointId(7L);
+        report.setDescription("右后腿受伤无法正常站立");
+        report.setFileIds(List.of("F1"));
+        report.setReporterId(reporterId);
+        report.setStatus(status);
+        report.setCreatedAt(createdAt);
+        return report;
     }
 
     private CreateReportCommand command(String type, Long pointId, List<String> photos,

@@ -272,8 +272,9 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
 | D1 合并集成 | 完成（本地） | 去重 POM/`MybatisPlusInterceptor`；`AuthInterceptor` 增加匿名只读白名单；档案域 4 个控制器改用 `AuthContext` + `@RequireRoles`；迁移统一为 V1→V2 身份→V3 统计→V4 去重→V5 基础数据 |
 | T2.1 学生上报 | 完成（一期；30503 待接口补物种字段） | `POST /reports`：五类枚举、点位、至少 1 张照片、描述 ≥10 字；RP 当日发号、24 小时时限；同点位 24 小时内未关闭上报返回 `duplicated/duplicateOf`；V6 补 `animal_id/contact`，V7 统一大写蛇形字典；`ReportCodeGeneratorTest` 3 例、`ReportServiceTest` 6 例、`ReportControllerTest` 2 例、`ReportIT` 2 例 |
+| T2.2 上报管理与受理 | 完成（一期；工单看板/流转下一轮） | `GET /reports` 状态/类型/点位/时限筛选、`GET /reports/{id}` 联系方式按角色脱敏、`POST /reports/{id}/accept` 生成 PROCESSING 工单、`PUT /reports/{id}/close` 关闭无效上报；工单号 RO 当日发号、状态机 PENDING→PROCESSING、截止时间沿用上报 +24h；`OrderCodeGeneratorTest` 3 例、`RescueOrderServiceTest` 3 例、`ReportServiceTest` 10 例、`ReportControllerTest` 6 例、`ReportIT` 4 例 |
 
-测试基线：`mvn -B test` **146 例全绿**；真库测试另计 **19 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 2），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。迁移冲突修复后 `MySqlSchemaIT` 5/5、`SeedReferenceDataIT` 4/4 在重建库上通过。
+测试基线：`mvn -B test` **160 例全绿**；真库测试另计 **21 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
