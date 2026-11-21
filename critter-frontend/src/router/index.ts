@@ -86,6 +86,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '认养专区', menu: 'adopt', owner: 'C' },
       },
       {
+        path: 'adopt/plans',
+        name: 'plan-manage',
+        component: () => import('@/views/adopt/PlanManageView.vue'),
+        meta: { title: '认养方案配置', menu: 'adopt', owner: 'C' },
+      },
+      {
         path: 'adopt/:no',
         name: 'adoption-detail',
         component: () => import('@/views/AdoptionDetailView.vue'),

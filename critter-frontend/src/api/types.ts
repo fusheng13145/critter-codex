@@ -309,13 +309,22 @@ export interface ExportAccepted {
   pollUrl: string
 }
 
-/** 认养方案（GET /plans，公开） */
+/** 认养方案（GET /plans，公开；enabled 用于管理员配置页） */
 export interface AdoptionPlan {
   planId: number
   planName: string
   period: 'MONTH' | 'QUARTER'
   amount: number
   benefits: string
+  enabled: boolean
+}
+
+export interface AdoptionPlanPayload {
+  planName: string
+  period: 'MONTH' | 'QUARTER'
+  amount: number
+  benefits?: string | null
+  enabled: boolean
 }
 
 /** 认养单列表行 */

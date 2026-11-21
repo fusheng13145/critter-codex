@@ -233,6 +233,7 @@ onMounted(async () => {
   <div>
     <PageHero title="认养专区" desc="申请 → 审核 → 缴费入账 → 生效。审核通过只转待缴费，动物标记只在入账事务中变更。">
       <template #actions>
+        <button v-if="isAdmin" class="btn ghost" type="button" @click="router.push({ name: 'plan-manage' })">方案管理</button>
         <button class="btn" type="button" @click="openApply">提交认养申请</button>
       </template>
     </PageHero>

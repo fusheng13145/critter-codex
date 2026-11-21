@@ -432,3 +432,32 @@
 - 完整后端：单元 / 控制器 395 例、68 suites；真实 MySQL IT 44 例、17 suites；合计 439 例，0 失败、0 错误、0 跳过。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
 - 未做浏览器端手工点验；演示前应实际发表一条正常留言、一条含“加微信”的留言，并用管理员回复确认待审转公开。
+
+## 第十三轮：认养方案新增与编辑（2026-11-21）
+
+### 验收标准
+
+- `GET /plans` 公开列表仍只返回启用方案；`includeDisabled=true` 仅管理员可用。
+- `POST /plans`、`PUT /plans/{id}` 仅管理员；名称 1–32 字、周期 `MONTH / QUARTER`、金额正整数（分）、权益 ≤255 字。
+- 编辑可修改金额、周期、权益与启停状态；停用后公开列表隐藏，管理员列表仍可见，历史认养单不受影响。
+- 新增写 `PLAN_CREATE`、编辑写 `PLAN_UPDATE` 审计。
+
+### RED
+
+- 先扩充 `AdoptionPlanServiceTests` 至 8 例、`AdoptionPlanControllerTests` 至 6 例，新增 `AdoptionPlanIT` 1 例。
+- 首次编译因 `AdoptionPlanCommand / AdoptionPlanWrite` 不存在失败，确认 RED。
+- 首次运行发现旧控制器测试仍 mock `listEnabledPlans()`，控制器改为统一走 `listPlans` 后返回空列表；已改为公开列表继续调用 `listEnabledPlans()`，管理员扩展才走 `listPlans(true)`，避免破坏既有契约。
+
+### GREEN
+
+- 新增方案命令与写模型；服务完成字段校验、周期解析、启停默认值与审计。
+- 仓储补 `insert / update`，实体沿用 MyBatis-Plus；编辑后重新读取以返回真实状态。
+- 控制器新增 POST/PUT 与 `includeDisabled`，显式管理员判断，避免可选鉴权路径绕过角色校验。
+- 前端新增 `views/adopt/PlanManageView.vue`，认养专区页头增加“方案管理”入口。
+
+### 测试结果
+
+- 定向 14 例通过：`AdoptionPlanServiceTests` 8、`AdoptionPlanControllerTests` 6。
+- 真实 MySQL `AdoptionPlanIT` 1 例通过：新增落库、停用、公开列表隐藏、管理员列表可见。
+- 全量：单元 / 控制器 406 例、68 suites；真实 MySQL IT 45 例、18 suites；合计 451 例，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过。
