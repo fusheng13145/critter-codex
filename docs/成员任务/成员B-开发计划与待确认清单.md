@@ -275,8 +275,9 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T2.2 上报管理与受理 | 完成（一期；工单看板/流转下一轮） | `GET /reports` 状态/类型/点位/时限筛选、`GET /reports/{id}` 联系方式按角色脱敏、`POST /reports/{id}/accept` 生成 PROCESSING 工单、`PUT /reports/{id}/close` 关闭无效上报；工单号 RO 当日发号、状态机 PENDING→PROCESSING、截止时间沿用上报 +24h；`OrderCodeGeneratorTest` 3 例、`RescueOrderServiceTest` 3 例、`ReportServiceTest` 10 例、`ReportControllerTest` 6 例、`ReportIT` 4 例 |
 | T2.3 工单看板与流转 | 完成（超时扫描下一轮） | `GET /orders` 状态/类型/超时筛选、`GET /orders/{no}` 来源上报与 sys_log 时间线、`PUT /orders/{no}/status` 表驱动流转；TIMEOUT 只留给系统任务；处置完成/无法处置/回访正常/回访异常四类事件；`OrderServiceTest` 7 例、`OrderControllerTest` 4 例、`OrderIT` 2 例 |
 | T2.4 项目发起与审核 | 完成（一期） | `POST /projects` 草稿/直接提交、`GET /projects` 公开列表、`GET /projects/{no}` 公开详情、`PUT /projects/{no}` 修改提交、`PUT /projects/{no}/audit` 审核；预算合计 > 目标返回 `40101` 并带差额；公开页只展示 FUNDING 及之后状态；`ProjectCodeGeneratorTest` 2 例、`ProjectServiceTest` 9 例、`ProjectControllerTest` 8 例、`ProjectIT` 4 例；T2.4 说明见 `docs/T2.4-项目发起与审核说明.md` |
+| T3.1 捐赠登记与核对入账 | 完成（一期） | `POST /donations` 登记固定 `PENDING_VERIFY`；`GET /donations` 管理员按状态/项目筛选；`PUT /donations/{no}/confirm` 单笔核对；`PUT /donations/batch` 逐笔独立事务批量核对；金额一致才写 `VERIFIED` 并同事务递增 `project.raised_amount`，金额不符转 `ABNORMAL` 且不动进度；项目已筹与已入账合计不一致返回 `40106`；`DonationCodeGeneratorTest` 2 例、`DonationServiceTest` 10 例、`DonationControllerTest` 5 例、`DonationIT` 6 例；T3.1 说明见 `docs/T3.1-捐赠登记与核对入账说明.md` |
 
-测试基线：`mvn -B test` **215 例全绿**；真库测试另计 **27 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。合并 main 后主库/联调库均迁到 V10。
+测试基线：`mvn -B test` **251 例全绿**；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。合并最新 main 后迁移为 V1→V12（V11 身份种子、V12 认养备注），本域无新增迁移；本地 `critter_codex` / `critter_codex_dev` 已 repair 并补到 V12。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
@@ -284,7 +285,7 @@ T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNex
 
 T1.5 遗留：归并/拆分、目击归属修正、群体状态接口、物种/点位写接口均为 P1；`30501 群体不可认养` 需 C 在认养提交处拦截，B 只保证群体编号可识别；目击归属状态暂用字符串 `ASSIGNED/UNASSIGNED`；鉴权同前。
 
-Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V10），`critter_ro@localhost` 只读，详见《联调环境说明》。
+Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V12），`critter_codex_it` 真库 IT 专用库，`critter_ro@localhost` 只读，详见《联调环境说明》。
 
 ## 13 本轮治理结果（2026-11-21）
 
