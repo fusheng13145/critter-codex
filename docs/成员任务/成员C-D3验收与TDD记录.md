@@ -189,4 +189,5 @@
 - `MessageIT` 1/1、`AdoptionLifecycleIT` 2/2 通过。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite）；仅有 chunk 体积告警。
 - 仍未完成：认养到期自动提醒 / 释放、B 域募捐与工单事件通知、服务端直接输出 PDF 证书。
+- 第五轮提交 `af329a7` 已推送至 `origin/feature/d3-messages`，并创建 PR #10：https://github.com/fusheng13145/critter-codex/pull/10 。
 
