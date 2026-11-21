@@ -14,6 +14,8 @@ import HealthRecordPanel from '@/views/archive/HealthRecordPanel.vue'
 import AnimalVisitPanel from '@/views/archive/AnimalVisitPanel.vue'
 import AnimalEditDialog from '@/views/archive/AnimalEditDialog.vue'
 import AnimalStatusDialog from '@/views/archive/AnimalStatusDialog.vue'
+import CommentPanel from '@/components/CommentPanel.vue'
+import FollowButton from '@/components/FollowButton.vue'
 import { dateOnly, dateTime } from '@/utils/format'
 import {
   animalStatusLabel,
@@ -102,6 +104,7 @@ onMounted(() => {
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/animals')">返回列表</button>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
+        <FollowButton v-if="animal" biz-type="ANIMAL" :biz-id="animal.code" label="关注这只动物" />
         <button v-if="auth.isAdmin && animal" class="btn ghost" type="button" @click="editVisible = true">编辑档案</button>
         <button
           v-if="auth.hasRole('ANIMAL_ADMIN') && animal && animal.allowedStatuses.length"
@@ -178,6 +181,8 @@ onMounted(() => {
         <HealthRecordPanel :code="animal.code" :editable="auth.isAdmin" />
 
         <AnimalVisitPanel :code="animal.code" />
+
+        <CommentPanel biz-type="ANIMAL" :biz-id="animal.code" />
 
         <PanelCard v-if="auth.hasRole('ANIMAL_ADMIN')" title="状态时间线" :more="`共 ${statusHistory.length} 条`">
           <div v-if="statusHistoryError" class="notice">{{ statusHistoryError }}</div>

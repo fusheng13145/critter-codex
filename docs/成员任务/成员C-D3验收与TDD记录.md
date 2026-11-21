@@ -365,3 +365,70 @@
 - 合并时 C 验收记录按“第九轮 → 第十轮”顺序解决 EOF 冲突；同时发现 `main` 出现两个 `V14` 迁移（`message_type_width` 与 B 的 `expense_double_sign_stage`），Flyway 启动即失败。已将 B 的支出迁移顺延为 `V17__expense_double_sign_stage.sql`，不改既有业务 SQL，清理构建产物后全量 IT 恢复通过。
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
 - 未做浏览器端手工点验；后续演示前应实际新增一家医院并纠错一条就诊，确认审计日志可在库中查到。
+
+## 第十一轮：TNR 五节点全链路（2026-11-21）
+
+### 验收标准
+
+- `POST /api/v1/tnr` 仅管理员可用，首节点固定 `CATCH`；`handlerId` 省略时取当前操作人；同一动物存在 `stage != OBSERVE` 的任务时返回 30403。
+- 编号为 `TNR + yyyyMMdd + 3 位年度序号`，日期取抓捕节点日期，序号按年递增。
+- `PUT /api/v1/tnr/{no}/node` 只能推进到当前节点的下一节点；跳节点、重复推进或已完成任务返回 30402。
+- 手术节点必须至少一个 `fileIds`，否则 30601；节点时间必须严格晚于当前节点，否则 30301；阶段非法 30303。
+- 末节点 `OBSERVE` 完成时同步 `animal.neutered=1`、`neutered_at=末节点日期`，不改其他动物状态。
+- `GET /api/v1/tnr` 登录可读，支持 `stage`、`animalCode`、分页；任务含全节点时间线。
+- `tnr_node` 保存每次推进的责任人、时间、附件与备注，唯一键 `(tnr_no, stage)` 阻止重复节点。
+
+### RED
+
+- 先写 `TnrServiceTests` 11 例、`TnrControllerTests` 6 例、`TnrIT` 1 例。
+- 首次 `test-compile` 因 `com.just.critter.tnr.service` 与 `repository` 包、类型不存在而失败，确认 RED。
+- 测试自身随后暴露两处问题：`findNodes` 返回 `TnrNodeRecord` 而非视图，Mockito 桩需对齐；编号日期取节点发生日，原期望 `TNR20261121001` 应改为 `TNR20261120001`。
+
+### GREEN
+
+- 新增 V16 `tnr_node` 迁移、`TnrStage`、`TnrCommand / TnrNodeCommand`、`TnrWrite / TnrNodeWrite`、任务与节点视图/记录。
+- 新增 `TnrRepository / MyBatisTnrRepository`、`TnrMapper`；任务头更新与节点插入分表写入，`file_ids` 用 Jackson 序列化。
+- `TnrService.create` 完成参数、动物、处理人、开放任务与取号校验后写任务头与首条 `CATCH` 节点；`advance` 用 `TnrStage.next()` 校验顺序，手术缺照片返回 30601，末节点同步绝育标记。
+- `TnrController` 的 GET 登录可读，POST/PUT 用 `@RequireRoles` 限制管理员，操作人取 `AuthContext.require().id()`。
+- 前端新增 `api/tnr.ts`、`TnrBoardView.vue` 与 `/tnr` 路由，医疗协作页增加入口；看板、详情时间线、发起与推进弹窗完成。
+
+### 测试结果
+
+- 定向 17 例单元/控制器通过：`TnrServiceTests` 11、`TnrControllerTests` 6。
+- 真实 MySQL `TnrIT` 1 例通过：跳节点被拒，顺序推进五个节点，断言 5 条 `tnr_node`、任务阶段 `OBSERVE`、动物绝育标记与看板查询。
+- 变基到含 PR #15/#17 的医院分支后完整后端：单元 / 控制器 370 例、64 suites；真实 MySQL IT 43 例、16 suites；合计 413 例，0 失败、0 错误、0 跳过。
+- 首次全量 IT 因 `MySqlSchemaIT` 仍按 40 张业务表断言而失败，已把 `tnr_node` 加入表清单并将期望调为 41，重跑通过；这是测试夹具更新，不是放宽生产约束。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+
+## 第十二轮：留言与关注（2026-11-21）
+
+### 验收标准
+
+- `POST /api/v1/comments` 登录可调用；`bizType` 只允许 `ANIMAL / PROJECT`，`ANIMAL` 用档案编号、`PROJECT` 用项目编号；内容 trim 后 1–500 字。
+- 留言默认 `VISIBLE`；命中引流/营销词的留言写 `PENDING_AUDIT`，作者可见、匿名不可见。
+- `GET /api/v1/comments` 公开分页；匿名只看 `VISIBLE`，作者额外看自己的待审，管理员看全部；`replyContent` 由服务端按公开/作者/管理员裁剪。
+- `PUT /api/v1/comments/{id}/reply` 仅管理员；回复待审留言即置 `VISIBLE` 并写 `COMMENT_REPLY` 审计；`visible=false` 表示仅留言者可见。
+- `POST /api/v1/follows` 登录可调用，重复关注幂等返回 `newlyCreated=false`；`DELETE /api/v1/follows/{id}` 只能删本人关系。
+- V18 迁移给 `comment` 增加 `status` 与状态索引，不改变既有留言数据。
+
+### RED
+
+- 先写 `CommentServiceTests` 9 例、`FollowServiceTests` 6 例、`SensitiveWordFilterTests` 2 例、`InteractionControllerTests` 8 例、`InteractionIT` 1 例。
+- 首次 `test-compile` 因 `com.just.critter.interaction.*` 包与类型不存在而失败，确认 RED。
+- 首次定向运行暴露三处测试/契约问题：`CommentService.list` 不应强制校验目标存在（公开列表可空）；`/comments/**` 走可选鉴权，`@RequireRoles` 不生效，回复接口需显式管理员判断；匿名控制器用例需覆盖测试默认 Bearer，否则默认 1001 管理员会放行。均已修正。
+
+### GREEN
+
+- 新增 V18 `comment.status` 迁移；`InteractionRepository / MyBatisInteractionRepository` 与 `InteractionMapper` 完成存在性校验、留言分页、回复、关注幂等与删除。
+- 可见性裁剪放在 SQL `status / author_id` 条件里，避免把待审内容查出后丢弃；回复内容裁剪在服务层完成。
+- `SensitiveWordFilter` 以引流、营销、垃圾信息词为主，不做人身攻击词库，默认词表可后续迁移配置。
+- `PROJECT` 的 `bizId` 改用 `projectNo`，并兼容数字主键字符串，避免前端为了留言再查项目主键。
+- 前端新增 `api/interactions.ts`、`CommentPanel.vue`、`FollowButton.vue`；档案详情与项目详情完成留言区、管理员回复弹窗、仅留言者可见开关与关注按钮。
+
+### 测试结果
+
+- 定向 25 例通过：`CommentServiceTests` 9、`FollowServiceTests` 6、`SensitiveWordFilterTests` 2、`InteractionControllerTests` 8。
+- 真实 MySQL `InteractionIT` 1 例通过：敏感留言落 `PENDING_AUDIT`、匿名/作者/管理员三种列表口径、回复转公开、关注首次/重复/取消与数据库行数。
+- 完整后端：单元 / 控制器 395 例、68 suites；真实 MySQL IT 44 例、17 suites；合计 439 例，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 未做浏览器端手工点验；演示前应实际发表一条正常留言、一条含“加微信”的留言，并用管理员回复确认待审转公开。

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as medicalApi from '@/api/medical'
 import { BizError } from '@/api/http'
@@ -11,6 +12,7 @@ import { dateTime, money } from '@/utils/format'
 /** P09 医疗协作：合作医院与示例报价、管理员登记就诊、按就诊编号查询详情。 */
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const clinics = ref<ClinicView[]>([])
 const loadingClinics = ref(false)
@@ -255,6 +257,7 @@ onMounted(loadClinics)
       desc="合作医院、就诊登记与处置留痕。费用按整数分入账；无工单就诊必须备注来源。"
     >
       <template #actions>
+        <el-button @click="router.push('/tnr')">TNR 看板</el-button>
         <el-button v-if="auth.isAdmin" type="primary" @click="openRegister">登记就诊</el-button>
       </template>
     </PageHero>
