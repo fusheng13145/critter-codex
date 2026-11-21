@@ -74,7 +74,7 @@ public class UserService {
         Set<String> roles = authService.rolesOf(user);
         String plainPhone = aesCipher.decrypt(user.getPhone());
         List<UserDtos.MenuView> menus = new ArrayList<>();
-        for (String code : MenuMatrix.menusFor(roles)) {
+        for (String code : authService.menusFor(roles)) {
             MenuMatrix.MenuDef def = MenuMatrix.MENUS.stream()
                     .filter(item -> item.code().equals(code))
                     .findFirst()

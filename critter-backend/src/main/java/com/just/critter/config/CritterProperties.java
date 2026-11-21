@@ -21,6 +21,7 @@ public class CritterProperties {
     private final Register register = new Register();
     private final Login login = new Login();
     private final File file = new File();
+    private final Export export = new Export();
 
     @Getter
     @Setter
@@ -75,5 +76,19 @@ public class CritterProperties {
     public static class File {
         private String storageDir = "data/files";
         private long maxSizeBytes = 5 * 1024 * 1024L;
+    }
+
+    /**
+     * 统计导出（GET /stats/export）。
+     * 超过 {@link #asyncThreshold} 行走异步任务：立即返回 taskId，前端轮询 /tasks/export/{taskId}。
+     * 阈值做成配置项，测试可以调到 0 覆盖异步分支，不需要真造 5 万行数据。
+     */
+    @Getter
+    @Setter
+    public static class Export {
+        private long asyncThreshold = 50000L;
+        private String dir = "data/exports";
+        /** 异步任务结果保留时长（秒），过期的下载地址自然失效 */
+        private long taskTtlSeconds = 3600L;
     }
 }

@@ -30,6 +30,8 @@ public class WebConfig implements WebMvcConfigurer {
             "/api/v1/auth/register/verify",
             "/api/v1/auth/refresh",
             "/api/v1/auth/password/**",
+            // 禁用账号登不进来，申诉必须匿名可达（03 §6.1 第 14 项：公开）
+            "/api/v1/users/me/appeals",
             "/api/v1/files/*/content",
             "/api/v1/ping"
     };

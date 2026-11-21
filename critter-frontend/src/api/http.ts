@@ -93,7 +93,11 @@ service.interceptors.response.use(
   async (error) => {
     const response = error?.response
     const original = error?.config as (AxiosRequestConfig & { _retried?: boolean }) | undefined
-    const body = response?.data as Envelope<unknown> | undefined
+    let body = response?.data as Envelope<unknown> | undefined
+    // 二进制下载（导出）失败时后端仍回 JSON 信封，这里把 Blob 还原成信封再取 code
+    if (body instanceof Blob) {
+      body = await readBlobEnvelope(body)
+    }
 
     if (response?.status === 401 && original && !original._retried && !isAuthEndpoint(original.url)) {
       const token = await refreshAccessToken()
@@ -116,8 +120,7 @@ service.interceptors.response.use(
   },
 )
 
-function isAuthEndpoint(url?: string): boolean {
-  if (!url) return false
+function isAuthEndpoint(url?: string): boolean {  if (!url) return false
   return url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/register')
 }
 
@@ -129,8 +132,22 @@ function createRequestId(): string {
   return `${Date.now()}${Math.random().toString(16).slice(2, 10)}`
 }
 
+async function readBlobEnvelope(blob: Blob): Promise<Envelope<unknown> | undefined> {
+  try {
+    const parsed = JSON.parse(await blob.text())
+    return typeof parsed?.code === 'number' ? (parsed as Envelope<unknown>) : undefined
+  } catch {
+    return undefined
+  }
+}
+
 export async function get<T>(url: string, params?: Record<string, unknown>): Promise<T> {
   return (await service.get(url, { params })) as unknown as T
+}
+
+/** 二进制下载（统计导出）：xlsx 或"异步受理"的 JSON 都以 Blob 返回，调用方按 blob.type 分流。 */
+export async function getBlob(url: string, params?: Record<string, unknown>): Promise<Blob> {
+  return (await service.get(url, { params, responseType: 'blob' })) as unknown as Blob
 }
 
 export async function post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {

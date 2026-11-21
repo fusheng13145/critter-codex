@@ -64,8 +64,58 @@ function resetRange(): void {
   load()
 }
 
-function exportStats(): void {
-  ElMessage.info('导出为三期功能：GET /stats/export 走异步任务，超过 5 万行不在接口内同步生成')
+const exporting = ref(false)
+const exportHint = ref('')
+
+async function exportStats(): Promise<void> {
+  if (exporting.value) return
+  exporting.value = true
+  exportHint.value = ''
+  const params = { from: from.value || undefined, to: to.value || undefined }
+  try {
+    const blob = await statsApi.exportStats(params)
+    // 同步路径回 xlsx；超 5 万行时后端回 JSON（{code:0,data:{taskId}}），按 blob.type 分流
+    if (blob.type.includes('json')) {
+      const parsed = JSON.parse(await blob.text())
+      const accepted = parsed?.data ?? parsed
+      ElMessage.info(`数据量较大（约 ${accepted.rows} 行），已转为后台生成，任务号 ${accepted.taskId.slice(0, 8)}…`)
+      exportHint.value = '后台生成中，完成后自动下载…'
+      const task = await pollExportTask(accepted.taskId)
+      const file = await statsApi.downloadExport(accepted.taskId)
+      saveBlob(file, task.fileName)
+      exportHint.value = ''
+      ElMessage.success('报表已生成并下载')
+      return
+    }
+    saveBlob(blob, `青檐万灵册-统计-${new Date().toISOString().slice(0, 10)}.xlsx`)
+    ElMessage.success('报表已导出')
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '导出失败，请稍后重试')
+  } finally {
+    exporting.value = false
+  }
+}
+
+/** 轮询异步任务：每秒一次，最多 30 次（够生成 5 万行的报表）。 */
+async function pollExportTask(taskId: string): Promise<{ fileName: string }> {
+  for (let i = 0; i < 30; i += 1) {
+    const task = await statsApi.fetchExportTask(taskId)
+    if (task.status === 'DONE') return task
+    if (task.status === 'FAILED') throw new BizError(50001, task.error || '报表生成失败')
+    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+  }
+  throw new BizError(50001, '报表生成超时，请缩小统计区间后重试')
+}
+
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 onMounted(load)
@@ -75,7 +125,10 @@ onMounted(load)
   <div>
     <PageHero title="数据统计" desc="生物、资金、效率三块口径分开统计；资金只计已入账捐赠与已复核支出。">
       <template #actions>
-        <button class="btn ghost" type="button" @click="exportStats">导出报表（三期）</button>
+        <span v-if="exportHint" class="muted" style="font-size: 12px; margin-right: 8px">{{ exportHint }}</span>
+        <button class="btn ghost" type="button" :disabled="exporting" @click="exportStats">
+          {{ exporting ? '导出中…' : '导出报表' }}
+        </button>
         <button class="btn" type="button" :disabled="loading" @click="load">刷新</button>
       </template>
     </PageHero>

@@ -10,6 +10,7 @@ import com.just.critter.mapper.RosterMapper;
 import com.just.critter.mapper.SysUserMapper;
 import com.just.critter.mapper.SysUserRoleMapper;
 import com.just.critter.service.support.MenuMatrix;
+import com.just.critter.service.support.RolePermissionService;
 import com.just.critter.support.cache.KeyValueStore;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
@@ -55,6 +56,7 @@ public class AuthService {
     private static final String STATUS_DISABLED = "DISABLED";
 
     private static final String CODE_PREFIX = "reg:code:";
+    private static final String RESET_CODE_PREFIX = "pwd:code:";
     private static final String FAIL_ACCOUNT_PREFIX = "login:fail:acct:";
     private static final String FAIL_IP_PREFIX = "login:fail:ip:";
     private static final String LOCK_ACCOUNT_PREFIX = "login:lock:acct:";
@@ -71,11 +73,13 @@ public class AuthService {
     private final KeyValueStore store;
     private final AuditLogService auditLog;
     private final CritterProperties properties;
+    private final RolePermissionService rolePermissionService;
     private final SecureRandom random = new SecureRandom();
 
     public AuthService(SysUserMapper userMapper, SysUserRoleMapper userRoleMapper, RosterMapper rosterMapper,
                        PasswordHasher passwordHasher, AesCipher aesCipher, JwtService jwtService,
-                       KeyValueStore store, AuditLogService auditLog, CritterProperties properties) {
+                       KeyValueStore store, AuditLogService auditLog, CritterProperties properties,
+                       RolePermissionService rolePermissionService) {
         this.userMapper = userMapper;
         this.userRoleMapper = userRoleMapper;
         this.rosterMapper = rosterMapper;
@@ -85,6 +89,7 @@ public class AuthService {
         this.store = store;
         this.auditLog = auditLog;
         this.properties = properties;
+        this.rolePermissionService = rolePermissionService;
     }
 
     // ---------------- 注册 ----------------
@@ -295,6 +300,100 @@ public class AuthService {
         auditLog.success("LOGOUT", "sys_user", current.userNo(), null, null);
     }
 
+    // ---------------- 找回密码 ----------------
+
+    /**
+     * 发送找回密码验证码：5 分钟有效，走 {@link KeyValueStore}。
+     * 键按学号存（不是邮箱），这样换邮箱后仍能自助重置。
+     */
+    @Transactional
+    public AuthDtos.ResetCodeResponse requestResetCode(AuthDtos.ResetCodeRequest request) {
+        String account = request.account().trim();
+        SysUser user = findByAccount(account);
+        if (user == null) {
+            auditLog.fail("PASSWORD_CODE", "sys_user", account, ErrorCode.RECORD_NOT_FOUND.getCode(), null);
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND);
+        }
+        if (STATUS_DISABLED.equals(user.getStatus())) {
+            // 禁用账号只能走申诉，否则"重置密码"就成了绕过禁用的后门
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED.getCode(),
+                    "账号已被禁用，请通过登录页的申诉入口提交申诉");
+        }
+
+        String code = String.format("%06d", random.nextInt(1_000_000));
+        long ttl = properties.getRegister().getCodeTtlSeconds();
+        store.set(RESET_CODE_PREFIX + user.getUserNo(), code, Duration.ofSeconds(ttl));
+
+        auditLog.successAs(user.getId(), user.getPrimaryRole(), "PASSWORD_CODE", "sys_user", user.getUserNo(),
+                null, java.util.Map.of("ttlSeconds", ttl));
+
+        boolean expose = properties.getRegister().isExposeVerificationCode();
+        return new AuthDtos.ResetCodeResponse(user.getUserNo(), maskEmail(user.getEmail()), (int) ttl,
+                expose ? code : null);
+    }
+
+    /**
+     * 凭验证码重置密码。错误次数与登录共用同一套账号 + IP 计数，达上限同样锁定，
+     * 避免"忘密码"变成绕过登录锁定的通道。成功后写 min-iat，旧令牌整体失效。
+     */
+    @Transactional
+    public void resetPassword(AuthDtos.ResetPasswordRequest request, String ip) {
+        String account = request.account().trim();
+        String accountKey = account.toLowerCase(Locale.ROOT);
+
+        long lockedSeconds = remainingLock(accountKey, ip);
+        if (lockedSeconds > 0) {
+            throw new BusinessException(ErrorCode.ACCOUNT_LOCKED.getCode(),
+                    "验证码错误次数过多，请 " + Math.max(1, lockedSeconds / 60) + " 分钟后重试",
+                    java.util.Map.of("lockSeconds", lockedSeconds));
+        }
+
+        if (!strongEnough(request.newPassword())) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID.getCode(), "参数校验失败",
+                    java.util.List.of(new FieldErrorItem("newPassword", "密码至少 8 位，且同时包含字母与数字")));
+        }
+
+        SysUser user = findByAccount(account);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.RECORD_NOT_FOUND);
+        }
+        if (STATUS_DISABLED.equals(user.getStatus())) {
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED.getCode(),
+                    "账号已被禁用，请通过登录页的申诉入口提交申诉");
+        }
+
+        String stored = store.get(RESET_CODE_PREFIX + user.getUserNo()).orElse(null);
+        if (stored == null || !stored.equals(request.code().trim())) {
+            int failures = recordFailure(accountKey, ip);
+            int max = properties.getLogin().getMaxFailures();
+            SysUser patch = new SysUser();
+            patch.setId(user.getId());
+            patch.setFailCount(failures);
+            if (failures >= max) {
+                patch.setLockedUntil(LocalDateTime.now().plusSeconds(properties.getLogin().getLockSeconds()));
+            }
+            userMapper.updateById(patch);
+            throw new BusinessException(ErrorCode.VERIFY_CODE_INVALID.getCode(),
+                    failures >= max ? "验证码错误次数已达上限，账号锁定 10 分钟"
+                            : "验证码错误或已过期，还可尝试 " + Math.max(0, max - failures) + " 次",
+                    java.util.Map.of("remainingAttempts", Math.max(0, max - failures)));
+        }
+
+        userMapper.update(null, Wrappers.<SysUser>lambdaUpdate()
+                .eq(SysUser::getId, user.getId())
+                .set(SysUser::getPasswordHash, passwordHasher.hash(request.newPassword()))
+                .set(SysUser::getFailCount, 0)
+                .set(SysUser::getLockedUntil, null));
+        store.delete(RESET_CODE_PREFIX + user.getUserNo());
+        store.delete(FAIL_ACCOUNT_PREFIX + accountKey);
+        store.delete(FAIL_IP_PREFIX + ip);
+        store.set(MIN_IAT_PREFIX + user.getId(), String.valueOf(java.time.Instant.now().getEpochSecond()),
+                Duration.ofSeconds(properties.getSecurity().getRefreshTokenSeconds()));
+
+        auditLog.successAs(user.getId(), user.getPrimaryRole(), "PASSWORD_RESET", "sys_user", user.getUserNo(),
+                null, java.util.Map.of("note", "找回密码后旧令牌全部失效"));
+    }
+
     // ---------------- 公共方法 ----------------
 
     public Set<String> rolesOf(SysUser user) {
@@ -312,10 +411,20 @@ public class AuthService {
     }
 
     public AuthDtos.LoginUser toLoginUser(SysUser user, Set<String> roles) {
-        List<String> menus = new ArrayList<>(MenuMatrix.menusFor(roles));
+        List<String> menus = new ArrayList<>(menusFor(roles));
         return new AuthDtos.LoginUser(user.getId(), user.getUserNo(), user.getNickname(), user.getDept(),
                 user.getPrimaryRole(), MenuMatrix.roleLabel(user.getPrimaryRole()),
                 new ArrayList<>(roles), menus);
+    }
+
+    /** 菜单来自 sys_role_permission（V7），库里查不到该角色时回退常量。 */
+    public Set<String> menusFor(Set<String> roles) {
+        return rolePermissionService.menusFor(roles);
+    }
+
+    /** 接口权限集合，同样以库为准。 */
+    public Set<String> apisFor(Set<String> roles) {
+        return rolePermissionService.apisFor(roles);
     }
 
     public String getRoleLabel(String roleCode) {
@@ -377,6 +486,20 @@ public class AuthService {
                 && HAS_LETTER.matcher(password).matches() && HAS_DIGIT.matcher(password).matches();
     }
 
+    /** 邮箱脱敏：只保留首字符与域名，用于"验证码已发送至 a***@stu.just.edu.cn"。 */
+    private static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String name = email.substring(0, at);
+        String domain = email.substring(at);
+        return name.charAt(0) + "***" + domain;
+    }
+
     private long remainingLock(String accountKey, String ip) {
         long fromAccount = remainingMillis(LOCK_ACCOUNT_PREFIX + accountKey);
         long fromIp = remainingMillis(LOCK_IP_PREFIX + ip);
@@ -398,13 +521,14 @@ public class AuthService {
 
     private int recordFailure(String accountKey, String ip) {
         Duration window = Duration.ofSeconds(properties.getLogin().getLockSeconds() * 6L);
+        // 两个维度都直接取 increment 的返回值：内存实现自增后 value 为空，再 get 会读到空串，
+        // 曾导致 IP 维度永远不锁（账号维度靠返回值才生效）。
         long accountCount = store.increment(FAIL_ACCOUNT_PREFIX + accountKey, window);
-        store.increment(FAIL_IP_PREFIX + ip, window);
+        long ipCount = store.increment(FAIL_IP_PREFIX + ip, window);
         int max = properties.getLogin().getMaxFailures();
         if (accountCount >= max) {
             lock(LOCK_ACCOUNT_PREFIX + accountKey);
         }
-        long ipCount = Long.parseLong(store.get(FAIL_IP_PREFIX + ip).orElse("0"));
         if (ipCount >= max) {
             lock(LOCK_IP_PREFIX + ip);
         }
