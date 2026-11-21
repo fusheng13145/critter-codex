@@ -5,7 +5,8 @@ import com.just.critter.support.exception.ErrorCode;
 import java.time.OffsetDateTime;
 
 /**
- * 统一响应体。HTTP 状态码只表达传输层语义，业务结果一律看 code。
+ * 统一响应体。业务失败默认 HTTP 200，鉴权/权限/不存在/并发/系统异常按码映射 401/403/404/409/500；
+ * 具体结果一律看 code，requestId 由过滤器回填。
  */
 public class Result<T> {
 

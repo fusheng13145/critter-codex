@@ -38,6 +38,8 @@ class ErrorCodeTest {
         assertThat(ErrorCode.PARAM_INVALID.getCode()).isEqualTo(30301);
         assertThat(ErrorCode.RECORD_NOT_FOUND.getCode()).isEqualTo(30410);
         assertThat(ErrorCode.STATE_TRANSITION_INVALID.getCode()).isEqualTo(30402);
+        assertThat(ErrorCode.GROUP_STATE_INVALID.getCode()).isEqualTo(30505);
+        assertThat(ErrorCode.PROJECT_STATE_INVALID.getCode()).isEqualTo(40108);
 
         assertThat(ErrorCode.BALANCE_NOT_ENOUGH.getCode()).isEqualTo(40103);
         assertThat(ErrorCode.SELF_REVIEW_NOT_ALLOWED.getCode()).isEqualTo(40104);

@@ -1,5 +1,7 @@
 package com.just.critter.domain.statemachine;
 
+import com.just.critter.domain.enums.AnimalEvent;
+import com.just.critter.domain.enums.AnimalStatus;
 import com.just.critter.domain.enums.Role;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
@@ -7,10 +9,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 /**
  * 验收标准（概要设计 §3 决策一）：状态迁移表驱动，业务只发事件；
@@ -50,6 +54,48 @@ class StateMachineTest {
                     assertThat(transition.getAllowedEvents()).isEqualTo(List.of(Event.GO));
                     assertThat(transition.getMessage()).contains("A");
                 });
+    }
+
+    @Test
+    @DisplayName("非法迁移：message 用中文状态与事件名，data 带允许的目标状态")
+    void illegal_transition_returns_chinese_message_and_targets() {
+        StateTransitionException ex = catchThrowableOfType(
+                () -> StateMachines.animal().fire(AnimalStatus.ON_CAMPUS, AnimalEvent.SEND_TO_HOSPITAL,
+                        TransitionContext.of(Role.ANIMAL_ADMIN)),
+                StateTransitionException.class);
+
+        Map<?, ?> data = (Map<?, ?>) ex.getData();
+        assertThat(data.get("current")).isEqualTo("ON_CAMPUS");
+        assertThat(data.get("target")).isNull();
+        assertThat(data.get("allowed")).isEqualTo(
+                List.of("TREATING", "ADOPTED", "MISSING", "DECEASED"));
+        assertThat(ex.getMessage())
+                .contains("在校园活动", "送医并登记就诊记录", "治疗中")
+                .doesNotContain("ON_CAMPUS", "SEND_TO_HOSPITAL");
+    }
+
+    @Test
+    @DisplayName("非法迁移：终态没有可选目标，data.allowed 为空")
+    void terminal_state_has_empty_allowed() {
+        StateTransitionException ex = catchThrowableOfType(
+                () -> StateMachines.animal().fire(AnimalStatus.DECEASED, AnimalEvent.CONFIRM_DEATH,
+                        TransitionContext.of(Role.ANIMAL_ADMIN)),
+                StateTransitionException.class);
+
+        assertThat((List<?>) ((Map<?, ?>) ex.getData()).get("allowed")).isEmpty();
+        assertThat(ex.getMessage()).contains("已离世", "确认死亡", "无（终态）");
+    }
+
+    @Test
+    @DisplayName("角色不符：data 记录被拒绝的目标状态")
+    void role_denied_reports_target() {
+        StateTransitionException ex = catchThrowableOfType(
+                () -> StateMachines.animal().fire(AnimalStatus.ON_CAMPUS, AnimalEvent.REPORT_ACCEPTED,
+                        TransitionContext.of(Role.STUDENT)),
+                StateTransitionException.class);
+
+        assertThat(((Map<?, ?>) ex.getData()).get("target")).isEqualTo("TREATING");
+        assertThat(ex.getMessage()).contains("治疗中");
     }
 
     @Test

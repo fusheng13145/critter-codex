@@ -30,6 +30,7 @@ import static com.just.critter.domain.enums.AnimalStatus.TO_RELEASE;
 import static com.just.critter.domain.enums.AnimalStatus.TREATING;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 
 /**
  * 验收标准（需求分析说明书 §8.1—§8.5）：四类对象的状态集合与迁移条件逐条落地，
@@ -123,7 +124,7 @@ class StateTablesTest {
     void order_cannot_skip_accept() {
         assertThatThrownBy(() -> orders.fire(OrderStatus.PENDING, OrderEvent.REVISIT_OK, admin()))
                 .isInstanceOf(StateTransitionException.class)
-                .hasMessageContaining("PENDING");
+                .hasMessageContaining("待受理");
     }
 
     @Test
@@ -158,8 +159,27 @@ class StateTablesTest {
     }
 
     @Test
-    @DisplayName("四张迁移表：同状态同事件不得重复定义")
-    void no_duplicate_definition() {
+    @DisplayName("非法迁移按对象族取码：动物 30402、工单 30602、群体 30505、项目 40108")
+    void illegal_code_follows_object_family() {
+        assertThat(catchThrowableOfType(
+                () -> animals.fire(ON_CAMPUS, SEND_TO_HOSPITAL, admin()), StateTransitionException.class).getCode())
+                .isEqualTo(30402);
+        assertThat(catchThrowableOfType(
+                () -> orders.fire(OrderStatus.PENDING, OrderEvent.REVISIT_OK, admin()),
+                StateTransitionException.class).getCode())
+                .isEqualTo(30602);
+        assertThat(catchThrowableOfType(
+                () -> projects.fire(ProjectStatus.DRAFT, ProjectEvent.APPROVE, admin()),
+                StateTransitionException.class).getCode())
+                .isEqualTo(40108);
+        assertThat(catchThrowableOfType(
+                () -> groups.fire(GroupStatus.GONE, GroupEvent.CONFIRM_GONE, admin()),
+                StateTransitionException.class).getCode())
+                .isEqualTo(30505);
+    }
+
+    @Test
+    @DisplayName("四张迁移表：同状态同事件不得重复定义")    void no_duplicate_definition() {
         assertThat(animals.transitions()).isNotEmpty();
         assertThat(orders.transitions()).isNotEmpty();
         assertThat(projects.transitions()).isNotEmpty();

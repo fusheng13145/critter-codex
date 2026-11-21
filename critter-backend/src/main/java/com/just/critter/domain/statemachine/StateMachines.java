@@ -107,7 +107,7 @@ public final class StateMachines {
         list.add(project(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_REACHED, ProjectStatus.PENDING_SETTLE));
         list.add(project(ProjectStatus.FUNDING, ProjectEvent.DEADLINE_MISSED, ProjectStatus.ENDED));
         list.add(project(ProjectStatus.PENDING_SETTLE, ProjectEvent.SETTLE, ProjectStatus.SETTLED));
-        return new StateMachine<>(ErrorCode.STATE_TRANSITION_INVALID, list, EnumSet.allOf(ProjectStatus.class));
+        return new StateMachine<>(ErrorCode.PROJECT_STATE_INVALID, list, EnumSet.allOf(ProjectStatus.class));
     }
 
     private static Transition<ProjectStatus, ProjectEvent> project(
@@ -123,6 +123,6 @@ public final class StateMachines {
                 ADMIN, null));
         list.add(new Transition<>(GroupStatus.UNCONFIRMED, GroupEvent.CONFIRM_GONE, GroupStatus.GONE, ADMIN, null));
         list.add(new Transition<>(GroupStatus.GONE, GroupEvent.SIGHTING_CONFIRMED, GroupStatus.ACTIVE, ADMIN, null));
-        return new StateMachine<>(ErrorCode.STATE_TRANSITION_INVALID, list, EnumSet.allOf(GroupStatus.class));
+        return new StateMachine<>(ErrorCode.GROUP_STATE_INVALID, list, EnumSet.allOf(GroupStatus.class));
     }
 }

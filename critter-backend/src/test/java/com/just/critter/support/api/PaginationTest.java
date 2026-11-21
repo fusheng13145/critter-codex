@@ -51,6 +51,19 @@ class PaginationTest {
     }
 
     @Test
+    @DisplayName("排序参数按 field,asc|desc 解析，非法值不生效")
+    void parses_sort_parameter() {
+        assertThat(new PageQuery(1, 20, "createdAt,desc").sortField()).isEqualTo("createdAt");
+        assertThat(new PageQuery(1, 20, "createdAt,desc").sortAscending()).isFalse();
+        assertThat(new PageQuery(1, 20, "code").sortField()).isEqualTo("code");
+        assertThat(new PageQuery(1, 20, "code").sortAscending()).isTrue();
+        assertThat(new PageQuery(1, 20, "code,ASC").sortAscending()).isTrue();
+        assertThat(new PageQuery(1, 20, "code;drop table").sortField()).isNull();
+        assertThat(new PageQuery(1, 20, "").sortField()).isNull();
+        assertThat(new PageQuery(1, 20, "createdAt,desc").normalized().sortField()).isEqualTo("createdAt");
+    }
+
+    @Test
     @DisplayName("空结果总页数为 0 而不是 1")
     void empty_total_has_zero_pages() {
         PageResult<String> result = PageResult.of(List.of(), 1, 20, 0);

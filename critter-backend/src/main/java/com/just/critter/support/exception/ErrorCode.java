@@ -47,6 +47,7 @@ public enum ErrorCode {
     GROUP_CANNOT_BUILD_ANIMAL(30502, "群体不可建个体档案"),
     WILDLIFE_FORBIDDEN(30503, "大型野生动物请勿自行处置，请联系后勤"),
     SIZE_RANGE_INVALID(30504, "规模区间非法"),
+    GROUP_STATE_INVALID(30505, "群体状态非法"),
 
     SURGERY_PHOTO_MISSING(30601, "缺少术前照片"),
     ORDER_STATE_INVALID(30602, "工单状态非法"),
@@ -59,6 +60,7 @@ public enum ErrorCode {
     UNREVIEWED_EXPENSE_EXISTS(40105, "存在未复核支出，无法结项"),
     DONATION_NOT_VERIFIED(40106, "未入账不得计入进度"),
     FUND_RECORD_NOT_DELETABLE(40107, "资金记录不可删除"),
+    PROJECT_STATE_INVALID(40108, "项目状态非法"),
 
     SYSTEM_ERROR(50001, "系统繁忙，请稍后重试"),
     CONCURRENT_CONFLICT(50002, "数据已被他人修改，请刷新后重试"),

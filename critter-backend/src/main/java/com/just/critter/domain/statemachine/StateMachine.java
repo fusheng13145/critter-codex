@@ -57,10 +57,11 @@ public class StateMachine<S, E> {
                 .filter(item -> item.event().equals(event))
                 .findFirst()
                 .orElseThrow(() -> new StateTransitionException(
-                        illegalCode, current, event, allowedEvents(current)));
+                        illegalCode, current, null, event, allowedTargets(current), allowedEvents(current)));
 
         if (!transition.allows(context.getRole())) {
-            throw new StateTransitionException(illegalCode, current, event, allowedEvents(current));
+            throw new StateTransitionException(illegalCode, current, transition.to(), event,
+                    allowedTargets(current), allowedEvents(current));
         }
         if (transition.hasPrecondition()) {
             transition.precondition().check(context);
@@ -70,6 +71,11 @@ public class StateMachine<S, E> {
 
     public List<E> allowedEvents(S current) {
         return byFrom.getOrDefault(current, List.of()).stream().map(Transition::event).toList();
+    }
+
+    /** 允许的目标状态：前端据此禁用状态按钮（接口设计说明书 §7.4）。 */
+    public List<S> allowedTargets(S current) {
+        return byFrom.getOrDefault(current, List.of()).stream().map(Transition::to).toList();
     }
 
     public boolean isTerminal(S state) {
