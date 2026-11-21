@@ -14,4 +14,11 @@ public interface ProjectMapper extends BaseMapper<Project> {
 
     @Select("SELECT * FROM project WHERE project_no = #{projectNo} AND deleted = 0 LIMIT 1")
     Project selectByProjectNo(@Param("projectNo") String projectNo);
+
+    /**
+     * 核对入账时锁项目行，保证 raised_amount 只由已入账捐赠递增；
+     * 与 T3.2 支出登记共用同一把项目行锁。
+     */
+    @Select("SELECT * FROM project WHERE id = #{id} AND deleted = 0 FOR UPDATE")
+    Project selectByIdForUpdate(@Param("id") Long id);
 }

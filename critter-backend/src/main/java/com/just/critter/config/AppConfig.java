@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerIntercept
 import com.just.critter.domain.archive.AnimalCodeGenerator;
 import com.just.critter.domain.archive.GroupCodeGenerator;
 import com.just.critter.domain.archive.SequencePort;
+import com.just.critter.domain.fund.DonationCodeGenerator;
 import com.just.critter.domain.fund.ProjectCodeGenerator;
 import com.just.critter.domain.rescue.OrderCodeGenerator;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
@@ -53,6 +54,11 @@ public class AppConfig {
     @Bean
     public ProjectCodeGenerator projectCodeGenerator(SequencePort sequences, Clock clock) {
         return new ProjectCodeGenerator(sequences, clock);
+    }
+
+    @Bean
+    public DonationCodeGenerator donationCodeGenerator(SequencePort sequences, Clock clock) {
+        return new DonationCodeGenerator(sequences, clock);
     }
 
     @Bean
