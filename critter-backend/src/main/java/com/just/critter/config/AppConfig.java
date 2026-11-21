@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.just.critter.domain.archive.AnimalCodeGenerator;
+import com.just.critter.domain.archive.GroupCodeGenerator;
 import com.just.critter.domain.archive.SequencePort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +30,11 @@ public class AppConfig {
     @Bean
     public AnimalCodeGenerator animalCodeGenerator(SequencePort sequences, Clock clock) {
         return new AnimalCodeGenerator(sequences, clock);
+    }
+
+    @Bean
+    public GroupCodeGenerator groupCodeGenerator(SequencePort sequences, Clock clock) {
+        return new GroupCodeGenerator(sequences, clock);
     }
 
     @Bean
