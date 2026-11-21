@@ -1,4 +1,4 @@
-package com.just.critter.controller;
+package com.just.critter.controller.stats;
 
 import com.just.critter.controller.dto.ExportDtos;
 import com.just.critter.service.stats.StatsExportService;

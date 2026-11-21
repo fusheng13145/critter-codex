@@ -1,4 +1,4 @@
-package com.just.critter.controller;
+package com.just.critter.controller.identity;
 
 import com.just.critter.controller.dto.DictDtos;
 import com.just.critter.service.support.DictService;
