@@ -266,11 +266,14 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T0.4 枚举常量与字典种子 | 完成 | 新增 `Gender`/`ReportType`/`DonationStatus`/`ExpenseStatus`/`OccurrenceScale`/`HealthType`；`V2__seed_reference_data.sql` 落 48 条字典、10 物种、3 示例医院、12 点位；`DomainEnumCatalogTest` 6 例、`SeedReferenceDataIT` 4/4 |
 | T1.1 编号器 / T1.3 状态机 | 完成 | `AnimalCodeGeneratorTest` 5 例、状态机 25 例；真库发号走 `seq_no` 行锁 |
 | T1.2 档案 CRUD | 完成（一期） | `POST/GET/PUT /animals`、`GET /animals/{code}/history`；建档发号、五条件筛选、编辑留痕、公开详情裁剪；`AnimalServiceTest` 8 例、`AnimalControllerTest` 5 例、`AnimalArchiveIT` 3 例 |
+| T1.4 健康与防疫 | 完成（一期） | `GET/POST /animals/{code}/health`；记录日期不早于建档日、计划日期不早于记录日、疫苗三天内到期提醒；`HealthServiceTest` 6 例、`HealthControllerTest` 4 例、`HealthRecordIT` 2 例 |
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
 
-测试基线：`mvn -B test` **82 例全绿**；真库测试另计 12 例（结构 5 + 种子 4 + 档案 3），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。
+测试基线：`mvn -B test` **92 例全绿**；真库测试另计 14 例（结构 5 + 种子 4 + 档案 3 + 健康 2），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。
 
 T1.2 遗留：`X-User-Id` / `X-Debug-Role` 只是占位，等 A 的令牌与角色落地后换成 `@AuthenticationPrincipal`；`GET /animals/{code}/history` 目前未做管理员拦截，联调前必须补；`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
+
+T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNext` 供前端角标，真正投递站内消息要等 C 的消息通道（`POST /messages` 或事件订阅），B 不直接写 `message` 表；`GET /animals/{code}/health` 登录可见、`POST` 管理员，鉴权落地前同 T1.2 占位。
 
 Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1+V2），`critter_ro@localhost` 只读，详见《联调环境说明》。
 
