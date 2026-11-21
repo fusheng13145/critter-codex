@@ -10,10 +10,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,35 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.flyway.enabled=true"
 })
 @EnabledIfEnvironmentVariable(named = "CRITTER_MYSQL_IT", matches = "true")
-class MySqlSchemaIT {
-
-    private static final String TEST_DATABASE = "critter_codex_it";
-
-    static {
-        if ("true".equals(System.getenv("CRITTER_MYSQL_IT"))) {
-            resetTestDatabase();
-        }
-    }
-
-    /**
-     * 迁移脚本会被并行分支重命名/重编号，历史测试库的校验和必然过期。
-     * 每次 IT 从空库执行全部迁移，保证验证的是当前脚本，而不是旧库残留。
-     */
-    private static void resetTestDatabase() {
-        if (!TEST_DATABASE.endsWith("_it")) {
-            throw new IllegalStateException("拒绝重建非测试库：" + TEST_DATABASE);
-        }
-        String user = System.getenv().getOrDefault("CRITTER_MYSQL_USER", "root");
-        String password = System.getenv().getOrDefault("CRITTER_MYSQL_PASSWORD", "");
-        String url = "jdbc:mysql://127.0.0.1:3306/?useUnicode=true&characterEncoding=utf8"
-                + "&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true";
-        try (Connection connection = DriverManager.getConnection(url, user, password);
-             Statement statement = connection.createStatement()) {
-            statement.execute("DROP DATABASE IF EXISTS " + TEST_DATABASE);
-        } catch (SQLException ex) {
-            throw new IllegalStateException("重建 MySQL 测试库失败", ex);
-        }
-    }
+class MySqlSchemaIT extends MySqlIntegrationTestSupport {
 
     private static final List<String> TABLES = List.of(
             "sys_user", "sys_role", "sys_user_role", "sys_permission", "sys_dict", "sys_file", "sys_log",
@@ -75,7 +43,6 @@ class MySqlSchemaIT {
             "report", "rescue_order", "visit", "tnr_task",
             "volunteer", "task", "task_signup",
             "notice", "message", "comment", "follow",
-            "sys_appeal", "sys_role_permission",
             "seq_no");
 
     @Autowired

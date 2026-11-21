@@ -35,17 +35,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 默认跳过；需要真库时设 CRITTER_MYSQL_IT=true 运行。
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex"
+        "spring.datasource.url=jdbc:mysql://127.0.0.1:3306/critter_codex_it"
                 + "?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8"
                 + "&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true",
-        "spring.datasource.username=root",
-        "spring.datasource.password=1234",
+        "spring.datasource.username=${CRITTER_MYSQL_USER:root}",
+        "spring.datasource.password=${CRITTER_MYSQL_PASSWORD:}",
         "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver",
         "spring.flyway.enabled=true"
 })
 @EnabledIfEnvironmentVariable(named = "CRITTER_MYSQL_IT", matches = "true")
 @Transactional
-class ReportIT {
+class ReportIT extends MySqlIntegrationTestSupport {
 
     @Autowired
     private ReportService reportService;
