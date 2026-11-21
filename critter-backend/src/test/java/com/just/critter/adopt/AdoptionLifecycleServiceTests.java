@@ -8,6 +8,9 @@ import com.just.critter.adopt.repository.AdoptionRepository;
 import com.just.critter.adopt.service.AdoptionLifecycleService;
 import com.just.critter.adopt.service.AdoptionTermination;
 import com.just.critter.adopt.service.TerminatedAdoption;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,13 +43,15 @@ class AdoptionLifecycleServiceTests {
 
     private AdoptionRepository adoptions;
     private AdoptableAnimalRepository animals;
+    private MessageRepository messages;
     private AdoptionLifecycleService service;
 
     @BeforeEach
     void setUp() {
         adoptions = mock(AdoptionRepository.class);
         animals = mock(AdoptableAnimalRepository.class);
-        service = new AdoptionLifecycleService(adoptions, animals, CLOCK);
+        messages = mock(MessageRepository.class);
+        service = new AdoptionLifecycleService(adoptions, animals, messages, CLOCK);
     }
 
     @Test
@@ -56,6 +61,7 @@ class AdoptionLifecycleServiceTests {
                 .thenReturn(Optional.of(record(AdoptionStatus.ACTIVE)));
         when(adoptions.terminate(any())).thenReturn(1);
         when(animals.markOnCampus(ANIMAL_ID)).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         TerminatedAdoption result = service.terminate(ADOPTION_NO, "认养人申请终止");
 
@@ -69,6 +75,12 @@ class AdoptionLifecycleServiceTests {
         assertThat(captor.getValue().reason()).isEqualTo("认养人申请终止");
         assertThat(captor.getValue().endDate()).isEqualTo(LocalDate.of(2026, 11, 21));
         verify(animals).markOnCampus(ANIMAL_ID);
+        ArgumentCaptor<MessageWrite> notice = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(notice.capture());
+        assertThat(notice.getValue().receiverId()).isEqualTo(1001L);
+        assertThat(notice.getValue().type()).isEqualTo(MessageType.APPROVAL_RESULT.name());
+        assertThat(notice.getValue().title()).contains("终止").contains("认养人申请终止");
+        assertThat(notice.getValue().bizId()).isEqualTo(ADOPTION_NO);
     }
 
     @Test

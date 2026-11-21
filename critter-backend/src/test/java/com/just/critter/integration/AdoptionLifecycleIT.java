@@ -83,6 +83,12 @@ class AdoptionLifecycleIT extends MySqlIntegrationTestSupport {
                 .isEqualTo("ADOPTED");
         assertThat(jdbc.queryForObject(
                 "SELECT adopted FROM animal WHERE id = ?", Integer.class, fixture.animalId)).isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM message WHERE receiver_id = ? AND type = 'APPROVAL_RESULT'",
+                Integer.class, fixture.userId)).isEqualTo(2);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM message WHERE receiver_id = ? AND biz_id = ?",
+                Integer.class, fixture.userId, fixture.adoptionNo)).isEqualTo(2);
 
         var detail = queryService.detail(fixture.adoptionNo, fixture.userId, false);
         assertThat(detail.status()).isEqualTo(AdoptionStatus.ACTIVE);
@@ -113,6 +119,12 @@ class AdoptionLifecycleIT extends MySqlIntegrationTestSupport {
                 .isEqualTo("ON_CAMPUS");
         assertThat(jdbc.queryForObject(
                 "SELECT adopted FROM animal WHERE id = ?", Integer.class, fixture.animalId)).isZero();
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM message WHERE receiver_id = ? AND biz_id = ?",
+                Integer.class, fixture.userId, fixture.adoptionNo)).isEqualTo(3);
+        assertThat(jdbc.queryForObject(
+                "SELECT title FROM message WHERE receiver_id = ? AND biz_id = ? ORDER BY id DESC LIMIT 1",
+                String.class, fixture.userId, fixture.adoptionNo)).contains("终止");
         assertThat(queryService.certificate(fixture.adoptionNo, fixture.userId, false).certificateNo())
                 .startsWith("QYWL-AD-2026-");
     }

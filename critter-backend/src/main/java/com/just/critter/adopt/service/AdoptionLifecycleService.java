@@ -4,6 +4,9 @@ import com.just.critter.adopt.domain.AdoptionRecord;
 import com.just.critter.adopt.domain.AdoptionStatus;
 import com.just.critter.adopt.repository.AdoptableAnimalRepository;
 import com.just.critter.adopt.repository.AdoptionRepository;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import org.springframework.stereotype.Service;
@@ -24,13 +27,16 @@ public class AdoptionLifecycleService {
 
     private final AdoptionRepository adoptions;
     private final AdoptableAnimalRepository animals;
+    private final MessageRepository messages;
     private final Clock clock;
 
     public AdoptionLifecycleService(AdoptionRepository adoptions,
                                     AdoptableAnimalRepository animals,
+                                    MessageRepository messages,
                                     Clock clock) {
         this.adoptions = adoptions;
         this.animals = animals;
+        this.messages = messages;
         this.clock = clock;
     }
 
@@ -62,6 +68,15 @@ public class AdoptionLifecycleService {
         if (animalRows != 1) {
             throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT,
                     Map.of("animalCode", record.animalCode()));
+        }
+
+        int messageRows = messages.insert(new MessageWrite(
+                record.userId(), MessageType.APPROVAL_RESULT.name(),
+                "认养关系已终止：" + trimmedReason,
+                "ADOPTION", adoptionNo, null, now));
+        if (messageRows != 1) {
+            throw new BusinessException(ErrorCode.CONCURRENT_CONFLICT,
+                    Map.of("adoptionNo", adoptionNo));
         }
 
         return new TerminatedAdoption(adoptionNo, AdoptionStatus.TERMINATED, today, "ON_CAMPUS");

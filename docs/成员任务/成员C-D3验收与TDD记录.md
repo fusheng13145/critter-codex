@@ -153,6 +153,41 @@
 - 完整套件 309/309 通过，0 失败、0 错误、0 跳过；其中单元 / 控制器测试 278 例、真实 MySQL IT 31 例。
 - 新增 `AdoptionLifecycleIT` 2/2，覆盖审核 → 入账 → ACTIVE → 详情 / 我的 / 管理员列表 → 终止 → 证书。
 - 前端 `npm ci` 后 `npm run build` 通过（`vue-tsc` 类型检查 + Vite 构建）；chunk 体积告警不影响功能。
-- 仍未完成：消息中心通知落库、到期自动提醒 / 释放、PDF 服务端直接输出；证书当前由前端打印生成 PDF。
+- 仍未完成：到期自动提醒 / 释放、PDF 服务端直接输出；证书当前由前端打印生成 PDF。
 - 第四轮提交 `125a43c` 已推送至 `origin/feature/d3-adoption`，并创建 PR #9：https://github.com/fusheng13145/critter-codex/pull/9 。
+
+## 第五轮：消息中心与认养通知（2026-11-21）
+
+### 验收标准
+
+- `GET /messages` 只返回 Bearer 当前用户的消息，支持 `readFlag/type/page/size`；类型非法返回 30303。
+- `GET /messages/unread` 固定返回认养到期、募捐进度、工单进展、审批结果四个计数，缺失类型补 0。
+- `PUT /messages/read` 支持批量编号；不存在或不属于当前用户的消息逐条返回 30410，其余照常成功；空编号返回 30301。
+- 消息列表、未读统计与筛选统一只在最近 180 天内生效。
+- 认养审核通过/驳回、缴费入账、终止均在同一事务内为申请人写入 `APPROVAL_RESULT` 消息；消息写入失败返回 50002 并回滚。
+- 前端 `/messages` 展示四类未读卡片、类型/已读筛选、分页、批量已读与业务详情跳转，构建必须通过。
+
+### RED
+
+- 先新增 `MessageQueryServiceTests`（4）、`MessageReadServiceTests`（5）、`MessageControllerTests`（4），并改造审核/缴费/终止测试断言通知落库。
+- 首次运行因 `com.just.critter.message.repository`、`message.service` 包与 `MessageRepository` 等类型不存在而编译失败，确认 RED。
+- 真库 `MessageIT` 首次运行暴露 `message.type VARCHAR(16)` 无法容纳 17 字符的 `DONATION_PROGRESS`；随后动态 SQL 中 `&gt;=` 被当作字面量，MySQL 报语法错误。
+
+### GREEN 与重构
+
+- 新增 `MessageEntity/MessageRow/MessageTypeCountRow`、`MessageMapper`、`MyBatisMessageRepository`。
+- 新增 `MessageQueryService`、`MessageReadService`、`MessageController` 与请求 / 响应模型；列表与计数共用 180 天窗口。
+- 新增 V14，将 `message.type` 调整为 `VARCHAR(24)`；Mapper 动态 SQL 改用原生 `>=`。
+- 审核、缴费、终止服务注入 `MessageRepository`，在业务更新之后写消息；写入 0 行抛 50002，保证同事务。
+- 前端新增 `api/messages.ts`、`MessageView.vue`，`/messages` 路由由占位页切换为实际页面；消息类型与标签进入 `types.ts` / `format.ts`。
+- 补 `MessageIT`：真实 MySQL 验证 180 天窗口、未读分组、部分成功批量已读；`AdoptionLifecycleIT` 增加 2 条（审核+入账）与终止后共 3 条通知断言。
+
+### 测试结果
+
+- 消息新增测试 13 例；连同受影响的审核 / 缴费 / 终止测试，相关测试 32/32 通过。
+- 完整套件 323/323 通过，0 失败、0 错误、0 跳过；其中单元 / 控制器 291 例、真实 MySQL IT 32 例。
+- `MessageIT` 1/1、`AdoptionLifecycleIT` 2/2 通过。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite）；仅有 chunk 体积告警。
+- 仍未完成：认养到期自动提醒 / 释放、B 域募捐与工单事件通知、服务端直接输出 PDF 证书。
+- 第五轮提交 `af329a7` 已推送至 `origin/feature/d3-messages`，并创建 PR #10：https://github.com/fusheng13145/critter-codex/pull/10 。
 

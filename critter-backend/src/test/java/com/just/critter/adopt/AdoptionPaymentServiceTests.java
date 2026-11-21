@@ -13,6 +13,9 @@ import com.just.critter.adopt.service.AdoptionPaymentService;
 import com.just.critter.adopt.service.AdoptionPaymentWrite;
 import com.just.critter.domain.archive.SequencePort;
 import com.just.critter.domain.enums.AnimalStatus;
+import com.just.critter.message.repository.MessageRepository;
+import com.just.critter.message.service.MessageType;
+import com.just.critter.message.service.MessageWrite;
 import com.just.critter.support.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,6 +54,7 @@ class AdoptionPaymentServiceTests {
     private AdoptionRepository adoptions;
     private AdoptableAnimalRepository animals;
     private SequencePort sequences;
+    private MessageRepository messages;
     private AdoptionPaymentService service;
 
     @BeforeEach
@@ -58,7 +62,8 @@ class AdoptionPaymentServiceTests {
         adoptions = mock(AdoptionRepository.class);
         animals = mock(AdoptableAnimalRepository.class);
         sequences = mock(SequencePort.class);
-        service = new AdoptionPaymentService(adoptions, animals, sequences, CLOCK);
+        messages = mock(MessageRepository.class);
+        service = new AdoptionPaymentService(adoptions, animals, sequences, messages, CLOCK);
     }
 
     @Test
@@ -74,6 +79,7 @@ class AdoptionPaymentServiceTests {
         when(adoptions.insertPayment(any())).thenReturn(1);
         when(adoptions.activate(any())).thenReturn(1);
         when(animals.markAdopted(ANIMAL_ID)).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         AdoptionPaymentResult result = service.pay(ADOPTION_NO,
                 new AdoptionPaymentCommand(3000,
@@ -99,6 +105,13 @@ class AdoptionPaymentServiceTests {
         assertThat(activation.getValue().endDate()).isEqualTo(LocalDate.of(2026, 12, 21));
         assertThat(activation.getValue().certificateNo()).isEqualTo("QYWL-AD-2026-0031");
         verify(animals).markAdopted(ANIMAL_ID);
+        ArgumentCaptor<MessageWrite> notice = ArgumentCaptor.forClass(MessageWrite.class);
+        verify(messages).insert(notice.capture());
+        assertThat(notice.getValue().receiverId()).isEqualTo(1001L);
+        assertThat(notice.getValue().type()).isEqualTo(MessageType.APPROVAL_RESULT.name());
+        assertThat(notice.getValue().title()).contains("入账");
+        assertThat(notice.getValue().bizType()).isEqualTo("ADOPTION");
+        assertThat(notice.getValue().bizId()).isEqualTo(ADOPTION_NO);
     }
 
     @Test
@@ -113,6 +126,7 @@ class AdoptionPaymentServiceTests {
         when(adoptions.insertPayment(any())).thenReturn(1);
         when(adoptions.activate(any())).thenReturn(1);
         when(animals.markAdopted(ANIMAL_ID)).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         AdoptionPaymentResult result = service.pay(ADOPTION_NO,
                 new AdoptionPaymentCommand(8000,
@@ -156,6 +170,7 @@ class AdoptionPaymentServiceTests {
         when(adoptions.insertPayment(any())).thenReturn(1);
         when(adoptions.activate(any())).thenReturn(1);
         when(animals.markAdopted(ANIMAL_ID)).thenReturn(1);
+        when(messages.insert(any())).thenReturn(1);
 
         service.pay(ADOPTION_NO,
                 new AdoptionPaymentCommand(2800,
