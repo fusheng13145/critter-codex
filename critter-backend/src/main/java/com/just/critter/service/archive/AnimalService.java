@@ -11,6 +11,7 @@ import com.just.critter.domain.enums.Gender;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.AnimalChangeLog;
 import com.just.critter.domain.model.BasePoint;
+import com.just.critter.domain.statemachine.StateMachines;
 import com.just.critter.mapper.AnimalChangeLogMapper;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
@@ -330,6 +331,7 @@ public class AnimalService {
                 animal.getFeatures(),
                 point == null ? null : new PointRef(point.getId(), point.getPointName()),
                 animal.getStatus(),
+                animal.getStatus() == null ? List.of() : StateMachines.animal().allowedTargets(animal.getStatus()),
                 Boolean.TRUE.equals(animal.getNeutered()),
                 animal.getNeuteredAt(),
                 Boolean.TRUE.equals(animal.getAdopted()),

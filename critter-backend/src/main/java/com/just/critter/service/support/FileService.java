@@ -52,7 +52,7 @@ public class FileService {
             "jpg", "image/jpeg", "jpeg", "image/jpeg", "png", "image/png",
             "webp", "image/webp", "pdf", "application/pdf");
     private static final Set<String> ALLOWED_BIZ_TYPES = Set.of(
-            "AVATAR", "ANIMAL_PUBLIC", "PROJECT_COVER", "EXPENSE_VOUCHER",
+            "AVATAR", "ANIMAL_PUBLIC", "PROJECT_COVER", "PROJECT_SETTLEMENT", "EXPENSE_VOUCHER",
             "ADOPTION_VOUCHER", "REPORT_PHOTO", "VISIT_PHOTO", "GENERAL");
     /** 这几类要审核通过才能在公开页出现 */
     private static final Set<String> AUDIT_REQUIRED = Set.of("ANIMAL_PUBLIC", "PROJECT_COVER");
@@ -144,12 +144,13 @@ public class FileService {
     }
 
     /**
-     * 读取文件内容。公开页照片（ANIMAL_PUBLIC 且已审核）允许匿名访问，
+     * 读取文件内容。公开页照片（ANIMAL_PUBLIC 且已审核）与结项公示附件允许匿名访问，
      * 票据、上报照片等必须登录——content 接口在拦截器白名单里，这里补上第二道判断。
      */
     public Loaded load(String fileId) {
         SysFile row = requireFile(fileId);
-        boolean publicVisible = "ANIMAL_PUBLIC".equals(row.getBizType()) && "PASSED".equals(row.getAuditStatus());
+        boolean publicVisible = ("ANIMAL_PUBLIC".equals(row.getBizType()) && "PASSED".equals(row.getAuditStatus()))
+                || "PROJECT_SETTLEMENT".equals(row.getBizType());
         if (!publicVisible && AuthContext.get() == null) {
             throw new BusinessException(ErrorCode.NOT_LOGGED_IN);
         }

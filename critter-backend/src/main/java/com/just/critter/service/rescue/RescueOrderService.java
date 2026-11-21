@@ -73,35 +73,71 @@ public class RescueOrderService {
         LocalDateTime now = LocalDateTime.now(clock).withNano(0);
         LocalDateTime deadlineAt = report.getCreatedAt() == null
                 ? now.plusHours(DEDUP_HOURS) : report.getCreatedAt().plusHours(DEDUP_HOURS);
-        OrderStatus target = StateMachines.order().fire(OrderStatus.PENDING, OrderEvent.ACCEPT,
-                TransitionContext.of(roleOf(actor)));
-        if (target != OrderStatus.PROCESSING) {
-            throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "工单受理状态非法");
+
+        Order existing = orders.selectOne(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                .eq(Order::getReportId, report.getId())
+                .orderByDesc(Order::getCreatedAt)
+                .last("LIMIT 1"));
+        Order order;
+        OrderStatus before;
+        if (existing != null) {
+            before = existing.getStatus();
+            if (before != OrderStatus.PENDING && before != OrderStatus.TIMEOUT) {
+                throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "上报关联工单已受理，不可重复生成");
+            }
+            OrderStatus target = StateMachines.order().fire(before, OrderEvent.ACCEPT,
+                    TransitionContext.of(roleOf(actor)));
+            order = existing;
+            order.setAnimalId(animalId);
+            order.setAcceptorId(actor.id());
+            order.setHandlerId(handlerId);
+            order.setAcceptedAt(now);
+            order.setStatus(target);
+            order.setUpdatedAt(now);
+            if (note != null) {
+                order.setDisposeNote(note);
+            }
+            int updated = orders.update(order, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                    .eq(Order::getId, existing.getId())
+                    .eq(Order::getStatus, before));
+            if (updated == 0) {
+                throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "工单状态已变化，请刷新后重试");
+            }
+            deadlineAt = order.getDeadlineAt() == null ? deadlineAt : order.getDeadlineAt();
+        } else {
+            before = OrderStatus.PENDING;
+            OrderStatus target = StateMachines.order().fire(before, OrderEvent.ACCEPT,
+                    TransitionContext.of(roleOf(actor)));
+            order = new Order();
+            order.setOrderNo(codeGenerator.next());
+            order.setReportId(report.getId());
+            order.setAnimalId(animalId);
+            order.setType(report.getType());
+            order.setAcceptorId(actor.id());
+            order.setHandlerId(handlerId);
+            order.setDeadlineAt(deadlineAt);
+            order.setAcceptedAt(now);
+            order.setStatus(target);
+            order.setDisposeNote(note);
+            order.setCreatedAt(now);
+            order.setUpdatedAt(now);
+            order.setCreatedBy(actor.id());
+            orders.insert(order);
         }
 
-        Order order = new Order();
-        order.setOrderNo(codeGenerator.next());
-        order.setReportId(report.getId());
-        order.setAnimalId(animalId);
-        order.setType(report.getType());
-        order.setAcceptorId(actor.id());
-        order.setHandlerId(handlerId);
-        order.setDeadlineAt(deadlineAt);
-        order.setAcceptedAt(now);
-        order.setStatus(target);
-        order.setDisposeNote(note);
-        order.setCreatedAt(now);
-        order.setUpdatedAt(now);
-        order.setCreatedBy(actor.id());
-        orders.insert(order);
-
         report.setStatus(ReportStatus.PROCESSING);
+        report.setAnimalId(animalId);
         report.setUpdatedAt(now);
-        reports.updateById(report);
+        int reportUpdated = reports.update(report, new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Report>()
+                .eq(Report::getId, report.getId())
+                .eq(Report::getStatus, ReportStatus.PENDING));
+        if (reportUpdated == 0) {
+            throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "上报已被其他管理员受理，请刷新后重试");
+        }
 
         auditLog.success("REPORT_ACCEPT", "RESCUE_ORDER", order.getOrderNo(),
-                Map.of("reportNo", report.getReportNo(), "status", ReportStatus.PENDING.name()),
-                Map.of("orderNo", order.getOrderNo(), "status", ReportStatus.PROCESSING.name(),
+                Map.of("reportNo", report.getReportNo(), "status", before.name()),
+                Map.of("orderNo", order.getOrderNo(), "status", order.getStatus().name(),
                         "handlerId", String.valueOf(handlerId)));
         return new AcceptedReport(order.getOrderNo(), report.getReportNo(), report.getStatus(),
                 order.getStatus(), toOffset(deadlineAt));

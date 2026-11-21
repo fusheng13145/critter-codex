@@ -134,6 +134,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '项目详情', menu: 'fund', owner: 'B' },
       },
       {
+        path: 'projects/:id/settlement',
+        name: 'project-settlement',
+        component: () => import('@/views/fund/SettlementView.vue'),
+        meta: { title: '结项公示', menu: 'fund', owner: 'B' },
+      },
+      {
         path: 'ledger',
         name: 'ledger',
         component: () => import('@/views/fund/LedgerView.vue'),

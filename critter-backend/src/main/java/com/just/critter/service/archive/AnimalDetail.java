@@ -6,9 +6,11 @@ import com.just.critter.domain.enums.AnimalStatus;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /**
  * 档案详情。internalNote 仅管理员视图返回，公开视图序列化时省略该字段。
+ * allowedStatuses 是状态机允许的目标状态，前端据此渲染迁移按钮。
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record AnimalDetail(
@@ -21,6 +23,7 @@ public record AnimalDetail(
         String features,
         PointRef point,
         AnimalStatus status,
+        List<AnimalStatus> allowedStatuses,
         boolean neutered,
         LocalDate neuteredAt,
         boolean adopted,

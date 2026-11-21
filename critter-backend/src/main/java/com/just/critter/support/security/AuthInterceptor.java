@@ -104,7 +104,8 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     /**
-     * 公开只读路径：个体列表/详情、群体列表/详情、物种、点位、出现记录。
+     * 公开只读路径：个体列表/详情、群体列表/详情、物种、点位、出现记录、
+     * 项目列表/详情与结项公示。
      * 用正则限制为"单段编号"，避免把 /health、/history 等登录接口一起放行。
      */
     private boolean isPublicGet(HttpServletRequest request) {
@@ -121,8 +122,11 @@ public class AuthInterceptor implements HandlerInterceptor {
                 || path.equals("/api/v1/species")
                 || path.equals("/api/v1/points")
                 || path.equals("/api/v1/occurrences")
+                || path.equals("/api/v1/projects")
                 || path.matches("^/api/v1/animals/[^/]+$")
-                || path.matches("^/api/v1/groups/[^/]+$");
+                || path.matches("^/api/v1/groups/[^/]+$")
+                || path.matches("^/api/v1/projects/[^/]+$")
+                || path.matches("^/api/v1/projects/[^/]+/settlement$");
     }
 
     private boolean isPublicEndpoint(Object handler) {

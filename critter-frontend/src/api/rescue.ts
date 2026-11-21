@@ -47,6 +47,10 @@ export function fetchReports(params: ReportQuery): Promise<PageData<ReportSummar
   return get<PageData<ReportSummary>>('/reports', params)
 }
 
+export function fetchMyReports(params: { page?: number; size?: number } = {}): Promise<PageData<ReportSummary>> {
+  return get<PageData<ReportSummary>>('/reports/mine', params)
+}
+
 export function fetchReport(id: number): Promise<ReportDetail> {
   return get<ReportDetail>(`/reports/${id}`)
 }

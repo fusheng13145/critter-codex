@@ -272,12 +272,12 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
 | D1 合并集成 | 完成（本地） | 去重 POM/`MybatisPlusInterceptor`；`AuthInterceptor` 增加匿名只读白名单；档案域 4 个控制器改用 `AuthContext` + `@RequireRoles`；迁移统一为 V1→V2 身份→V3 统计→V4 去重→V5 基础数据 |
 | T2.1 学生上报 | 完成（一期；30503 待接口补物种字段） | `POST /reports`：五类枚举、点位、至少 1 张照片、描述 ≥10 字；RP 当日发号、24 小时时限；同点位 24 小时内未关闭上报返回 `duplicated/duplicateOf`；合并 main 后迁移重排为 V8 补 `animal_id/contact`、V9 字典兼容、V10 规范类型归并；`ReportCodeGeneratorTest` 3 例、`ReportServiceTest` 6 例、`ReportControllerTest` 2 例、`ReportIT` 2 例 |
-| T2.2 上报管理与受理 | 完成（一期；工单看板/流转下一轮） | `GET /reports` 状态/类型/点位/时限筛选、`GET /reports/{id}` 联系方式按角色脱敏、`POST /reports/{id}/accept` 生成 PROCESSING 工单、`PUT /reports/{id}/close` 关闭无效上报；工单号 RO 当日发号、状态机 PENDING→PROCESSING、截止时间沿用上报 +24h；`OrderCodeGeneratorTest` 3 例、`RescueOrderServiceTest` 3 例、`ReportServiceTest` 10 例、`ReportControllerTest` 6 例、`ReportIT` 4 例 |
-| T2.3 工单看板与流转 | 完成（超时扫描下一轮） | `GET /orders` 状态/类型/超时筛选、`GET /orders/{no}` 来源上报与 sys_log 时间线、`PUT /orders/{no}/status` 表驱动流转；TIMEOUT 只留给系统任务；处置完成/无法处置/回访正常/回访异常四类事件；`OrderServiceTest` 7 例、`OrderControllerTest` 4 例、`OrderIT` 2 例 |
+| T2.2 上报管理与受理 | 完成（一期；工单看板/流转下一轮） | `GET /reports` 状态/类型/点位/时限筛选、`GET /reports/{id}` 联系方式按角色脱敏、`POST /reports/{id}/accept` 复用上报时生成的 PENDING 工单并按 `ACCEPT` 迁移为 PROCESSING、`PUT /reports/{id}/close` 关闭无效上报；工单号 RO 当日发号、截止时间沿用上报 +24h；`OrderCodeGeneratorTest` 3 例、`RescueOrderServiceTest` 3 例、`ReportServiceTest` 10 例、`ReportControllerTest` 6 例、`ReportIT` 4 例 |
+| T2.3 工单看板与流转 | 完成（含超时扫描） | `GET /orders` 状态/类型/超时筛选、`GET /orders/{no}` 来源上报与 sys_log 时间线、`PUT /orders/{no}/status` 表驱动流转；`OrderTimeoutJob` 每小时扫描 PENDING 且 `deadline_at < now` 的工单，经 `PENDING --TIMEOUT--> TIMEOUT` 条件更新并写 `ORDER_TIMEOUT` 审计，多实例幂等；TIMEOUT 工单仍可被受理并复用为 PROCESSING；`OrderServiceTest` 7 例、`OrderControllerTest` 4 例、`OrderIT` 2 例 |
 | T2.4 项目发起与审核 | 完成（一期） | `POST /projects` 草稿/直接提交、`GET /projects` 公开列表、`GET /projects/{no}` 公开详情、`PUT /projects/{no}` 修改提交、`PUT /projects/{no}/audit` 审核；预算合计 > 目标返回 `40101` 并带差额；公开页只展示 FUNDING 及之后状态；`ProjectCodeGeneratorTest` 2 例、`ProjectServiceTest` 9 例、`ProjectControllerTest` 8 例、`ProjectIT` 4 例；T2.4 说明见 `docs/T2.4-项目发起与审核说明.md` |
 | T3.1 捐赠登记与核对入账 | 完成（一期） | `POST /donations` 登记固定 `PENDING_VERIFY`；`GET /donations` 管理员按状态/项目筛选；`PUT /donations/{no}/confirm` 单笔核对；`PUT /donations/batch` 逐笔独立事务批量核对；金额一致才写 `VERIFIED` 并同事务递增 `project.raised_amount`，金额不符转 `ABNORMAL` 且不动进度；项目已筹与已入账合计不一致返回 `40106`；`DonationCodeGeneratorTest` 2 例、`DonationServiceTest` 10 例、`DonationControllerTest` 5 例、`DonationIT` 6 例；T3.1 说明见 `docs/T3.1-捐赠登记与核对入账说明.md` |
 
-测试基线：`mvn -B test` **251 例全绿**；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。合并最新 main 后迁移为 V1→V12（V11 身份种子、V12 认养备注），本域无新增迁移；本地 `critter_codex` / `critter_codex_dev` 已 repair 并补到 V12。
+测试基线：`mvn -B test` **279 例全绿**（2026-11-21，含本轮新增代码后的全量回归）；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。迁移为 V1→V14（V13 认养生命周期、V14 支出双签约束分阶段），`critter_codex_dev` 已应用至 V14。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
@@ -299,4 +299,50 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 
 剩余待确认：Q-B-01 答辩日期、Q-B-03 人数、Q-B-07 平面图底图、Q-B-09 认养档位、Q-B-10 演示环境、Q-B-11 日志归属、Q-B-12 序列化约定。
 
+## 14 本轮后端闭环完成（2026-11-21）
 
+分支 `feature/b-remaining-p0`（基点 `d595e2e`），目标是把 P0/P1 剩余业务闭环一次补齐，并把前端已建页面接到真实接口。
+
+### 14.1 交付内容
+
+| 闭环 | 后端 | 前端 | 关键规则 |
+|---|---|---|---|
+| 动物状态迁移 | `PUT /animals/{code}/status`、`GET /animals/{code}/status-history`；`AnimalStatusService` 从状态机迁移表反查事件，独立于普通字段编辑；`AnimalDetail.allowedStatuses` | `AnimalStatusDialog.vue`、`AnimalDetailView` 状态按钮与时间线，仅 `ANIMAL_ADMIN` 可见 | 原因 ≥5 字（30401）；非法目标 30402 且返回 `current/target/allowed`；`RELEASE` 需健康记录含“绝育/TNR”，否则 30603 |
+| 支出登记与复核 | `POST /expenses`、`GET /expenses`、`PUT /expenses/{expenseNo}/review`；项目行锁后算 `balance=raised−approved` 与 `available=balance−pending` | `ExpenseCreateDialog.vue`、`ExpenseReviewDialog.vue`、重写 `ExpensesView.vue` | 余额不足 40103 并返回 `projectBalance/reserved/requested/gap`；自复核 40104；单笔 ≤50000 分一签、>50000 分两签且第二签不得与第一签同人；仅第二签落 `APPROVED` 并更新项目 `spent_amount` |
+| 逐笔台账 | `GET /ledger?projectNo&from&to`；收入只取 VERIFIED 捐赠的 `verifiedAt`，支出只取 APPROVED 支出的 `occurredAt`，按时间倒序合并；汇总用 `long` 分 | 重写 `LedgerView.vue`，日期/项目/方向筛选、逐笔流水与合计 | 台账仅管理员（`ANIMAL_ADMIN`/`SYSTEM_ADMIN`）只读；待核对/待复核不入账；`balance=income−expense` |
+| 我的上报 | `GET /reports/mine?page&size`，按 `reporterId` 过滤并复用管理员列表映射 | 重写 `MyReportsView.vue` 为服务端分页 + 详情抽屉；删除 `reportReceipts.ts` 本地回执 | 学生只能看自己的上报；详情仍按 id 走 `GET /reports/{id}` |
+| 工单超时 | `@EnableScheduling` + `OrderTimeoutJob`，每小时扫描；上报时即生成 PENDING 工单，受理时复用并按 `ACCEPT` 迁移 | 工单看板沿用超时高亮 | 条件更新 `status=PENDING AND deadline_at<now` 保证多实例幂等；写 `ORDER_TIMEOUT` 审计；TIMEOUT 仍可受理 |
+| 项目编辑与结项 | `PUT /projects/{no}` 支持 DRAFT/REJECTED；`PUT /projects/{no}/settle`、`GET /projects/{no}/settlement`；`ProjectSettlementService` | `ProjectCreateDialog` 新建/编辑双模式、`SettlementCreateDialog.vue`、`SettlementView.vue`、`ProjectDetailView` 入口 | 报告 20–10000 字、结余去向必填、附件 ≤10；有未复核支出 40105；FUNDING 达标走 `TARGET_REACHED`，未达标到期走 `DEADLINE_REACHED`，再 `SETTLE`；公示公开只读 |
+| 群体/物种补全 | `PUT /groups/{code}`、`POST /groups/{code}/sightings`、`GET /sightings`、`POST /occurrences`（写接口限管理员） | `GroupCreateDialog` 双模式、`SightingDialog.vue` 目击时间线、`OccurrenceCreateDialog.vue`、`SpeciesView` 入口 | 目击点位必须是该群体活动点位；出现记录必须有照片；群体不可认养（30501） |
+
+### 14.2 本轮发现的缺陷与修复
+
+| 缺陷 | 现象 | 修复 |
+|---|---|---|
+| `ck_expense_double_sign` 阶段错误 | `V1` 约束要求大额支出在 INSERT 时就具备两名复核人，导致 >500 元支出永远无法登记 | 新增 `V14__expense_double_sign_stage.sql`：仅 `APPROVED` 状态要求双签，登记与第一签阶段允许为空 |
+| 角色集合比较错误 | `ProjectSettlementService` 用 `Set<String>.contains(Role.ANIMAL_ADMIN)`，枚举与字符串恒不相等，管理员提交结项也报 20003 | 改为 `CurrentUser.hasRole("ANIMAL_ADMIN")` |
+| 工单无 PENDING 候选 | 受理时直接建 PROCESSING 工单，超时扫描无对象 | 上报时创建 PENDING 工单；受理复用 PENDING/TIMEOUT 工单经状态机迁移，缺失时才补建 |
+| 台账访问口径不一致 | 后端曾按公开只读放行，前端只允许管理员 | 统一为管理员只读（`@RequireRoles`），从匿名白名单移除 `/ledger` |
+
+### 14.3 验证记录
+
+| 验证项 | 结果 |
+|---|---|
+| 后端全量测试 | `mvn -B test`：279 例，0 失败，0 错误，0 跳过，BUILD SUCCESS |
+| 前端构建 | `npm run build`：`vue-tsc -b` 无类型错误，1825 modules，构建成功 |
+| 动物状态 | `TEST-CAT-001`：`ON_CAMPUS→TREATING` 成功，历史返回“在校园活动 → 治疗中”，事件 `REPORT_ACCEPTED` |
+| 支出双签 | 60000 分登记成功→自复核 40104→第一签 `FIRST_APPROVED`→第二签 `APPROVED`；项目 `spentAmount=60000`，台账支出 60000 |
+| 台账/结项 | `PRJ-TEST-001` 结项成功，项目 `SETTLED`、公示收支一致；匿名 `GET /projects`、`GET /projects/{no}`、`GET /projects/{no}/settlement` 均可读；匿名 `/ledger` 被拒 |
+| 我的上报 | 学生上报后 `GET /reports/mine` 返回本人 1 条；管理员受理后复用同一 PENDING 工单为 PROCESSING |
+| 工单超时 | 回填 `deadline_at` 后扫描任务将 PENDING 置为 TIMEOUT 并写 `ORDER_TIMEOUT` 审计；TIMEOUT 工单再受理成功 |
+| 群体/物种 | 新建群体→编辑特征/规模→登记目击（列表 1 条）→登记物种出现记录（列表 1 条）全部成功 |
+
+### 14.4 仍未完成（P1/收尾，不属本轮 P0 闭环）
+
+| 编号 | 事项 | 说明 |
+|---|---|---|
+| T4.1 | 并发与事务用例 ≥6 条 | 已有行锁与条件更新设计，尚缺并发压测脚本与执行记录 |
+| T4.2 | docker-compose、备份与恢复演练 | 未开始 |
+| T4.3 | 200 档案/12 项目/1200 捐赠/5 群体的演示数据集 | 未开始；`critter_codex` 业务表当前为空 |
+| T4.4 | 4 分钟答辩切片脚本与讲稿 | 未开始 |
+| — | 项目到期自动转 `PENDING_SETTLE` 定时任务 | 当前由结项接口按“达标或到期”即时判断，不依赖定时任务 |

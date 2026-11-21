@@ -1,60 +1,63 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
+import * as rescueApi from '@/api/rescue'
+import { BizError } from '@/api/http'
 import PageHero from '@/components/PageHero.vue'
 import SectionTabs from '@/components/SectionTabs.vue'
-import PageState from '@/components/PageState.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import PhotoGallery from '@/components/PhotoGallery.vue'
 import { dateTime } from '@/utils/format'
 import { reportStatusLabel, reportTypeLabel } from '@/utils/domain'
-import {
-  clearReportReceipts,
-  loadReportReceipts,
-  type ReportReceipt,
-} from '@/utils/reportReceipts'
+import type { ReportDetail, ReportSummary } from '@/api/types'
 
 /**
- * “我的上报”当前只能展示本机回执。
- * 原因：后端未提供 /reports/mine，创建响应也不返回数据库 id，前端无法按 reportNo 反查。
- * 页面明确标注本地回执，不把回执状态伪装成后端实时状态。
+ * 我的上报：走服务端 GET /reports/mine，不再依赖 localStorage 回执。
+ * 详情按 id 读取，联系方式只对上报人本人返回。
  */
-
 const router = useRouter()
-const auth = useAuthStore()
 
-const receipts = ref<ReportReceipt[]>([])
+const rows = ref<ReportSummary[]>([])
+const total = ref(0)
+const page = ref(1)
+const size = 20
+const loading = ref(false)
+const errorText = ref('')
 const drawerVisible = ref(false)
-const selected = ref<ReportReceipt | null>(null)
+const detail = ref<ReportDetail | null>(null)
+const detailError = ref('')
 
-function owner(): string {
-  return auth.user?.userNo ?? 'guest'
-}
-
-function load(): void {
-  receipts.value = loadReportReceipts(owner())
-}
-
-function openDetail(receipt: ReportReceipt): void {
-  selected.value = receipt
-  drawerVisible.value = true
-}
-
-async function clearAll(): Promise<void> {
+async function load(): Promise<void> {
+  loading.value = true
+  errorText.value = ''
   try {
-    await ElMessageBox.confirm(
-      '只会清空这台电脑上的上报回执，不影响后端上报记录。确认清空？',
-      '清空本机回执',
-      { confirmButtonText: '清空', cancelButtonText: '取消', type: 'warning' },
-    )
-  } catch {
-    return
+    const result = await rescueApi.fetchMyReports({ page: page.value, size })
+    rows.value = result.list
+    total.value = result.page.total
+  } catch (error) {
+    errorText.value = error instanceof BizError ? error.message : '我的上报加载失败'
+    rows.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
   }
-  clearReportReceipts(owner())
-  receipts.value = []
-  ElMessage.success('本机回执已清空')
+}
+
+async function openDetail(row: ReportSummary): Promise<void> {
+  drawerVisible.value = true
+  detail.value = null
+  detailError.value = ''
+  try {
+    detail.value = await rescueApi.fetchReport(row.id)
+  } catch (error) {
+    detailError.value = error instanceof BizError ? error.message : '上报详情加载失败'
+  }
+}
+
+function changePage(next: number): void {
+  const max = Math.max(1, Math.ceil(total.value / size))
+  page.value = Math.min(Math.max(1, next), max)
+  load()
 }
 
 onMounted(load)
@@ -62,13 +65,10 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHero
-      title="我的上报"
-      desc="当前后端尚未开放上报人自查列表，本页展示浏览器本地回执；正式状态以管理员受理/关闭记录为准。"
-    >
+    <PageHero title="我的上报" desc="服务端按上报人过滤，状态与受理进度实时更新。">
       <template #actions>
+        <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
         <button class="btn" type="button" @click="router.push('/report')">新增上报</button>
-        <button v-if="receipts.length" class="btn ghost" type="button" @click="clearAll">清空本机回执</button>
       </template>
     </PageHero>
 
@@ -80,12 +80,11 @@ onMounted(load)
       ]"
     />
 
-    <div class="notice">
-      本页不是后端实时列表：<span class="mono">GET /reports/mine</span> 尚未实现，且创建响应只返回
-      <span class="mono">reportNo</span>、不返回 id。下列记录保存在当前浏览器，换设备或清缓存后会消失。
-    </div>
+    <div v-if="errorText" class="notice">{{ errorText }}</div>
+    <div v-else-if="loading" class="notice">上报列表加载中…</div>
+    <div v-else-if="!rows.length" class="notice">你还没有提交过上报。</div>
 
-    <PageState :empty="!receipts.length" empty-text="这台设备还没有上报回执">
+    <template v-else>
       <div class="table-wrap">
         <table class="native">
           <thead>
@@ -94,86 +93,98 @@ onMounted(load)
               <th>类型</th>
               <th>点位</th>
               <th>描述</th>
-              <th>提交状态（快照）</th>
+              <th>状态</th>
               <th>受理截止</th>
               <th>提交时间</th>
               <th style="width: 74px">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="receipt in receipts" :key="receipt.reportNo">
+            <tr v-for="row in rows" :key="row.id">
               <td>
-                <div class="mono">{{ receipt.reportNo }}</div>
-                <div v-if="receipt.duplicated" class="tag warn">疑似重复</div>
+                <div class="mono">{{ row.reportNo }}</div>
+                <div v-if="row.overdue" class="tag warn">已超受理时限</div>
               </td>
-              <td>{{ reportTypeLabel(receipt.type) }}</td>
-              <td>{{ receipt.pointName || '—' }}</td>
-              <td class="desc-cell">{{ receipt.description }}</td>
+              <td>{{ reportTypeLabel(row.type) }}</td>
+              <td>{{ row.pointName || '—' }}</td>
+              <td class="desc-cell">{{ row.description }}</td>
+              <td><StatusTag :code="row.status" :label="reportStatusLabel(row.status)" /></td>
+              <td class="muted small">{{ dateTime(row.deadline) }}</td>
+              <td class="muted small">{{ dateTime(row.createdAt) }}</td>
               <td>
-                <StatusTag :code="receipt.status" :label="reportStatusLabel(receipt.status)" />
-              </td>
-              <td class="muted small">{{ dateTime(receipt.deadline) }}</td>
-              <td class="muted small">{{ dateTime(receipt.createdAt) }}</td>
-              <td>
-                <button class="btn sm link" type="button" @click="openDetail(receipt)">回执</button>
+                <button class="btn sm link" type="button" @click="openDetail(row)">详情</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </PageState>
+
+      <div class="pager">
+        <button class="btn sm ghost" type="button" :disabled="page <= 1 || loading" @click="changePage(page - 1)">上一页</button>
+        <span class="muted small">第 {{ page }} / {{ Math.max(1, Math.ceil(total / size)) }} 页 · 共 {{ total }} 条</span>
+        <button
+          class="btn sm ghost"
+          type="button"
+          :disabled="page >= Math.ceil(total / size) || loading"
+          @click="changePage(page + 1)"
+        >
+          下一页
+        </button>
+      </div>
+    </template>
 
     <div class="footnote" style="text-align: left">
-      待确认项：后端补 <span class="mono">GET /reports/mine</span> 或在创建响应返回 id 后，
-      本页应替换为真实服务端列表，并移除 localStorage 回执。
+      来源：GET /reports/mine。仅返回当前登录人提交的上报，按提交时间倒序。
     </div>
 
-    <el-drawer v-model="drawerVisible" title="上报回执" size="520px" append-to-body>
-      <div v-if="selected" class="receipt-body">
-        <div class="receipt-head">
+    <el-drawer v-model="drawerVisible" title="上报详情" size="540px" append-to-body>
+      <div v-if="detailError" class="notice">{{ detailError }}</div>
+      <div v-else-if="!detail" class="muted">详情加载中…</div>
+      <div v-else class="detail-body">
+        <div class="detail-head">
           <div>
-            <div class="mono">{{ selected.reportNo }}</div>
-            <h2>{{ reportTypeLabel(selected.type) }} · {{ selected.pointName }}</h2>
+            <div class="mono">{{ detail.reportNo }}</div>
+            <h2>{{ reportTypeLabel(detail.type) }} · {{ detail.pointName }}</h2>
           </div>
-          <StatusTag :code="selected.status" :label="reportStatusLabel(selected.status)" />
+          <StatusTag :code="detail.status" :label="reportStatusLabel(detail.status)" />
         </div>
 
-        <div v-if="selected.duplicated" class="notice">
-          提交时被后端标记为疑似重复，原单：<span class="mono">{{ selected.duplicateOf || '—' }}</span>
-        </div>
+        <div v-if="detail.overdue" class="notice">该上报已超过 24 小时受理时限，系统将标记超时。</div>
 
         <div class="block">
           <h3>情况描述</h3>
-          <p>{{ selected.description }}</p>
+          <p>{{ detail.description }}</p>
         </div>
 
         <div class="block">
           <h3>现场照片</h3>
-          <PhotoGallery :file-ids="selected.photos" empty-text="无照片" />
+          <PhotoGallery :file-ids="detail.photos" empty-text="无照片" />
         </div>
 
         <div class="block">
           <div class="info-grid single">
             <div class="info">
               <div class="k">关联档案</div>
-              <div class="v mono">{{ selected.animalCode || '—' }}</div>
+              <div class="v mono">{{ detail.animalCode || '—' }}</div>
             </div>
             <div class="info">
               <div class="k">联系方式</div>
-              <div class="v">{{ selected.contact || '—' }}</div>
+              <div class="v">{{ detail.contact || '—' }}</div>
             </div>
             <div class="info">
               <div class="k">提交时间</div>
-              <div class="v">{{ dateTime(selected.createdAt) }}</div>
+              <div class="v">{{ dateTime(detail.createdAt) }}</div>
             </div>
             <div class="info">
               <div class="k">受理截止</div>
-              <div class="v">{{ dateTime(selected.deadline) }}</div>
+              <div class="v">{{ dateTime(detail.deadline) }}</div>
+            </div>
+            <div class="info">
+              <div class="k">工单号</div>
+              <div class="v mono">{{ detail.orderNo || '尚未受理' }}</div>
             </div>
           </div>
         </div>
-
-        <div class="notice">状态为提交时的快照，不代表当前受理进度。</div>
       </div>
     </el-drawer>
   </div>
@@ -191,19 +202,27 @@ onMounted(load)
   font-size: 11px;
 }
 
-.receipt-body {
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.detail-body {
   display: grid;
   gap: 16px;
 }
 
-.receipt-head {
+.detail-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
 }
 
-.receipt-head h2 {
+.detail-head h2 {
   margin-top: 4px;
   font-size: 19px;
 }

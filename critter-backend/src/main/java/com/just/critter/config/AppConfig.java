@@ -8,6 +8,7 @@ import com.just.critter.domain.archive.AnimalCodeGenerator;
 import com.just.critter.domain.archive.GroupCodeGenerator;
 import com.just.critter.domain.archive.SequencePort;
 import com.just.critter.domain.fund.DonationCodeGenerator;
+import com.just.critter.domain.fund.ExpenseCodeGenerator;
 import com.just.critter.domain.fund.ProjectCodeGenerator;
 import com.just.critter.domain.rescue.OrderCodeGenerator;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
@@ -59,6 +60,11 @@ public class AppConfig {
     @Bean
     public DonationCodeGenerator donationCodeGenerator(SequencePort sequences, Clock clock) {
         return new DonationCodeGenerator(sequences, clock);
+    }
+
+    @Bean
+    public ExpenseCodeGenerator expenseCodeGenerator(SequencePort sequences, Clock clock) {
+        return new ExpenseCodeGenerator(sequences, clock);
     }
 
     @Bean

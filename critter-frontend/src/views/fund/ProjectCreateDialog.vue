@@ -4,10 +4,12 @@ import { ElMessage } from 'element-plus'
 import * as fundApi from '@/api/fund'
 import { BizError } from '@/api/http'
 import { TARGET_TYPE_OPTIONS, yuanToCents } from '@/utils/domain'
+import type { ProjectDetail } from '@/api/types'
 
-/** 项目发起：预算明细与目标金额都在前端先校验一次，后端仍会回 40101。 */
+/** 项目发起/编辑：草稿或驳回项目可改；预算明细与目标金额在前端先校验一次，后端仍会回 40101。 */
 const props = defineProps<{
   modelValue: boolean
+  project?: ProjectDetail | null
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +35,8 @@ const form = reactive({
 
 const submitting = ref(false)
 const errors = reactive<Record<string, string>>({})
+const editing = computed(() => Boolean(props.project?.projectNo))
+const dialogTitle = computed(() => (editing.value ? '编辑募捐项目' : '发起募捐项目'))
 
 const budgetTotalYuan = computed(() =>
   form.budget.reduce((sum, row) => sum + (row.amountYuan ?? 0), 0),
@@ -45,6 +49,24 @@ function today(offset = 0): string {
 }
 
 function reset(): void {
+  Object.keys(errors).forEach((key) => delete errors[key])
+  const current = props.project
+  if (current) {
+    form.name = current.name
+    form.purpose = current.purpose
+    form.targetType = current.targetType
+    form.targetYuan = current.targetAmount / 100
+    form.startDate = current.startDate
+    form.endDate = current.endDate
+    form.budget = current.budget.length
+      ? current.budget.map((row) => ({
+          subject: row.subject,
+          amountYuan: row.amount / 100,
+          note: row.note ?? '',
+        }))
+      : [{ subject: '绝育手术', amountYuan: null, note: '' }]
+    return
+  }
   form.name = ''
   form.purpose = ''
   form.targetType = 'MIXED'
@@ -52,12 +74,11 @@ function reset(): void {
   form.startDate = today()
   form.endDate = today(30)
   form.budget = [{ subject: '绝育手术', amountYuan: null, note: '' }]
-  Object.keys(errors).forEach((key) => delete errors[key])
 }
 
 watch(
-  () => props.modelValue,
-  (open) => {
+  [() => props.modelValue, () => props.project],
+  ([open]) => {
     if (open) reset()
   },
 )
@@ -102,7 +123,7 @@ async function save(submit: boolean): Promise<void> {
   if (submitting.value || !validate()) return
   submitting.value = true
   try {
-    const result = await fundApi.createProject({
+    const payload = {
       name: form.name.trim(),
       purpose: form.purpose.trim(),
       targetType: form.targetType,
@@ -114,9 +135,22 @@ async function save(submit: boolean): Promise<void> {
         amount: yuanToCents(row.amountYuan),
         note: row.note.trim() || undefined,
       })),
+      coverFileId: props.project?.coverFileId ?? undefined,
       submit,
-    })
-    ElMessage.success(submit ? `项目已提交审核：${result.projectNo}` : `项目草稿已保存：${result.projectNo}`)
+    }
+    const existing = props.project
+    const result = existing
+      ? await fundApi.updateProject(existing.projectNo, payload)
+      : await fundApi.createProject(payload)
+    ElMessage.success(
+      existing
+        ? submit
+          ? '已提交审核'
+          : '草稿已保存'
+        : submit
+          ? `项目已提交审核：${result.projectNo}`
+          : `项目草稿已保存：${result.projectNo}`,
+    )
     emit('created', result.projectNo)
     emit('update:modelValue', false)
   } catch (error) {
@@ -135,7 +169,7 @@ async function save(submit: boolean): Promise<void> {
 <template>
   <el-dialog
     :model-value="modelValue"
-    title="发起募捐项目"
+    :title="dialogTitle"
     width="780px"
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
@@ -213,12 +247,19 @@ async function save(submit: boolean): Promise<void> {
     </div>
 
     <div class="notice" style="margin-top: 12px">
-      “存草稿”不会进入审核；“提交审核”后状态为 PENDING_AUDIT，需动物管理员通过后才公开募捐。
+      <template v-if="editing">
+        仅草稿或已驳回项目可编辑；“保存”后仍保持当前状态，驳回项目可再点“提交审核”重新送审。
+      </template>
+      <template v-else>
+        “存草稿”不会进入审核；“提交审核”后状态为 PENDING_AUDIT，需动物管理员通过后才公开募捐。
+      </template>
     </div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>
-      <button class="btn ghost" type="button" :disabled="submitting" @click="save(false)">存草稿</button>
+      <button class="btn ghost" type="button" :disabled="submitting" @click="save(false)">
+        {{ submitting ? '提交中…' : editing ? '保存修改' : '存草稿' }}
+      </button>
       <button class="btn" type="button" :disabled="submitting" @click="save(true)">
         {{ submitting ? '提交中…' : '提交审核' }}
       </button>

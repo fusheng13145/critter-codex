@@ -9,9 +9,11 @@ import SectionTabs from '@/components/SectionTabs.vue'
 import PageState from '@/components/PageState.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import GroupCreateDialog from '@/views/archive/GroupCreateDialog.vue'
+import SightingDialog from '@/views/archive/SightingDialog.vue'
 import { dateOnly, dateTime } from '@/utils/format'
 import { GROUP_STATUS_OPTIONS, groupStatusLabel } from '@/utils/domain'
-import type { GroupDetail, GroupSummary, PageData, PointView, SpeciesView } from '@/api/types'
+import { fileContentUrl } from '@/api/file'
+import type { GroupDetail, GroupSummary, PageData, PointView, SightingView, SpeciesView } from '@/api/types'
 
 /** P02 群体档案：规模以区间展示，详情用抽屉读取 GET /groups/{code}。 */
 
@@ -35,11 +37,15 @@ const points = ref<PointView[]>([])
 const loading = ref(false)
 const errorText = ref('')
 const createVisible = ref(false)
+const editVisible = ref(false)
+const sightingVisible = ref(false)
 
 const drawerVisible = ref(false)
 const detail = ref<GroupDetail | null>(null)
 const detailLoading = ref(false)
 const detailError = ref('')
+const sightings = ref<SightingView[]>([])
+const sightingsLoading = ref(false)
 
 async function loadOptions(): Promise<void> {
   try {
@@ -90,8 +96,10 @@ async function openDetail(group: GroupSummary): Promise<void> {
   detail.value = null
   detailError.value = ''
   detailLoading.value = true
+  sightings.value = []
   try {
     detail.value = await archiveApi.fetchGroup(group.groupCode)
+    await loadSightings(group.groupCode)
   } catch (error) {
     detailError.value = error instanceof BizError ? error.message : '群体详情加载失败'
   } finally {
@@ -99,9 +107,37 @@ async function openDetail(group: GroupSummary): Promise<void> {
   }
 }
 
+async function loadSightings(code: string): Promise<void> {
+  sightingsLoading.value = true
+  try {
+    const result = await archiveApi.fetchSightings({ groupCode: code, page: 1, size: 20 })
+    sightings.value = result.list
+  } catch {
+    sightings.value = []
+  } finally {
+    sightingsLoading.value = false
+  }
+}
+
+async function refreshDetail(): Promise<void> {
+  const code = detail.value?.groupCode
+  if (!code) return
+  try {
+    detail.value = await archiveApi.fetchGroup(code)
+    await loadSightings(code)
+  } catch (error) {
+    detailError.value = error instanceof BizError ? error.message : '群体详情加载失败'
+  }
+}
+
+function onSightingCreated(): void {
+  refreshDetail()
+}
+
 function onCreated(groupCode: string): void {
-  ElMessage.success(`已创建群体 ${groupCode}`)
+  ElMessage.success(`已保存群体 ${groupCode}`)
   search()
+  if (detail.value?.groupCode === groupCode) refreshDetail()
 }
 
 function changePage(page: number): void {
@@ -227,13 +263,30 @@ onMounted(() => {
       :points="points"
       @created="onCreated"
     />
+    <GroupCreateDialog
+      v-model="editVisible"
+      :species="species"
+      :points="points"
+      :group="detail"
+      @created="onCreated"
+    />
+    <SightingDialog
+      v-model="sightingVisible"
+      :group="detail"
+      :points="points"
+      @created="onSightingCreated"
+    />
 
     <el-drawer v-model="drawerVisible" title="群体详情" size="520px" append-to-body>
       <PageState :loading="detailLoading" :error="detailError" :empty="!detail" empty-text="群体不存在">
         <div v-if="detail" class="drawer-body">
           <div class="drawer-title">
             <span class="mono">{{ detail.groupCode }}</span>
-            <StatusTag :code="detail.status" :label="groupStatusLabel(detail.status, detail.statusLabel)" />
+            <div class="drawer-actions">
+              <StatusTag :code="detail.status" :label="groupStatusLabel(detail.status, detail.statusLabel)" />
+              <button v-if="auth.isAdmin" class="btn sm ghost" type="button" @click="editVisible = true">编辑</button>
+              <button v-if="auth.isAdmin" class="btn sm" type="button" @click="sightingVisible = true">登记目击</button>
+            </div>
           </div>
           <div class="info-grid single">
             <div class="info">
@@ -272,6 +325,31 @@ onMounted(() => {
             <div class="muted line">最近目击：{{ detail.lastSeenAt ? dateTime(detail.lastSeenAt) : '未记录' }}</div>
             <div class="muted line">建档：{{ dateTime(detail.createdAt) }}</div>
             <div class="muted line">更新：{{ dateTime(detail.updatedAt) }}</div>
+          </div>
+
+          <div class="block">
+            <h3>目击记录 <span class="muted small">最近 {{ sightings.length }} 条</span></h3>
+            <div v-if="sightingsLoading" class="muted line">正在读取目击记录…</div>
+            <div v-else-if="!sightings.length" class="muted line">尚未登记目击记录</div>
+            <ul v-else class="sighting-list">
+              <li v-for="item in sightings" :key="item.id">
+                <div class="sighting-head">
+                  <b>{{ dateTime(item.seenAt) }}</b>
+                  <span class="tag gray">{{ item.point?.name ?? '点位未知' }}</span>
+                  <span v-if="item.countEstimate" class="count">约 {{ item.countEstimate }} 只</span>
+                </div>
+                <div v-if="item.behavior" class="muted small">{{ item.behavior }}</div>
+                <div v-if="item.fileIds.length" class="sighting-files">
+                  <a
+                    v-for="(fileId, index) in item.fileIds"
+                    :key="fileId"
+                    :href="fileContentUrl(fileId)"
+                    target="_blank"
+                    rel="noopener"
+                  >照片 {{ index + 1 }}</a>
+                </div>
+              </li>
+            </ul>
           </div>
 
           <div class="notice">群体不参与认养，也不能直接建个体档案；需要个体化时走群体拆分流程。</div>
@@ -319,6 +397,57 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   font-weight: 600;
+}
+
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sighting-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.sighting-list li {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--panel);
+}
+
+.sighting-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+.sighting-head b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.count {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.sighting-files {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.sighting-files a {
+  color: var(--accent);
+  font-size: 11px;
 }
 
 .info-grid.single {
