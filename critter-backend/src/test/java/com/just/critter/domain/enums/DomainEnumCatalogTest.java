@@ -64,6 +64,14 @@ class DomainEnumCatalogTest {
         assertThat(labels(HealthType.values())).containsExactly("疫苗", "驱虫", "体重", "病史");
     }
 
+    @Test
+    @DisplayName("项目关联对象：个体/群体/混合，与 project.target_type 一致")
+    void project_target_type_catalog() {
+        assertThat(ProjectTargetType.values()).extracting(Enum::name)
+                .containsExactly("ANIMAL", "GROUP", "MIXED");
+        assertThat(labels(ProjectTargetType.values())).containsExactly("个体", "群体", "混合");
+    }
+
     private List<String> labels(Labeled[] values) {
         return Arrays.stream(values).map(Labeled::label).toList();
     }
