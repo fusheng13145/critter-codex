@@ -19,6 +19,8 @@ public interface MedicalRepository {
 
     Optional<ReferenceAnimal> findAnimal(long animalId);
 
+    Optional<ReferenceAnimal> findAnimalByCode(String animalCode);
+
     Optional<ReferenceClinic> findClinic(long clinicId);
 
     Optional<ReferenceOrder> findOrder(long orderId);
@@ -26,4 +28,6 @@ public interface MedicalRepository {
     int insertVisit(VisitWrite write);
 
     Optional<VisitDetail> findVisit(String visitNo);
+
+    List<VisitDetail> findVisitsByAnimal(String animalCode);
 }

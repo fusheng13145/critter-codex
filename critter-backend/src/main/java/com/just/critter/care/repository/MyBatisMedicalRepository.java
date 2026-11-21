@@ -46,6 +46,13 @@ public class MyBatisMedicalRepository implements MedicalRepository {
     }
 
     @Override
+    public Optional<ReferenceAnimal> findAnimalByCode(String animalCode) {
+        AnimalRefRow row = mapper.findAnimalByCode(animalCode);
+        return row == null ? Optional.empty()
+                : Optional.of(new ReferenceAnimal(row.getId(), row.getCode(), row.getName()));
+    }
+
+    @Override
     public Optional<ReferenceClinic> findClinic(long clinicId) {
         ClinicRow row = mapper.findClinic(clinicId);
         return row == null ? Optional.empty()
@@ -83,15 +90,23 @@ public class MyBatisMedicalRepository implements MedicalRepository {
     @Override
     public Optional<VisitDetail> findVisit(String visitNo) {
         VisitDetailRow row = mapper.findVisit(visitNo);
-        if (row == null) {
-            return Optional.empty();
-        }
-        return Optional.of(new VisitDetail(
+        return row == null ? Optional.empty() : Optional.of(toDetail(row));
+    }
+
+    @Override
+    public List<VisitDetail> findVisitsByAnimal(String animalCode) {
+        return mapper.findVisitsByAnimal(animalCode).stream()
+                .map(this::toDetail)
+                .toList();
+    }
+
+    private VisitDetail toDetail(VisitDetailRow row) {
+        return new VisitDetail(
                 row.getVisitNo(), row.getAnimalId(), row.getAnimalCode(), row.getAnimalName(),
                 row.getOrderId(), row.getOrderNo(), row.getClinicId(), row.getClinicName(),
                 row.getVisitedAt(), row.getComplaint(), row.getDiagnosis(), row.getTreatment(),
                 row.getCost() == null ? 0 : row.getCost(), readFileIds(row.getFileIds()),
-                row.getSourceNote(), row.getCreatedAt()));
+                row.getSourceNote(), row.getCreatedAt());
     }
 
     private ClinicView toClinicView(ClinicRow row) {

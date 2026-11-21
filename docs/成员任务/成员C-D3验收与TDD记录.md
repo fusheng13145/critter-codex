@@ -274,3 +274,31 @@
 - 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
 - 仍未完成：公告删除/撤回、首页置顶摘要、附件与富文本；档案详情反查就诊、三类消息生产与认养到期任务仍待后续轮次。
 
+## 第八轮：档案详情反查就诊（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/visits?animalCode=...` 登录可读，返回该动物全部就诊，按到院时间倒序。
+- `animalCode` 必填；空白 30301，档案不存在 30410，档案存在但无就诊返回空数组。
+- 返回字段与 `GET /visits/{no}` 一致；不改动 35 接口清单计数。
+- 档案详情页必须能展示该面板；无记录时给出明确空态。
+
+### RED
+
+- `MedicalQueryServiceTests` 新增 3 例、`MedicalControllerTests` 新增 3 例，并在 `MedicalIT` 扩展现有真库用例，断言按动物编号反查。
+- 首次定向运行因 `MedicalRepository.findAnimalByCode / findVisitsByAnimal` 与 `MedicalQueryService.visitsByAnimal` 不存在而编译失败，确认 RED。
+
+### GREEN
+
+- `MedicalMapper` 新增 `findAnimalByCode` 与 `findVisitsByAnimal`；后者联表动物、医院与工单，`ORDER BY visited_at DESC, visit_no DESC`。
+- `MedicalRepository / MyBatisMedicalRepository` 新增对应方法，并把 `VisitDetail` 映射抽成 `toDetail`，避免按编号与按动物两条查询重复拼装。
+- `MedicalQueryService.visitsByAnimal` 先校验档案存在再查列表；`VisitController` 新增根路径 GET，缺少 `animalCode` 交给服务返回 30301。
+- 前端新增 `AnimalVisitPanel.vue` 与 `fetchAnimalVisits`，嵌入 `AnimalDetailView`；无记录显示空态，失败显示错误文案。
+
+### 测试结果
+
+- 医疗相关 25/25 通过：`VisitServiceTests` 9、`MedicalQueryServiceTests` 6、`MedicalControllerTests` 9、`MedicalIT` 1。
+- 本轮完整后端：单元 / 控制器 329、真实 MySQL IT 40，合计 369，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过，仅有 chunk 体积告警。
+- UI 仅完成构建校验，未做浏览器端手工点验；后续交付前应在真实数据下检查档案详情面板。
+

@@ -29,4 +29,15 @@ public class MedicalQueryService {
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.RECORD_NOT_FOUND, Map.of("visitNo", visitNo)));
     }
+
+    public List<VisitDetail> visitsByAnimal(String animalCode) {
+        if (animalCode == null || animalCode.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, Map.of("field", "animalCode"));
+        }
+        String code = animalCode.trim();
+        medical.findAnimalByCode(code)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.RECORD_NOT_FOUND, Map.of("animalCode", code)));
+        return medical.findVisitsByAnimal(code);
+    }
 }

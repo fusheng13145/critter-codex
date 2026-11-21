@@ -14,3 +14,8 @@ export function createVisit(payload: VisitCreatePayload): Promise<VisitRegistrat
 export function fetchVisit(visitNo: string): Promise<VisitDetail> {
   return get<VisitDetail>(`/visits/${encodeURIComponent(visitNo)}`)
 }
+
+/** 档案详情反查就诊：按动物编号返回该个体的全部就诊记录。 */
+export function fetchAnimalVisits(animalCode: string): Promise<VisitDetail[]> {
+  return get<VisitDetail[]>('/visits', { animalCode })
+}
