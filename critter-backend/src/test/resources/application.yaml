@@ -10,6 +10,26 @@ spring:
   flyway:
     enabled: false
 
+# 单元/契约测试只加载 Web 层，不连真库；这里补最小可用的鉴权参数，
+# 避免 JwtService 因缺少密钥在构造期失败（生产参数仍以主配置为准）。
+critter:
+  cache:
+    mode: memory
+  security:
+    jwt-secret: "critter-codex-test-secret-key-only-for-unit-tests"
+    access-token-seconds: 7200
+    refresh-token-seconds: 604800
+    aes-key: "critter-codex-test-aes-key"
+  register:
+    allowed-email-domains: "just.edu.cn,stu.just.edu.cn"
+    expose-verification-code: true
+  login:
+    max-failures: 5
+    lock-seconds: 600
+  file:
+    storage-dir: "target/test-files"
+    max-size-bytes: 5242880
+
 logging:
   level:
     root: WARN

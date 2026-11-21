@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+/**
+ * 根组件只留路由出口：布局在 layouts/AppLayout.vue，
+ * 登录页与 404 不套外壳，所以不能把布局写死在根上。
+ */
 </script>
 
 <template>
-  <HelloWorld />
+  <router-view />
 </template>
