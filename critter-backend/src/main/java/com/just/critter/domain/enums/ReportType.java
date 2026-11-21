@@ -15,7 +15,7 @@ public enum ReportType implements Labeled {
         return switch (this) {
             case INJURED -> "受伤";
             case NEW_ARRIVAL -> "新出现";
-            case ABANDONED -> "被遗弃";
+            case ABANDONED -> "疑似遗弃";
             case DISTURB -> "扰民";
             case DEAD -> "死亡";
         };

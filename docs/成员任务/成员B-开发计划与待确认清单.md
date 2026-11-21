@@ -271,16 +271,17 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | W1 档案纵切 | 完成 | 个体档案、健康、群体、目击、出现记录、基础数据只读全部可联调 |
 | C-1～C-5 契约对齐 | 完成 | 全量 63 例绿，已推送 `7733456` |
 | D1 合并集成 | 完成（本地） | 去重 POM/`MybatisPlusInterceptor`；`AuthInterceptor` 增加匿名只读白名单；档案域 4 个控制器改用 `AuthContext` + `@RequireRoles`；迁移统一为 V1→V2 身份→V3 统计→V4 去重→V5 基础数据 |
+| T2.1 学生上报 | 完成（一期；30503 待接口补物种字段） | `POST /reports`：五类枚举、点位、至少 1 张照片、描述 ≥10 字；RP 当日发号、24 小时时限；同点位 24 小时内未关闭上报返回 `duplicated/duplicateOf`；V6 补 `animal_id/contact`，V7 统一大写蛇形字典；`ReportCodeGeneratorTest` 3 例、`ReportServiceTest` 6 例、`ReportControllerTest` 2 例、`ReportIT` 2 例 |
 
-测试基线：`mvn -B test` **135 例全绿**（D1 合并后）；真库测试另计 17 例（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。迁移冲突修复后 `MySqlSchemaIT` 5/5 在重建库上通过。
+测试基线：`mvn -B test` **146 例全绿**；真库测试另计 **19 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 2），需 `CRITTER_MYSQL_IT=true` 才运行，默认跳过。迁移冲突修复后 `MySqlSchemaIT` 5/5、`SeedReferenceDataIT` 4/4 在重建库上通过。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
-T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNext` 供前端角标，真正投递站内消息要等 C 的消息通道（`POST /messages` 或事件订阅），B 不直接写 `message` 表；`GET /animals/{code}/health` 登录可见、`POST` 管理员，鉴权落地前同 T1.2 占位。
+T1.4 遗留：提醒目前只在健康记录上回 `reminderDue` / `daysUntilNext` 供前端角标，真正投递站内消息要等 C 的消息通道（`POST /messages` 或事件订阅），B 不直接写 `message` 表；`GET /animals/{code}/health` 登录可见、`POST` 管理员，鉴权已统一走 `AuthContext`。
 
 T1.5 遗留：归并/拆分、目击归属修正、群体状态接口、物种/点位写接口均为 P1；`30501 群体不可认养` 需 C 在认养提交处拦截，B 只保证群体编号可识别；目击归属状态暂用字符串 `ASSIGNED/UNASSIGNED`；鉴权同前。
 
-Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V5），`critter_ro@localhost` 只读，详见《联调环境说明》。
+Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_codex` 主库，`critter_codex_dev` 联调库（Flyway V1→V7），`critter_ro@localhost` 只读，详见《联调环境说明》。
 
 ## 13 本轮治理结果（2026-11-21）
 

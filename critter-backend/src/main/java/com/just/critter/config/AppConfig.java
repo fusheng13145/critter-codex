@@ -3,6 +3,7 @@ package com.just.critter.config;
 import com.just.critter.domain.archive.AnimalCodeGenerator;
 import com.just.critter.domain.archive.GroupCodeGenerator;
 import com.just.critter.domain.archive.SequencePort;
+import com.just.critter.domain.rescue.ReportCodeGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,5 +32,10 @@ public class AppConfig {
     @Bean
     public GroupCodeGenerator groupCodeGenerator(SequencePort sequences, Clock clock) {
         return new GroupCodeGenerator(sequences, clock);
+    }
+
+    @Bean
+    public ReportCodeGenerator reportCodeGenerator(SequencePort sequences, Clock clock) {
+        return new ReportCodeGenerator(sequences, clock);
     }
 }
