@@ -11,6 +11,7 @@ import PageState from '@/components/PageState.vue'
 import StatusTag from '@/components/StatusTag.vue'
 import AuthImage from '@/components/AuthImage.vue'
 import HealthRecordPanel from '@/views/archive/HealthRecordPanel.vue'
+import AnimalVisitPanel from '@/views/archive/AnimalVisitPanel.vue'
 import AnimalEditDialog from '@/views/archive/AnimalEditDialog.vue'
 import { dateOnly, dateTime } from '@/utils/format'
 import {
@@ -159,6 +160,8 @@ onMounted(() => {
         </div>
 
         <HealthRecordPanel :code="animal.code" :editable="auth.isAdmin" />
+
+        <AnimalVisitPanel :code="animal.code" />
 
         <PanelCard v-if="auth.isAdmin" title="字段级变更历史" :more="`共 ${history.length} 条`">
           <div v-if="historyError" class="notice">{{ historyError }}</div>

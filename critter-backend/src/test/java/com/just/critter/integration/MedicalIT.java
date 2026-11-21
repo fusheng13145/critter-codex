@@ -72,6 +72,12 @@ class MedicalIT extends MySqlIntegrationTestSupport {
         assertThat(detail.fileIds()).containsExactly("F20261121001", "F20261121002");
         assertThat(detail.orderId()).isNull();
 
+        var visits = queryService.visitsByAnimal(detail.animalCode());
+        assertThat(visits).hasSize(1);
+        assertThat(visits.get(0).visitNo()).isEqualTo(result.visitNo());
+        assertThat(visits.get(0).diagnosis()).isEqualTo("软组织挫伤");
+        assertThat(visits.get(0).clinicName()).isNotBlank();
+
         assertThat(queryService.clinics()).isNotEmpty();
         assertThat(queryService.clinics().get(0).priceNote()).isNotBlank();
     }

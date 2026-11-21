@@ -845,3 +845,31 @@ export interface VisitDetail {
   sourceNote: string | null
   createdAt: string
 }
+
+/** 公告分类英文码：进展 / 公示 / 科普 */
+export type NoticeCategory = 'PROGRESS' | 'PUBLICITY' | 'SCIENCE'
+
+/** 公告列表项（GET /notices），不含正文 */
+export interface NoticeItem {
+  noticeId: number
+  noticeNo: string
+  category: NoticeCategory
+  title: string
+  pinned: boolean
+  publishedAt: string
+}
+
+/** 公告详情（GET /notices/{id}） */
+export interface NoticeDetail extends NoticeItem {
+  content: string
+  authorId: number | null
+  authorName: string | null
+  createdAt: string
+}
+
+export interface NoticeCreatePayload {
+  category: NoticeCategory
+  title: string
+  content: string
+  pinned?: boolean
+}

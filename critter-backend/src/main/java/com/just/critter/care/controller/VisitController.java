@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/visits")
@@ -34,6 +37,12 @@ public class VisitController {
                 request.animalId(), request.orderId(), request.clinicId(), request.visitedAt(),
                 request.complaint(), request.diagnosis(), request.treatment(), request.cost(),
                 request.fileIds(), request.sourceNote()), AuthContext.require().id()));
+    }
+
+    @GetMapping
+    public Result<List<VisitDetail>> visitsByAnimal(
+            @RequestParam(required = false) String animalCode) {
+        return Result.ok(queryService.visitsByAnimal(animalCode));
     }
 
     @GetMapping("/{no}")

@@ -30,6 +30,13 @@ public interface MedicalMapper extends BaseMapper<VisitEntity> {
     AnimalRefRow findAnimal(@Param("animalId") long animalId);
 
     @Select("""
+            SELECT id, code, name
+            FROM animal
+            WHERE code = #{animalCode}
+            """)
+    AnimalRefRow findAnimalByCode(@Param("animalCode") String animalCode);
+
+    @Select("""
             SELECT id, clinic_name AS clinicName, contact, phone, address, price_note AS priceNote
             FROM base_clinic
             WHERE id = #{clinicId}
@@ -67,4 +74,30 @@ public interface MedicalMapper extends BaseMapper<VisitEntity> {
             WHERE v.visit_no = #{visitNo}
             """)
     VisitDetailRow findVisit(@Param("visitNo") String visitNo);
+
+    @Select("""
+            SELECT v.visit_no AS visitNo,
+                   v.animal_id AS animalId,
+                   a.code AS animalCode,
+                   a.name AS animalName,
+                   v.order_id AS orderId,
+                   o.order_no AS orderNo,
+                   v.clinic_id AS clinicId,
+                   c.clinic_name AS clinicName,
+                   v.visited_at AS visitedAt,
+                   v.complaint,
+                   v.diagnosis,
+                   v.treatment,
+                   v.cost,
+                   v.file_ids AS fileIds,
+                   v.source_note AS sourceNote,
+                   v.created_at AS createdAt
+            FROM visit v
+            JOIN animal a ON a.id = v.animal_id
+            JOIN base_clinic c ON c.id = v.clinic_id
+            LEFT JOIN rescue_order o ON o.id = v.order_id
+            WHERE a.code = #{animalCode}
+            ORDER BY v.visited_at DESC, v.visit_no DESC
+            """)
+    List<VisitDetailRow> findVisitsByAnimal(@Param("animalCode") String animalCode);
 }

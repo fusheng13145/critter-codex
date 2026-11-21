@@ -143,6 +143,48 @@ class MedicalControllerTests {
     }
 
     @Test
+    @DisplayName("按档案编号反查就诊：返回诊断、处置与费用")
+    void listsVisitsByAnimal() throws Exception {
+        when(queryService.visitsByAnimal("CAT-2026-031")).thenReturn(List.of(new VisitDetail(
+                "VS20261120001", 11L, "CAT-2026-031", "三花", null, null,
+                2L, "校园北门合作宠物医院（示例）",
+                LocalDateTime.of(2026, 11, 20, 15, 0),
+                "左前肢跛行", "软组织挫伤", "清创包扎", 12000,
+                List.of("F20261120001"), "校园巡查发现",
+                LocalDateTime.of(2026, 11, 21, 10, 0))));
+
+        mockMvc.perform(get("/api/v1/visits").param("animalCode", "CAT-2026-031"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].visitNo").value("VS20261120001"))
+                .andExpect(jsonPath("$.data[0].diagnosis").value("软组织挫伤"))
+                .andExpect(jsonPath("$.data[0].cost").value(12000));
+
+        verify(queryService).visitsByAnimal("CAT-2026-031");
+    }
+
+    @Test
+    @DisplayName("反查就诊缺少档案编号返回 30301")
+    void rejectsMissingAnimalCode() throws Exception {
+        when(queryService.visitsByAnimal(any()))
+                .thenThrow(new BusinessException(ErrorCode.PARAM_INVALID));
+
+        mockMvc.perform(get("/api/v1/visits"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(30301));
+    }
+
+    @Test
+    @DisplayName("反查就诊时档案不存在返回 30410")
+    void rejectsUnknownAnimalCode() throws Exception {
+        when(queryService.visitsByAnimal("CAT-2026-999"))
+                .thenThrow(new BusinessException(ErrorCode.RECORD_NOT_FOUND));
+
+        mockMvc.perform(get("/api/v1/visits").param("animalCode", "CAT-2026-999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(30410));
+    }
+
+    @Test
     @DisplayName("合作医院列表必须登录，缺少令牌返回 20001")
     void requiresLogin() throws Exception {
         mockMvc.perform(get("/api/v1/clinics").header("Authorization", ""))

@@ -3,6 +3,7 @@ package com.just.critter.care;
 import com.just.critter.care.repository.MedicalRepository;
 import com.just.critter.care.service.ClinicView;
 import com.just.critter.care.service.MedicalQueryService;
+import com.just.critter.care.service.ReferenceAnimal;
 import com.just.critter.care.service.VisitDetail;
 import com.just.critter.support.exception.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class MedicalQueryServiceTests {
@@ -72,5 +74,50 @@ class MedicalQueryServiceTests {
         assertThatThrownBy(() -> service.visit("VS20269999001"))
                 .isInstanceOfSatisfying(BusinessException.class,
                         ex -> assertThat(ex.getCode()).isEqualTo(30410));
+    }
+
+    @Test
+    @DisplayName("按档案编号反查就诊：返回该动物全部记录")
+    void listsVisitsByAnimal() {
+        VisitDetail detail = new VisitDetail(
+                "VS20261120001", 11L, "CAT-2026-031", "三花", null, null,
+                2L, "校园北门合作宠物医院（示例）",
+                LocalDateTime.of(2026, 11, 20, 15, 0),
+                "左前肢跛行", "软组织挫伤", "清创包扎", 12000,
+                List.of("F20261120001"), "校园巡查发现",
+                LocalDateTime.of(2026, 11, 21, 10, 0));
+        when(medical.findAnimalByCode("CAT-2026-031"))
+                .thenReturn(Optional.of(new ReferenceAnimal(11L, "CAT-2026-031", "三花")));
+        when(medical.findVisitsByAnimal("CAT-2026-031")).thenReturn(List.of(detail));
+
+        List<VisitDetail> result = service.visitsByAnimal(" CAT-2026-031 ");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).diagnosis()).isEqualTo("软组织挫伤");
+        assertThat(result.get(0).clinicName()).contains("示例");
+    }
+
+    @Test
+    @DisplayName("按档案编号反查就诊：空编号 30301，档案不存在 30410")
+    void rejectsInvalidAnimalCode() {
+        assertThatThrownBy(() -> service.visitsByAnimal(" "))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo(30301));
+        verifyNoInteractions(medical);
+
+        when(medical.findAnimalByCode("CAT-2026-999")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.visitsByAnimal("CAT-2026-999"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        ex -> assertThat(ex.getCode()).isEqualTo(30410));
+    }
+
+    @Test
+    @DisplayName("档案存在但尚无就诊：返回空列表而不是 30410")
+    void returnsEmptyVisitsForAnimal() {
+        when(medical.findAnimalByCode("CAT-2026-031"))
+                .thenReturn(Optional.of(new ReferenceAnimal(11L, "CAT-2026-031", "三花")));
+        when(medical.findVisitsByAnimal("CAT-2026-031")).thenReturn(List.of());
+
+        assertThat(service.visitsByAnimal("CAT-2026-031")).isEmpty();
     }
 }
