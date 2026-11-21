@@ -12,20 +12,17 @@ import org.apache.ibatis.annotations.Select;
 public interface SequenceMapper {
 
     /**
-     * 原子取号：首次插入 current_no=1，已存在则在同一行锁内自增。
-     * 取号后必须再读 current_no，不能依赖 LAST_INSERT_ID()：首次 INSERT 时
-     * LAST_INSERT_ID 会被 seq_no 的自增主键覆盖，返回行号而不是流水号。
+     * 原子取号：首次插入用 LAST_INSERT_ID(1) 初始化会话值，
+     * 已存在则在同一行锁内自增并回写 LAST_INSERT_ID。避免“先 INSERT IGNORE 再 SELECT FOR UPDATE”
+     * 在并发首取时产生插入意向锁与行锁交叉死锁。
      */
     @Insert("""
             INSERT INTO seq_no (biz_type, seq_year, current_no)
-            VALUES (#{bizType}, #{year}, 1)
-            ON DUPLICATE KEY UPDATE current_no = current_no + 1
+            VALUES (#{bizType}, #{year}, LAST_INSERT_ID(1))
+            ON DUPLICATE KEY UPDATE current_no = LAST_INSERT_ID(current_no + 1)
             """)
     int nextValue(@Param("bizType") String bizType, @Param("year") int year);
 
-    @Select("""
-            SELECT current_no FROM seq_no
-            WHERE biz_type = #{bizType} AND seq_year = #{year}
-            """)
-    int currentValue(@Param("bizType") String bizType, @Param("year") int year);
+    @Select("SELECT LAST_INSERT_ID()")
+    int lastInsertId();
 }

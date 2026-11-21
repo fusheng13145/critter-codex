@@ -166,4 +166,4 @@ B 不直接改认养表、就诊表与消息表；需要数据时调用 C 的接
 | 野猪拦截 | `POST /reports` | 可选 `speciesId`；俗名含“野猪”或学名 `Sus scrofa` 返回 `30503 WILDLIFE_FORBIDDEN`，不落上报、不生成工单 |
 | 疫苗提醒 | `HealthReminderJob` | 每天扫描 `VACCINE` 且 `next_date ∈ [今天, 今天+3]` 的记录，按 `operatorId` 投递 `HEALTH_REMINDER`，`biz_id=健康记录 id` 幂等去重 |
 
-数据库变更集中在 `V19__p1_merge_alias_and_extensions.sql`：`animal` 加合并字段、新建 `animal_alias`、`animal_group.merged_into_code`、`report.species_id`、`donation.abnormal_reason`、`project_settlement_note`。
+数据库变更集中在 `V20__p1_merge_alias_and_extensions.sql`：`animal` 加合并字段、新建 `animal_alias`、`animal_group.merged_into_code`、`report.species_id`、`donation.abnormal_reason`、`project_settlement_note`。V19 已被 C 的志愿任务迁移占用，本分支顺延为 V20。
