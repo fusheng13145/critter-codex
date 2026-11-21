@@ -131,7 +131,7 @@ cd critter-frontend
 npm run build
 ```
 
-结果：`vue-tsc -b` 无类型错误，Vite 1843 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
+结果：`vue-tsc -b` 无类型错误，Vite 1853 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
 
 ### 浏览器走查
 
@@ -206,10 +206,20 @@ npm run build
 - 金额仍全部按整数分提交与展示；支出 >50000 分显示“待二签”，复核弹窗提示“还需另一名管理员”。
 - `RecordStatus` 与页面按钮不自行推断权限：状态迁移按钮限 `ANIMAL_ADMIN`，支出/结项限 `ANIMAL_ADMIN`，台账限 `ANIMAL_ADMIN`/`SYSTEM_ADMIN` 只读。
 - `ExpenseReviewResult.message` 直接作为成功提示，避免前端另写一套文案。
-- 结项公示页不要求管理员身份，但应用路由仍要求登录；后端匿名只读契约已通过真库验证。
+- 结项公示页不要求管理员身份；路由 `meta.public=true`，未登录守卫直接放行，不再跳登录页。
 
 ### 9.3 验证边界
 
 - 本轮只做了 `npm run build` 与真实 API 闭环验证，未重新进行浏览器点击走查；§6 的走查记录属于前端首版阶段。
 - 真库验证覆盖：动物状态、支出登记/自复核拦截/两签、台账、我的上报、工单超时与再受理、结项公示、群体编辑/目击、物种出现记录。
-- 前端构建：`vue-tsc -b` 无类型错误，1843 modules，BUILD 成功。
+- 前端构建：`vue-tsc -b` 无类型错误，1853 modules，BUILD 成功。
+
+## 10. 匿名公示与代理修正（2026-11-21）
+
+| 项 | 结果 |
+|---|---|
+| 路由 | `/projects/:id/settlement` 增加 `meta.public = true`；`beforeEach` 命中 public 直接放行，不执行 `auth.restore()` |
+| 浏览器验证 | 新开未登录会话访问 `http://localhost:5176/projects/PRJ-2026-009/settlement`，页面标题“结项公示”，顶栏身份“游客”，未跳登录 |
+| 公示数据 | 已筹 ¥42,846.24、已复核支出 ¥1,700.00、结余 ¥41,146.24；项目 `PRJ-2026-009`，报告与结余去向正常展示 |
+| 开发代理 | `vite.config.ts` 的 `/api` 默认目标改为 `http://127.0.0.1:8083`，可用 `VITE_API_PROXY` 覆盖；避免再指到无关项目的 8080 |
+| 构建 | `npm run build` 通过，1853 modules |
