@@ -15,5 +15,6 @@ public record ProjectSettlementView(
         int balance,
         String balanceTo,
         List<String> attachments,
-        OffsetDateTime publishedAt) {
+        OffsetDateTime publishedAt,
+        List<SettlementNoteView> appendNotes) {
 }

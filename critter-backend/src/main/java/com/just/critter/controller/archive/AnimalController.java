@@ -4,6 +4,9 @@ import com.just.critter.domain.enums.AnimalStatus;
 import com.just.critter.service.archive.AnimalChangeLogView;
 import com.just.critter.service.archive.AnimalDetail;
 import com.just.critter.service.archive.AnimalFilter;
+import com.just.critter.service.archive.AnimalMergeService;
+import com.just.critter.service.archive.AnimalMergeResult;
+import com.just.critter.service.archive.AnimalQrCodeService;
 import com.just.critter.service.archive.AnimalService;
 import com.just.critter.service.archive.AnimalStatusLogView;
 import com.just.critter.service.archive.AnimalStatusResult;
@@ -14,6 +17,7 @@ import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.PageResult;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
+import com.just.critter.support.exception.ErrorCode;
 import com.just.critter.support.security.AuthContext;
 import com.just.critter.support.security.RequireRoles;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +28,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.Arrays;
 import java.util.List;
@@ -38,10 +46,15 @@ public class AnimalController {
 
     private final AnimalService service;
     private final AnimalStatusService statusService;
+    private final AnimalMergeService mergeService;
+    private final AnimalQrCodeService qrCodeService;
 
-    public AnimalController(AnimalService service, AnimalStatusService statusService) {
+    public AnimalController(AnimalService service, AnimalStatusService statusService,
+                            AnimalMergeService mergeService, AnimalQrCodeService qrCodeService) {
         this.service = service;
         this.statusService = statusService;
+        this.mergeService = mergeService;
+        this.qrCodeService = qrCodeService;
     }
 
     @PostMapping
@@ -93,6 +106,25 @@ public class AnimalController {
     @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
     public Result<List<AnimalChangeLogView>> history(@PathVariable String code) {
         return Result.ok(service.history(code));
+    }
+
+    @PostMapping("/{code}/merge")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<AnimalMergeResult> merge(@PathVariable String code,
+                                          @RequestBody(required = false) MergeAnimalRequest request) {
+        if (request == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "请求体不能为空");
+        }
+        return Result.ok(mergeService.merge(request.toCommand(code), AuthContext.require().id()));
+    }
+
+    @GetMapping("/{code}/qrcode")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public ResponseEntity<byte[]> qrcode(@PathVariable String code) {
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .contentType(MediaType.IMAGE_PNG)
+                .body(qrCodeService.png(code));
     }
 
     private List<AnimalStatus> parseStatuses(String status) {

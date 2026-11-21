@@ -13,9 +13,10 @@ public record CreateReportRequest(
         List<String> photos,
         String description,
         String animalCode,
+        Long speciesId,
         String contact) {
 
     public CreateReportCommand toCommand() {
-        return new CreateReportCommand(type, pointId, photos, description, animalCode, contact);
+        return new CreateReportCommand(type, pointId, photos, description, animalCode, speciesId, contact);
     }
 }

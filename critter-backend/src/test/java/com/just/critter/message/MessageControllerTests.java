@@ -65,7 +65,7 @@ class MessageControllerTests {
     @Test
     @DisplayName("四类未读数：返回固定四个分组")
     void readsUnreadCounts() throws Exception {
-        when(queryService.unread(1001L)).thenReturn(new MessageUnreadCount(1L, 2L, 3L, 4L));
+        when(queryService.unread(1001L)).thenReturn(new MessageUnreadCount(1L, 2L, 3L, 4L, 5L));
 
         mockMvc.perform(get("/api/v1/messages/unread"))
                 .andExpect(status().isOk())

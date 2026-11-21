@@ -398,6 +398,7 @@ export type MessageType =
   | 'DONATION_PROGRESS'
   | 'ORDER_PROGRESS'
   | 'APPROVAL_RESULT'
+  | 'HEALTH_REMINDER'
 
 export interface MessageItem {
   id: number
@@ -415,6 +416,7 @@ export interface MessageUnreadCount {
   donationProgress: number
   orderProgress: number
   approvalResult: number
+  healthReminder: number
 }
 
 export interface MessageReadFailure {

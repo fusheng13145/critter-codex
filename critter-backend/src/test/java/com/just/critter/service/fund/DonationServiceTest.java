@@ -38,6 +38,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -351,6 +352,42 @@ class DonationServiceTest {
         assertThat(result.failed().get(0).code()).isEqualTo(ErrorCode.RECORD_NOT_FOUND.getCode());
         assertThat(donation.getStatus()).isEqualTo(DonationStatus.VERIFIED);
         assertThat(project.getRaisedAmount()).isEqualTo(60_000);
+    }
+
+    @Test
+    @DisplayName("凭证异常：PENDING_VERIFY 可标记 ABNORMAL、替换凭证并给实名捐赠人发消息")
+    void flag_marks_abnormal_and_notifies_donor() {
+        Donation target = donation("DN20261121001", DonationStatus.PENDING_VERIFY, 10_000);
+        when(donationMapper.selectByDonationNoForUpdate("DN20261121001")).thenReturn(target);
+        CurrentUser admin = new CurrentUser(9001L, "admin", "管理员", "ANIMAL_ADMIN",
+                Set.of("ANIMAL_ADMIN"), "后勤处", "jwt-admin", null);
+
+        DonationFlagResult result = service.flag("DN20261121001",
+                new FlagDonationCommand("凭证金额与登记金额不一致", List.of("file-2")), admin);
+
+        assertThat(result.status()).isEqualTo(DonationStatus.ABNORMAL);
+        assertThat(result.abnormalReason()).isEqualTo("凭证金额与登记金额不一致");
+        assertThat(result.voucherFileIds()).containsExactly("file-2");
+        assertThat(target.getAbnormalReason()).isEqualTo("凭证金额与登记金额不一致");
+        verify(donationMapper).updateById(target);
+        verify(messages).insert(any(MessageWrite.class));
+        verify(auditLog).successAs(anyLong(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("凭证异常：VERIFIED 已入账不可直接标记，提示先冲正")
+    void flag_rejects_verified_donation() {
+        Donation verified = donation("DN20261121002", DonationStatus.VERIFIED, 10_000);
+        when(donationMapper.selectByDonationNoForUpdate("DN20261121002")).thenReturn(verified);
+        CurrentUser admin = new CurrentUser(9001L, "admin", "管理员", "ANIMAL_ADMIN",
+                Set.of("ANIMAL_ADMIN"), "后勤处", "jwt-admin", null);
+
+        assertThatThrownBy(() -> service.flag("DN20261121002",
+                new FlagDonationCommand("凭证模糊无法核验", null), admin))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode())
+                        .isEqualTo(ErrorCode.PARAM_INVALID.getCode()));
+        verify(donationMapper, never()).updateById(any(Donation.class));
     }
 
     private Project project(ProjectStatus status, int raisedAmount) {

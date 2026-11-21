@@ -28,6 +28,7 @@ export interface ReportPayload {
   photos: string[]
   description: string
   animalCode?: string
+  speciesId?: number
   contact?: string
 }
 

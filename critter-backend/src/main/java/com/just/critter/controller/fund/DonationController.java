@@ -3,8 +3,10 @@ package com.just.critter.controller.fund;
 import com.just.critter.domain.enums.DonationStatus;
 import com.just.critter.service.fund.BatchConfirmResult;
 import com.just.critter.service.fund.CreatedDonation;
+import com.just.critter.service.fund.DonationCertificateService;
 import com.just.critter.service.fund.DonationConfirmation;
 import com.just.critter.service.fund.DonationFilter;
+import com.just.critter.service.fund.DonationFlagResult;
 import com.just.critter.service.fund.DonationService;
 import com.just.critter.service.fund.DonationSummary;
 import com.just.critter.support.api.PageQuery;
@@ -15,6 +17,10 @@ import com.just.critter.support.exception.ErrorCode;
 import com.just.critter.support.security.AuthContext;
 import com.just.critter.support.security.CurrentUser;
 import com.just.critter.support.security.RequireRoles;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -41,9 +48,11 @@ import java.util.Set;
 public class DonationController {
 
     private final DonationService service;
+    private final DonationCertificateService certificateService;
 
-    public DonationController(DonationService service) {
+    public DonationController(DonationService service, DonationCertificateService certificateService) {
         this.service = service;
+        this.certificateService = certificateService;
     }
 
     @PostMapping
@@ -82,6 +91,26 @@ public class DonationController {
             throw new BusinessException(ErrorCode.PARAM_INVALID.getCode(), "请选择待核对捐赠");
         }
         return Result.ok(service.confirmBatch(request.ids(), actor));
+    }
+
+    @PutMapping("/{donationNo}/flag")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<DonationFlagResult> flag(@PathVariable String donationNo,
+                                           @RequestBody(required = false) FlagDonationRequest request) {
+        CurrentUser actor = AuthContext.require();
+        return Result.ok(service.flag(donationNo, request == null ? null : request.toCommand(), actor));
+    }
+
+    @GetMapping("/{donationNo}/certificate")
+    public ResponseEntity<byte[]> certificate(@PathVariable String donationNo) {
+        CurrentUser actor = AuthContext.require();
+        byte[] pdf = certificateService.pdf(donationNo, actor);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(certificateService.fileName(donationNo), StandardCharsets.UTF_8)
+                        .build().toString())
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 
     private Set<DonationStatus> parseStatuses(String raw) {

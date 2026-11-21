@@ -47,6 +47,7 @@ public class MessageQueryService {
         long donationProgress = 0;
         long orderProgress = 0;
         long approvalResult = 0;
+        long healthReminder = 0;
         for (MessageTypeCount item : messages.countUnreadByType(receiverId, since)) {
             if (MessageType.ADOPTION_EXPIRY.name().equals(item.type())) {
                 adoptionExpiry = item.count();
@@ -56,9 +57,12 @@ public class MessageQueryService {
                 orderProgress = item.count();
             } else if (MessageType.APPROVAL_RESULT.name().equals(item.type())) {
                 approvalResult = item.count();
+            } else if (MessageType.HEALTH_REMINDER.name().equals(item.type())) {
+                healthReminder = item.count();
             }
         }
-        return new MessageUnreadCount(adoptionExpiry, donationProgress, orderProgress, approvalResult);
+        return new MessageUnreadCount(adoptionExpiry, donationProgress, orderProgress,
+                approvalResult, healthReminder);
     }
 
     private String normalizeType(String type) {

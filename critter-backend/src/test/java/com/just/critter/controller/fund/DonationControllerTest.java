@@ -113,7 +113,7 @@ class DonationControllerTest {
         when(donationService.search(any(), any())).thenReturn(PageResult.of(
                 List.of(new DonationSummary("DN202611210031", "PRJ-2026-007", "冬季流浪猫医疗基金",
                         9001L, "小林", 20_000, false, "给小猫加餐", List.of("file-1"),
-                        DonationStatus.PENDING_VERIFY, null, null,
+                        DonationStatus.PENDING_VERIFY, null, null, null,
                         OffsetDateTime.parse("2026-11-21T10:31:00+08:00"),
                         OffsetDateTime.parse("2026-11-21T10:31:00+08:00"))),
                 1, 20, 1));

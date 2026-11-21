@@ -9,6 +9,7 @@ import com.just.critter.domain.model.Report;
 import com.just.critter.domain.rescue.ReportCodeGenerator;
 import com.just.critter.mapper.AnimalMapper;
 import com.just.critter.mapper.BasePointMapper;
+import com.just.critter.mapper.BaseSpeciesMapper;
 import com.just.critter.mapper.OrderMapper;
 import com.just.critter.mapper.ReportMapper;
 import com.just.critter.support.api.PageQuery;
@@ -53,6 +54,8 @@ class ReportServiceTest {
     @Mock
     private BasePointMapper pointMapper;
     @Mock
+    private BaseSpeciesMapper speciesMapper;
+    @Mock
     private AnimalMapper animalMapper;
     @Mock
     private OrderMapper orderMapper;
@@ -63,7 +66,7 @@ class ReportServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReportService(reportMapper, pointMapper, animalMapper,
+        service = new ReportService(reportMapper, pointMapper, speciesMapper, animalMapper,
                 new ReportCodeGenerator((bizType, year) -> 7, CLOCK),
                 new com.just.critter.domain.rescue.OrderCodeGenerator((bizType, year) -> 8, CLOCK),
                 orderMapper, auditLogService, CLOCK);
@@ -163,6 +166,21 @@ class ReportServiceTest {
     }
 
     @Test
+    @DisplayName("野猪拦截：俗名含野猪或学名 Sus scrofa，返回 30503 且不落上报")
+    void create_rejects_wild_boar() {
+        com.just.critter.domain.model.BaseSpecies boar = new com.just.critter.domain.model.BaseSpecies();
+        boar.setId(31L);
+        boar.setCommonName("野猪");
+        boar.setScientificName("Sus scrofa");
+        when(speciesMapper.selectById(31L)).thenReturn(boar);
+
+        assertCode(() -> service.create(new CreateReportCommand(
+                "INJURED", 7L, List.of("F1"), "体型较大，疑似野猪闯入宿舍区", null, 31L, null), 1L), 30503);
+        verify(reportMapper, never()).insert(any(Report.class));
+        verify(orderMapper, never()).insert(any(Order.class));
+    }
+
+    @Test
     @DisplayName("列表：按状态/类型/点位/时限过滤，返回点位名与超时标记")
     void search_returns_summary_with_point_and_overdue() {
         Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-20T10:30:00"), 1001L);
@@ -246,7 +264,7 @@ class ReportServiceTest {
 
     private CreateReportCommand command(String type, Long pointId, List<String> photos,
                                         String description, String animalCode, String contact) {
-        return new CreateReportCommand(type, pointId, photos, description, animalCode, contact);
+        return new CreateReportCommand(type, pointId, photos, description, animalCode, null, contact);
     }
 
     private void assertCode(ThrowingRunnable action, int expected) {

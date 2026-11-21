@@ -22,6 +22,8 @@ public class CritterProperties {
     private final Login login = new Login();
     private final File file = new File();
     private final Export export = new Export();
+    private final Qrcode qrcode = new Qrcode();
+    private final Certificate certificate = new Certificate();
 
     @Getter
     @Setter
@@ -90,5 +92,24 @@ public class CritterProperties {
         private String dir = "data/exports";
         /** 异步任务结果保留时长（秒），过期的下载地址自然失效 */
         private long taskTtlSeconds = 3600L;
+    }
+
+    /**
+     * 档案二维码内容前缀。默认指向本机 Vite 的公开档案页，生产改成真实域名。
+     */
+    @Getter
+    @Setter
+    public static class Qrcode {
+        private String animalUrlPrefix = "http://localhost:5173/animals/";
+    }
+
+    /**
+     * 捐赠凭证 PDF 的中文字体路径。优先用配置路径，找不到再按系统常见字体兜底；
+     * 生产镜像里安装 fonts-noto-cjk 后即可稳定输出中文。
+     */
+    @Getter
+    @Setter
+    public static class Certificate {
+        private String fontPath = "";
     }
 }

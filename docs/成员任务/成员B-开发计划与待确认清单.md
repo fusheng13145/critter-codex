@@ -393,3 +393,19 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 | 校园真实底图 | 仍为示意点位图，等 Q-B-07 底图资产 |
 | 移动端适配 | 当前按桌面端验收，移动端为后续迭代 |
 | Docker 实跑 | 本机未安装 Docker；Compose/Dockerfile 已编写，未在本机执行 |
+
+### 15.5 后续增强接口交付记录（2026-11-21）
+
+本轮补齐 D2 域剩余增强接口，并修复三项行为缺口。迁移为 `V20__p1_merge_alias_and_extensions.sql`（V19 已被 C 的志愿任务迁移占用），主库目标状态为 V20（42 张业务表 + `seq_no` = 43 张表）。
+
+| 分组 | 接口/规则 | 交付要点 |
+|---|---|---|
+| 档案治理 | `POST /animals/{code}/merge`、`GET /animals/{code}/qrcode`、`PUT /sightings/{id}` | 副档保留并写别名、旧编号全链路可解析；二维码 300×300 PNG；目击可清空/改归属，已消失群体拒绝 30505 |
+| 群体维护 | `POST /groups/merge`、`POST /groups/{code}/split` | 仅同物种合并；副群体置 GONE 并写 `mergedIntoCode`；拆分生成新编号、源群体缩区间、目击可迁移 |
+| 基础数据 | `POST/PUT /points`、`POST/PUT /species` | 点位停用不删除、坐标 0–100、名称/俗名唯一；术语与保护级别可维护 |
+| 资金 | `GET /ledger/export` 及任务状态/下载、`PUT /donations/{no}/flag`、`GET /donations/{no}/certificate` | 台账 ≤5 万行同步 xlsx、超阈值异步；已入账捐赠必须先冲正才能标异常；证书仅 VERIFIED 可签发，PDFBox 横版 A4 |
+| 公示 | `POST /projects/{projectNo}/settlement/notes` | 只能追加说明，不能改正文，`appendNotes` 随详情返回 |
+| 行为缺口 | 野猪拦截、疫苗提醒、公示追加说明 | 上报可带 `speciesId`；匹配野猪返回 30503 且不落单；疫苗到期前 3 天按录入人投递并按记录 id 去重 |
+| 编号器 | `seq_no` 取号 | 修复新建库首次 `LAST_INSERT_ID()` 返回行号导致首号回退；改为同事务读回 `current_no` |
+
+**验证**：后端全量 431 个单测通过；真库 51 个 IT 通过（含 V20 / 43 表断言）；前端 `npm run build` 通过。

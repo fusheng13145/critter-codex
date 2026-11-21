@@ -33,6 +33,8 @@ public class Animal {
     private Boolean neutered;
     private LocalDate neuteredAt;
     private Boolean adopted;
+    private Long mergedIntoId;
+    private LocalDateTime mergedAt;
     private String coverFileId;
     private String internalNote;
     private LocalDateTime statusChangedAt;
@@ -146,6 +148,22 @@ public class Animal {
 
     public void setAdopted(Boolean adopted) {
         this.adopted = adopted;
+    }
+
+    public Long getMergedIntoId() {
+        return mergedIntoId;
+    }
+
+    public void setMergedIntoId(Long mergedIntoId) {
+        this.mergedIntoId = mergedIntoId;
+    }
+
+    public LocalDateTime getMergedAt() {
+        return mergedAt;
+    }
+
+    public void setMergedAt(LocalDateTime mergedAt) {
+        this.mergedAt = mergedAt;
     }
 
     public String getCoverFileId() {

@@ -62,7 +62,7 @@ class ReportIT extends MySqlIntegrationTestSupport {
         Long pointId = jdbc.queryForObject("SELECT id FROM base_point ORDER BY id LIMIT 1", Long.class);
 
         CreatedReport created = reportService.create(new CreateReportCommand(
-                "INJURED", pointId, List.of("F1", "F2"), "右后腿受伤无法正常站立", null, "13800000000"), 1001L);
+                "INJURED", pointId, List.of("F1", "F2"), "右后腿受伤无法正常站立", null, null, "13800000000"), 1001L);
 
         assertThat(created.reportNo()).startsWith("RP2026");
         assertThat(created.status().name()).isEqualTo("PENDING");
@@ -88,7 +88,7 @@ class ReportIT extends MySqlIntegrationTestSupport {
     void search_returns_created_report() {
         Long pointId = jdbc.queryForObject("SELECT id FROM base_point ORDER BY id LIMIT 1", Long.class);
         CreatedReport created = reportService.create(new CreateReportCommand(
-                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null), 1001L);
+                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null, null), 1001L);
 
         PageResult<ReportSummary> page = reportService.search(
                 new ReportFilter(List.of(ReportStatus.PENDING), ReportType.INJURED, pointId, null),
@@ -106,7 +106,7 @@ class ReportIT extends MySqlIntegrationTestSupport {
     void accept_creates_order_and_moves_report() {
         Long pointId = jdbc.queryForObject("SELECT id FROM base_point ORDER BY id LIMIT 1", Long.class);
         CreatedReport created = reportService.create(new CreateReportCommand(
-                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null), 1001L);
+                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null, null), 1001L);
         Long reportId = jdbc.queryForObject("SELECT id FROM report WHERE report_no = ?", Long.class,
                 created.reportNo());
         LocalDateTime reportCreatedAt = jdbc.queryForObject(
@@ -138,7 +138,7 @@ class ReportIT extends MySqlIntegrationTestSupport {
     void close_marks_report_closed() {
         Long pointId = jdbc.queryForObject("SELECT id FROM base_point ORDER BY id LIMIT 1", Long.class);
         CreatedReport created = reportService.create(new CreateReportCommand(
-                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null), 1001L);
+                "INJURED", pointId, List.of("F1"), "右后腿受伤无法正常站立", null, null, null), 1001L);
         Long reportId = jdbc.queryForObject("SELECT id FROM report WHERE report_no = ?", Long.class,
                 created.reportNo());
 

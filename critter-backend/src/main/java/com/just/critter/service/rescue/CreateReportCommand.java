@@ -9,5 +9,6 @@ public record CreateReportCommand(
         java.util.List<String> photos,
         String description,
         String animalCode,
+        Long speciesId,
         String contact) {
 }

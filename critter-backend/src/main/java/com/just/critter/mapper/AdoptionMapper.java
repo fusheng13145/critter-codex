@@ -34,6 +34,14 @@ public interface AdoptionMapper extends BaseMapper<AdoptionEntity> {
     long countActiveByUser(@Param("userId") long userId);
 
     @Select("""
+            SELECT COUNT(*)
+            FROM adoption
+            WHERE animal_id = #{animalId}
+              AND status IN ('PENDING_PAYMENT', 'ACTIVE')
+            """)
+    long countBlockingByAnimalId(@Param("animalId") long animalId);
+
+    @Select("""
             SELECT *
             FROM adoption
             WHERE adoption_no = #{adoptionNo}

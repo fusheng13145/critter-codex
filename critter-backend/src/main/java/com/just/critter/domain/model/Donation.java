@@ -31,6 +31,7 @@ public class Donation {
     private DonationStatus status;
     private Long verifierId;
     private LocalDateTime verifiedAt;
+    private String abnormalReason;
     private Long reversalOf;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -130,6 +131,14 @@ public class Donation {
 
     public void setVerifiedAt(LocalDateTime verifiedAt) {
         this.verifiedAt = verifiedAt;
+    }
+
+    public String getAbnormalReason() {
+        return abnormalReason;
+    }
+
+    public void setAbnormalReason(String abnormalReason) {
+        this.abnormalReason = abnormalReason;
     }
 
     public Long getReversalOf() {

@@ -104,6 +104,7 @@ export const MESSAGE_TYPE_LABELS: Record<string, string> = {
   DONATION_PROGRESS: '募捐进度',
   ORDER_PROGRESS: '工单进展',
   APPROVAL_RESULT: '审批结果',
+  HEALTH_REMINDER: '健康提醒',
 }
 
 export function messageTypeLabel(code: string | null | undefined): string {
@@ -115,6 +116,7 @@ export function messageTypeTag(code: string | null | undefined): 'success' | 'wa
   if (code === 'APPROVAL_RESULT') return 'success'
   if (code === 'ADOPTION_EXPIRY') return 'warning'
   if (code === 'DONATION_PROGRESS') return 'primary'
+  if (code === 'HEALTH_REMINDER') return 'warning'
   return 'info'
 }
 
