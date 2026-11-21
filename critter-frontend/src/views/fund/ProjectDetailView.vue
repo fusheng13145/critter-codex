@@ -15,6 +15,8 @@ import DonationDialog from '@/views/fund/DonationDialog.vue'
 import ProjectAuditDialog from '@/views/fund/ProjectAuditDialog.vue'
 import ProjectCreateDialog from '@/views/fund/ProjectCreateDialog.vue'
 import SettlementCreateDialog from '@/views/fund/SettlementCreateDialog.vue'
+import CommentPanel from '@/components/CommentPanel.vue'
+import FollowButton from '@/components/FollowButton.vue'
 import { dateTime, money } from '@/utils/format'
 import { projectStatusLabel, targetTypeLabel } from '@/utils/domain'
 import type { ProjectDetail } from '@/api/types'
@@ -139,6 +141,7 @@ onMounted(load)
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/projects')">返回列表</button>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
+        <FollowButton v-if="project" biz-type="PROJECT" :biz-id="project.projectNo" label="关注项目进度" />
         <button
           v-if="animalAdmin && canEdit"
           class="btn ghost"
@@ -287,6 +290,8 @@ onMounted(load)
             公开页只展示 VERIFIED 流水；PENDING_VERIFY / ABNORMAL 仅管理员核对面板可见。
           </div>
         </PanelCard>
+
+        <CommentPanel biz-type="PROJECT" :biz-id="project.projectNo" />
 
         <DonationPanel v-if="animalAdmin" :project-no="project.projectNo" @changed="afterChange" />
       </template>
