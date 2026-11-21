@@ -131,7 +131,7 @@ cd critter-frontend
 npm run build
 ```
 
-结果：`vue-tsc -b` 无类型错误，Vite 1825 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
+结果：`vue-tsc -b` 无类型错误，Vite 1843 modules transformed，构建成功。仅保留项目原有的“大 chunk > 500 kB”警告，未为此引入新依赖。
 
 ### 浏览器走查
 
@@ -212,4 +212,4 @@ npm run build
 
 - 本轮只做了 `npm run build` 与真实 API 闭环验证，未重新进行浏览器点击走查；§6 的走查记录属于前端首版阶段。
 - 真库验证覆盖：动物状态、支出登记/自复核拦截/两签、台账、我的上报、工单超时与再受理、结项公示、群体编辑/目击、物种出现记录。
-- 前端构建：`vue-tsc -b` 无类型错误，1825 modules，BUILD 成功。
+- 前端构建：`vue-tsc -b` 无类型错误，1843 modules，BUILD 成功。

@@ -277,7 +277,7 @@ Q-B-02 以本节为准；Q-B-06 的接口归属仍需出对照表。
 | T2.4 项目发起与审核 | 完成（一期） | `POST /projects` 草稿/直接提交、`GET /projects` 公开列表、`GET /projects/{no}` 公开详情、`PUT /projects/{no}` 修改提交、`PUT /projects/{no}/audit` 审核；预算合计 > 目标返回 `40101` 并带差额；公开页只展示 FUNDING 及之后状态；`ProjectCodeGeneratorTest` 2 例、`ProjectServiceTest` 9 例、`ProjectControllerTest` 8 例、`ProjectIT` 4 例；T2.4 说明见 `docs/T2.4-项目发起与审核说明.md` |
 | T3.1 捐赠登记与核对入账 | 完成（一期） | `POST /donations` 登记固定 `PENDING_VERIFY`；`GET /donations` 管理员按状态/项目筛选；`PUT /donations/{no}/confirm` 单笔核对；`PUT /donations/batch` 逐笔独立事务批量核对；金额一致才写 `VERIFIED` 并同事务递增 `project.raised_amount`，金额不符转 `ABNORMAL` 且不动进度；项目已筹与已入账合计不一致返回 `40106`；`DonationCodeGeneratorTest` 2 例、`DonationServiceTest` 10 例、`DonationControllerTest` 5 例、`DonationIT` 6 例；T3.1 说明见 `docs/T3.1-捐赠登记与核对入账说明.md` |
 
-测试基线：`mvn -B test` **279 例全绿**（2026-11-21，含本轮新增代码后的全量回归）；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。迁移为 V1→V14（V13 认养生命周期、V14 支出双签约束分阶段），`critter_codex_dev` 已应用至 V14。
+测试基线：`mvn -B test` **330 例全绿**（2026-11-21，已并入最新 main 的 D3 通知/就诊测试后全量回归）；真库测试另计 **35 例**（结构 5 + 种子 4 + 档案 3 + 健康 2 + 群体/基础数据 3 + 上报 4 + 工单 2 + 项目 4 + 捐赠 6 + 认养审核 2），需 `CRITTER_MYSQL_IT=true` 且 `CRITTER_MYSQL_PASSWORD` 指向本地 root 口令才运行，默认跳过；IT 统一重建 `critter_codex_it`。迁移为 V1→V14（V13 认养生命周期、V14 支出双签约束分阶段），`critter_codex_dev` 已应用至 V14。
 
 T1.2 遗留：`GET /animals/{code}/history` 已加管理员拦截；写操作统一走 `AuthContext.require()`，角色用 `@RequireRoles`。`photos` 只存首张为 `cover_file_id`，其余待 `sys_file` 关联表确定后再落。
 
@@ -328,7 +328,7 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 
 | 验证项 | 结果 |
 |---|---|
-| 后端全量测试 | `mvn -B test`：279 例，0 失败，0 错误，0 跳过，BUILD SUCCESS |
+| 后端全量测试 | `mvn -B test`：330 例，0 失败，0 错误，0 跳过，BUILD SUCCESS |
 | 前端构建 | `npm run build`：`vue-tsc -b` 无类型错误，1825 modules，构建成功 |
 | 动物状态 | `TEST-CAT-001`：`ON_CAMPUS→TREATING` 成功，历史返回“在校园活动 → 治疗中”，事件 `REPORT_ACCEPTED` |
 | 支出双签 | 60000 分登记成功→自复核 40104→第一签 `FIRST_APPROVED`→第二签 `APPROVED`；项目 `spentAmount=60000`，台账支出 60000 |
