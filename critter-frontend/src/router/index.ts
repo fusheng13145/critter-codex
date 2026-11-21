@@ -148,7 +148,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'medical',
         name: 'medical',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/MedicalView.vue'),
         meta: { title: '医疗协作', menu: 'medical', owner: 'C' },
       },
       {
