@@ -237,3 +237,40 @@
 - PR #12 base 为 `feature/d3-messages`，显示无冲突；待 #10 合入后 retarget 到 `main`。
 - 重放后复跑：单元 / 控制器 309、真实 MySQL IT 39，合计 348，0 失败；前端构建通过。
 
+## 第七轮：公告列表、发布与详情（2026-11-21）
+
+### 验收标准
+
+- `GET /api/v1/notices` 公开可读，即使携带无效 Bearer 也不拦截；`category` 可选，`page/size` 分页。
+- 分类英文码固定为 `PROGRESS / PUBLICITY / SCIENCE`；非法分类返回 30303。
+- 列表只返回 `published_at` 非空记录，排序为 `pinned DESC, published_at DESC, id DESC`；空结果不查询明细列表。
+- `POST /api/v1/notices` 仅 `ANIMAL_ADMIN / SYS_ADMIN / SYSTEM_ADMIN` 可调用；普通学生返回 20003。
+- 标题 trim 后 1–128 字，正文 trim 后 1–20000 字；字段非法 30301，分类非法 30303，写入 0 行 50002。
+- `authorId` 取 Bearer 当前用户，发布即写 `published_at`；公告编号为 `NT + yyyyMMdd + 3 位年度序号`，复用 `seq_no` 的 `NOTICE` 键。
+- `GET /api/v1/notices/{id}` 公开可读，返回正文与发布人昵称；id 非法 30301、不存在 30410。
+- 前端新增公告列表与详情页，管理员可在列表页发布；构建必须通过。
+
+### RED
+
+- 先新增 `NoticeServiceTests`（8）、`NoticeControllerTests`（6）、`NoticeIT`（1），共 15 例。
+- 首次 `mvn test-compile` 因 `com.just.critter.notice.repository`、`notice.service` 包及 `NoticeService`、`NoticeRepository` 等类型不存在而编译失败，确认 RED；失败原因仅为缺失类型，不是断言失败。
+- 测试装配阶段发现 `/api/v1/notices/**` 原在 `OPTIONAL_AUTH`，该拦截器不做角色判定，导致学生发布返回 200；将公告从可选鉴权移出，改由 `@PublicEndpoint` 放行两个 GET、`@RequireRoles` 拦截 POST。
+- 控制器测试另修正两处测试自身问题：Mockito 对无 `equals` 的 `PageQuery` 用实例匹配会返回 null，改为 `any(PageQuery.class)`；业务失败按项目既有约定默认 HTTP 200，断言改为 `status().isOk()` 并保留 `code=30303`。
+
+### GREEN 与重构
+
+- 新增 `NoticeCategory`、`NoticeCommand`、`NoticeView`、`NoticeDetail`、`NoticeSummaryRecord`、`NoticeWrite`。
+- 新增 `NoticeRepository` / `MyBatisNoticeRepository`、`NoticeMapper`、`NoticeEntity` / `NoticeRow`。
+- 新增 `NoticeService`、`NoticeController`、`NoticeCreateRequest`；列表先 count，0 条直接返回空页；发布先校验再取号，避免非法请求消耗序号。
+- `NoticeMapper.findById` 只查 `published_at` 非空记录并左连 `sys_user.nickname`；不存在按 30410 处理。
+- `notice` 表字段已满足本轮需求，未新增迁移；`notice_no` 唯一键与 `(published_at, pinned)` 索引沿用 V1。
+- 前端新增 `api/notices.ts`、`NoticeListView.vue`、`NoticeDetailView.vue`，注册 `/notices` 与 `/notices/:id`；消息中心增加“校园公告”入口。列表支持分类切换、置顶标记与分页；管理员发布对话框校验标题/正文非空。
+- 同步文档：`03 接口设计说明书.md` 补 7.14 公告三接口、分类枚举与编号规则，并把“公告逻辑删除”修正为“当前不提供删除/撤回接口”。
+
+### 测试结果
+
+- 新增相关测试 15/15 通过；其中单元 8、控制器 6、`NoticeIT` 1。
+- 本轮实测完整后端：单元 / 控制器 323 例、真实 MySQL IT 40 例，合计 363 例，0 失败、0 错误、0 跳过。
+- 前端 `npm run build` 通过（`vue-tsc` + Vite），仅有 chunk 体积告警。
+- 仍未完成：公告删除/撤回、首页置顶摘要、附件与富文本；档案详情反查就诊、三类消息生产与认养到期任务仍待后续轮次。
+

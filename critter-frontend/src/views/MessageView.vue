@@ -199,6 +199,7 @@ onMounted(async () => {
     <PageHero title="消息中心" desc="审批结果、认养到期、募捐进度与工单进展，四类消息在此汇总。">
       <template #actions>
         <el-tag type="warning" effect="plain">未读 {{ unreadTotal }} 条</el-tag>
+        <el-button @click="router.push('/notices')">校园公告</el-button>
         <el-button :loading="loading" @click="refresh">刷新</el-button>
       </template>
     </PageHero>

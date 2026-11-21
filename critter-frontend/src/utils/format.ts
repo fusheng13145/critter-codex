@@ -118,6 +118,23 @@ export function messageTypeTag(code: string | null | undefined): 'success' | 'wa
   return 'info'
 }
 
+export const NOTICE_CATEGORY_LABELS: Record<string, string> = {
+  PROGRESS: '进展',
+  PUBLICITY: '公示',
+  SCIENCE: '科普',
+}
+
+export function noticeCategoryLabel(code: string | null | undefined): string {
+  if (!code) return '—'
+  return NOTICE_CATEGORY_LABELS[code] ?? code
+}
+
+export function noticeCategoryTag(code: string | null | undefined): 'success' | 'warning' | 'info' {
+  if (code === 'PROGRESS') return 'success'
+  if (code === 'PUBLICITY') return 'warning'
+  return 'info'
+}
+
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action
 }

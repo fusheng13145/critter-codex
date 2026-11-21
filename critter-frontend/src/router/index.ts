@@ -163,6 +163,18 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/MessageView.vue'),
         meta: { title: '消息中心', menu: 'content', owner: 'C' },
       },
+      {
+        path: 'notices',
+        name: 'notices',
+        component: () => import('@/views/NoticeListView.vue'),
+        meta: { title: '校园公告', menu: 'content', owner: 'C' },
+      },
+      {
+        path: 'notices/:id',
+        name: 'notice-detail',
+        component: () => import('@/views/NoticeDetailView.vue'),
+        meta: { title: '公告详情', menu: 'content', owner: 'C' },
+      },
     ],
   },
   {
