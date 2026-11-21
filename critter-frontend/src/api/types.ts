@@ -308,3 +308,78 @@ export interface ExportAccepted {
   rows: number
   pollUrl: string
 }
+
+/** 认养方案（GET /plans，公开） */
+export interface AdoptionPlan {
+  planId: number
+  planName: string
+  period: 'MONTH' | 'QUARTER'
+  amount: number
+  benefits: string
+}
+
+/** 认养单列表行 */
+export interface AdoptionSummary {
+  adoptionNo: string
+  userId: number
+  userName: string
+  animalCode: string
+  animalName: string | null
+  planName: string
+  amount: number
+  period: 'MONTH' | 'QUARTER'
+  status: string
+  contactMasked: string
+  startDate: string | null
+  endDate: string | null
+  certificateNo: string | null
+  createdAt: string
+}
+
+export interface AdoptionPaymentRecord {
+  paymentNo: string
+  paidAmount: number
+  paidAt: string
+  voucherFileIds: string[]
+  note: string | null
+  verifiedAt: string | null
+}
+
+export interface AdoptionDetail extends AdoptionSummary {
+  auditReason: string | null
+  payDeadline: string | null
+  payments: AdoptionPaymentRecord[]
+}
+
+export interface AdoptionCertificate {
+  adoptionNo: string
+  certificateNo: string
+  adopterName: string
+  animalCode: string
+  animalName: string | null
+  planName: string
+  startDate: string
+  endDate: string
+}
+
+export interface AuditedAdoption {
+  adoptionNo: string
+  status: string
+  payDeadline: string | null
+}
+
+export interface AdoptionPaymentResult {
+  adoptionNo: string
+  status: string
+  startDate: string
+  endDate: string
+  certificateNo: string
+  animalStatus: string
+}
+
+export interface TerminatedAdoption {
+  adoptionNo: string
+  status: string
+  endDate: string
+  animalStatus: string
+}

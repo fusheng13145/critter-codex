@@ -119,3 +119,40 @@
 - 远端 T2.4 合并后，`ProjectIT` 也从开发库 `root/1234` 切到 `critter_codex_it` 与环境变量，并接入统一测试库重建基线。
 - 当前未覆盖：缴费入账（含凭证）、我的认养/详情/终止/证书、前端审核页与联调。
 
+## 第四轮：认养查询、缴费入账、终止、证书与前端审核页（2026-11-21）
+
+### 验收标准
+
+- 管理员 `GET /adoptions` 支持 `status/page/size`，返回 `data.list + data.page`，联系方式脱敏；非管理员返回 20003。
+- `GET /adoptions/mine` 只按 Bearer 当前用户查询，可按状态筛选。
+- `GET /adoptions/{no}` 仅本人或管理员可读，联系方式按角色脱敏，返回缴费流水、审核说明与缴费期限。
+- `PUT /adoptions/{no}/payment` 仅管理员可调用；只允许 `PENDING_PAYMENT`，必须带至少一张凭证；实收与应收不一致且未填写差额说明时返回 30408。
+- 入账事务同时写 `adoption_payment`、认养单转 `ACTIVE`、计算起止日期与证书号、动物转 `ADOPTED`、清空缴费期限；任一步更新 0 行即抛出 50002。
+- `PUT /adoptions/{no}/terminate` 仅管理员可调用；只允许 `ACTIVE`，原因不少于 5 字，终止后动物恢复 `ON_CAMPUS`。
+- `GET /adoptions/{no}/certificate` 仅本人或管理员可读；未入账或没有证书号返回 30412。
+- 前端提供认养申请、管理员审核 / 缴费入账、我的认养、详情 / 终止、可打印证书；构建阶段类型检查必须通过。
+
+### RED
+
+- 先新增 `AdoptionQueryServiceTests`（8）、`AdoptionPaymentServiceTests`（8）、`AdoptionLifecycleServiceTests`（4）、`AdoptionLifecycleControllerTests`（7），共 27 例。
+- 首次运行因 `AdoptionQueryService`、`AdoptionPaymentService`、`AdoptionLifecycleService`、`AdoptionQueryService` 等目标类型不存在而编译失败，确认不是断言失败冒充 RED。
+- 真库测试首次运行暴露 V13 迁移使用 MySQL 不支持的 `ADD COLUMN IF NOT EXISTS`，在 Flyway 阶段失败。
+
+### GREEN 与重构
+
+- 新增 V13：认养单补 `certificate_no`、`pay_deadline`、`termination_reason` 与证书号唯一索引。
+- 新增查询服务、缴费服务、终止服务与三个控制器；原有申请 / 审核控制器不改，避免破坏既有测试。
+- 查询 Mapper 使用扁平联表行映射，分页与详情共用；管理员列表计数改为 `#{userId} IS NULL OR user_id = #{userId}`，修复空用户条件下的管理员列表计数。
+- 缴费服务先锁认养单、再锁动物，写缴费 → 标动物 → 转 ACTIVE；日期按 `paidAt + period.months()` 计算，证书号与缴费流水号均由 `seq_no` 发号。
+- 审核 SQL 同步写 `pay_deadline = auditedAt + 7 DAY`，避免详情页用估算时间。
+- 前端新增 `api/adoptions.ts`、`AdoptView`、`AdoptionDetailView`、`AdoptionCertificateView`、`AdoptionPaymentDialog`；证书采用页面排版 + 浏览器打印 / 另存 PDF，服务端负责签发编号与数据。
+
+### 测试结果
+
+- 新增相关单元 / 控制器测试 27/27 通过。
+- 完整套件 309/309 通过，0 失败、0 错误、0 跳过；其中单元 / 控制器测试 278 例、真实 MySQL IT 31 例。
+- 新增 `AdoptionLifecycleIT` 2/2，覆盖审核 → 入账 → ACTIVE → 详情 / 我的 / 管理员列表 → 终止 → 证书。
+- 前端 `npm ci` 后 `npm run build` 通过（`vue-tsc` 类型检查 + Vite 构建）；chunk 体积告警不影响功能。
+- 仍未完成：消息中心通知落库、到期自动提醒 / 释放、PDF 服务端直接输出；证书当前由前端打印生成 PDF。
+- 第四轮提交 `125a43c` 已推送至 `origin/feature/d3-adoption`，并创建 PR #9：https://github.com/fusheng13145/critter-codex/pull/9 。
+

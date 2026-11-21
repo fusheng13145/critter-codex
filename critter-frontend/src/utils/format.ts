@@ -70,6 +70,35 @@ export function statusLabel(code: string | null | undefined): string {
   return STATUS_LABELS[code] ?? code
 }
 
+/** 认养状态与账号/档案的 ACTIVE 不同义，必须单独翻译为“生效中”。 */
+export const ADOPTION_STATUS_LABELS: Record<string, string> = {
+  PENDING_AUDIT: '待审核',
+  PENDING_PAYMENT: '待缴费',
+  ACTIVE: '生效中',
+  EXPIRED: '已到期',
+  CLOSED: '已关闭',
+  REJECTED: '已驳回',
+  TERMINATED: '已终止',
+}
+
+export function adoptionStatusLabel(code: string | null | undefined): string {
+  if (!code) return '—'
+  return ADOPTION_STATUS_LABELS[code] ?? code
+}
+
+export function adoptionStatusType(code: string | null | undefined): 'success' | 'warning' | 'danger' | 'info' {
+  if (code === 'ACTIVE') return 'success'
+  if (code === 'PENDING_AUDIT' || code === 'PENDING_PAYMENT') return 'warning'
+  if (code === 'REJECTED' || code === 'TERMINATED' || code === 'EXPIRED') return 'danger'
+  return 'info'
+}
+
+export function periodLabel(code: string | null | undefined): string {
+  if (code === 'MONTH') return '按月'
+  if (code === 'QUARTER') return '按季'
+  return code ?? '—'
+}
+
 export function actionLabel(action: string): string {
   return ACTION_LABELS[action] ?? action
 }

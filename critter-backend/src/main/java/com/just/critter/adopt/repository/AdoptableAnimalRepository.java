@@ -11,4 +11,8 @@ import java.util.Optional;
 public interface AdoptableAnimalRepository {
 
     Optional<AdoptableAnimal> lockByCode(String code);
+
+    int markAdopted(long animalId);
+
+    int markOnCampus(long animalId);
 }

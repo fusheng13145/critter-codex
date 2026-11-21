@@ -2,8 +2,14 @@ package com.just.critter.adopt.repository;
 
 import com.just.critter.adopt.domain.AdoptionRecord;
 import com.just.critter.adopt.domain.AdoptionStatus;
+import com.just.critter.adopt.service.AdoptionActivation;
+import com.just.critter.adopt.service.AdoptionDetailRecord;
+import com.just.critter.adopt.service.AdoptionPaymentRecord;
+import com.just.critter.adopt.service.AdoptionPaymentWrite;
+import com.just.critter.adopt.service.AdoptionTermination;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -27,4 +33,20 @@ public interface AdoptionRepository {
                     String reason,
                     int amount,
                     LocalDateTime auditedAt);
+
+    long count(Long userId, String status);
+
+    List<AdoptionDetailRecord> findPage(Long userId, String status, long offset, int size);
+
+    Optional<AdoptionDetailRecord> findDetail(String adoptionNo);
+
+    List<AdoptionPaymentRecord> findPayments(long adoptionId);
+
+    boolean hasPayment(long adoptionId);
+
+    int insertPayment(AdoptionPaymentWrite payment);
+
+    int activate(AdoptionActivation activation);
+
+    int terminate(AdoptionTermination termination);
 }

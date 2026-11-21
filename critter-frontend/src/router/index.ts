@@ -64,8 +64,20 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'adopt',
         name: 'adopt',
-        component: () => import('@/views/PlaceholderView.vue'),
+        component: () => import('@/views/AdoptView.vue'),
         meta: { title: '认养专区', menu: 'adopt', owner: 'C' },
+      },
+      {
+        path: 'adopt/:no',
+        name: 'adoption-detail',
+        component: () => import('@/views/AdoptionDetailView.vue'),
+        meta: { title: '认养详情', menu: 'adopt', owner: 'C' },
+      },
+      {
+        path: 'adopt/:no/certificate',
+        name: 'adoption-certificate',
+        component: () => import('@/views/AdoptionCertificateView.vue'),
+        meta: { title: '电子认养证书', menu: 'adopt', owner: 'C' },
       },
       {
         path: 'report',
