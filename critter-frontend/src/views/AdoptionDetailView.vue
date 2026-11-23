@@ -24,6 +24,7 @@ const router = useRouter()
 const auth = useAuthStore()
 const no = computed(() => String(route.params.no ?? ''))
 const isAdmin = computed(() => auth.isAdmin)
+const isOwner = computed(() => Boolean(detail.value && auth.user && detail.value.userId === auth.user.id))
 
 const detail = ref<AdoptionDetail | null>(null)
 const loading = ref(true)
@@ -86,6 +87,14 @@ onMounted(load)
     <PageHero :title="`认养详情 ${no}`" desc="缴费、状态与证书均以服务端记录为准。">
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/adopt')">返回认养专区</button>
+        <button
+          v-if="detail && detail.status === 'ACTIVE' && isOwner"
+          class="btn ghost"
+          type="button"
+          @click="router.push(`/adopt/${no}/benefits`)"
+        >
+          专属动态与探视
+        </button>
         <button
           v-if="detail && (detail.status === 'ACTIVE' || detail.status === 'TERMINATED')"
           class="btn"

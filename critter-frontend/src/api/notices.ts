@@ -15,6 +15,10 @@ export function fetchNotice(id: number): Promise<NoticeDetail> {
   return get<NoticeDetail>(`/notices/${id}`)
 }
 
+export function fetchNoticeHighlights(limit = 5): Promise<NoticeItem[]> {
+  return get<NoticeItem[]>('/notices/highlights', { limit })
+}
+
 export function publishNotice(payload: NoticeCreatePayload): Promise<NoticeItem> {
   return post<NoticeItem>('/notices', payload)
 }

@@ -39,6 +39,13 @@ public class NoticeController {
     }
 
     @PublicEndpoint
+    @GetMapping("/highlights")
+    public Result<java.util.List<NoticeView>> highlights(
+            @RequestParam(defaultValue = "5") int limit) {
+        return Result.ok(notices.highlights(limit));
+    }
+
+    @PublicEndpoint
     @GetMapping("/{id}")
     public Result<NoticeDetail> detail(@PathVariable long id) {
         return Result.ok(notices.detail(id));

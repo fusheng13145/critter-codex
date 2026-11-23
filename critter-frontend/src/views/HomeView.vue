@@ -3,14 +3,22 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import * as statsApi from '@/api/stats'
 import * as logApi from '@/api/log'
+import * as noticeApi from '@/api/notices'
 import { BizError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import PageHero from '@/components/PageHero.vue'
 import MetricCard from '@/components/MetricCard.vue'
 import PanelCard from '@/components/PanelCard.vue'
 import BarChart from '@/components/BarChart.vue'
-import { actionLabel, moneyShort, relativeTime, statusLabel } from '@/utils/format'
-import type { BiologyStats, EfficiencyStats, FundStats, LogItem } from '@/api/types'
+import {
+  actionLabel,
+  moneyShort,
+  noticeCategoryLabel,
+  noticeCategoryTag,
+  relativeTime,
+  statusLabel,
+} from '@/utils/format'
+import type { BiologyStats, EfficiencyStats, FundStats, LogItem, NoticeItem } from '@/api/types'
 
 /**
  * P01 工作台：数字全部来自 /stats/*（A 的统计接口），没有假图。
@@ -24,6 +32,7 @@ const biology = ref<BiologyStats | null>(null)
 const fund = ref<FundStats | null>(null)
 const efficiency = ref<EfficiencyStats | null>(null)
 const logs = ref<LogItem[]>([])
+const highlights = ref<NoticeItem[]>([])
 const loading = ref(true)
 const denied = ref('')
 
@@ -116,6 +125,11 @@ async function load(): Promise<void> {
   loading.value = true
   denied.value = ''
   try {
+    highlights.value = await noticeApi.fetchNoticeHighlights(5)
+  } catch {
+    highlights.value = []
+  }
+  try {
     biology.value = await statsApi.fetchBiology()
   } catch (error) {
     denied.value = error instanceof BizError ? error.message : '统计数据加载失败'
@@ -158,6 +172,28 @@ onMounted(load)
     </PageHero>
 
     <div v-if="denied" class="notice" style="margin-bottom: 16px">{{ denied }}</div>
+
+    <div v-if="highlights.length" class="home-carousel">
+      <div class="carousel-head">
+        <span class="carousel-title">公示轮播</span>
+        <button class="link-btn" type="button" @click="router.push('/notices')">全部公告 →</button>
+      </div>
+      <el-carousel height="108px" indicator-position="outside" :interval="5000">
+        <el-carousel-item v-for="item in highlights" :key="item.noticeId">
+          <button class="carousel-slide" type="button" @click="router.push(`/notices/${item.noticeId}`)">
+            <div class="slide-meta">
+              <el-tag :type="noticeCategoryTag(item.category)" effect="light" size="small">
+                {{ noticeCategoryLabel(item.category) }}
+              </el-tag>
+              <span v-if="item.pinned" class="tag danger">置顶</span>
+              <span class="muted">{{ item.publishedAt?.slice(0, 10) }}</span>
+            </div>
+            <div class="slide-title">{{ item.title }}</div>
+            <div class="slide-sub">点击查看公告正文</div>
+          </button>
+        </el-carousel-item>
+      </el-carousel>
+    </div>
 
     <div class="metrics">
       <MetricCard
@@ -263,3 +299,51 @@ onMounted(load)
     </PanelCard>
   </div>
 </template>
+
+<style scoped>
+.home-carousel {
+  margin-bottom: 16px;
+  padding: 12px 16px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f5faf8 0%, #ffffff 70%);
+}
+.carousel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.carousel-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+}
+.carousel-slide {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+.slide-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.slide-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+.slide-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+</style>

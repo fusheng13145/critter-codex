@@ -258,6 +258,7 @@ onMounted(loadClinics)
     >
       <template #actions>
         <el-button @click="router.push('/tnr')">TNR 看板</el-button>
+        <el-button @click="router.push('/medical/plans')">疫苗与用药计划</el-button>
         <el-button v-if="auth.isAdmin" type="primary" @click="openRegister">登记就诊</el-button>
       </template>
     </PageHero>

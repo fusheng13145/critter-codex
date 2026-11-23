@@ -13,6 +13,8 @@ public interface NoticeRepository {
 
     List<NoticeSummaryRecord> findPage(String category, long offset, int size);
 
+    List<NoticeSummaryRecord> findHighlights(int limit);
+
     Optional<NoticeDetail> findById(long id);
 
     long insert(NoticeWrite notice);
