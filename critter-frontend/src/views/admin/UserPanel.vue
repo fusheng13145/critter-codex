@@ -30,6 +30,14 @@ const statusDialog = reactive({
   reason: '',
 })
 
+/** 审批弹窗：通过时可选择临时授权（FR-SYS-03），到期由后端定时回收为 EXPIRED */
+const reviewDialog = reactive({
+  visible: false,
+  application: null as ApplicationItem | null,
+  expireHours: 0,
+  reason: '',
+})
+
 async function load(): Promise<void> {
   loading.value = true
   errorText.value = ''
@@ -86,27 +94,60 @@ async function submitStatus(): Promise<void> {
   }
 }
 
+function openReviewDialog(item: ApplicationItem): void {
+  reviewDialog.visible = true
+  reviewDialog.application = item
+  reviewDialog.expireHours = 0
+  reviewDialog.reason = ''
+}
+
+async function submitReview(): Promise<void> {
+  const item = reviewDialog.application
+  if (!item) return
+  if (reviewDialog.reason.trim().length > 0 && reviewDialog.reason.trim().length < 5) {
+    ElMessage.warning('审批意见不少于 5 个字，或留空')
+    return
+  }
+  try {
+    await userApi.reviewApplication(
+      item.id,
+      'APPROVE',
+      reviewDialog.reason.trim() || undefined,
+      reviewDialog.expireHours > 0 ? reviewDialog.expireHours : undefined,
+    )
+    ElMessage.success(reviewDialog.expireHours > 0
+      ? `已通过，${reviewDialog.expireHours} 小时后自动回收`
+      : '已通过，该身份立即生效')
+    reviewDialog.visible = false
+    await Promise.all([loadApplications(), load()])
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '审核失败')
+  }
+}
+
 async function review(item: ApplicationItem, decision: 'APPROVE' | 'REJECT'): Promise<void> {
+  if (decision === 'APPROVE') {
+    openReviewDialog(item)
+    return
+  }
   let reason = ''
-  if (decision === 'REJECT') {
-    try {
-      const result = await ElMessageBox.prompt('请填写驳回理由（不少于 5 字）', '驳回身份申请', {
-        confirmButtonText: '驳回',
-        cancelButtonText: '取消',
-        inputPlaceholder: '例如：可参与时段与任务安排不匹配',
-      })
-      reason = result.value ?? ''
-    } catch {
-      return
-    }
-    if (reason.trim().length < 5) {
-      ElMessage.warning('驳回理由不少于 5 个字')
-      return
-    }
+  try {
+    const result = await ElMessageBox.prompt('请填写驳回理由（不少于 5 字）', '驳回身份申请', {
+      confirmButtonText: '驳回',
+      cancelButtonText: '取消',
+      inputPlaceholder: '例如：可参与时段与任务安排不匹配',
+    })
+    reason = result.value ?? ''
+  } catch {
+    return
+  }
+  if (reason.trim().length < 5) {
+    ElMessage.warning('驳回理由不少于 5 个字')
+    return
   }
   try {
     await userApi.reviewApplication(item.id, decision, reason || undefined)
-    ElMessage.success(decision === 'APPROVE' ? '已通过，该身份立即生效' : '已驳回')
+    ElMessage.success('已驳回')
     await Promise.all([loadApplications(), load()])
   } catch (error) {
     ElMessage.error(error instanceof BizError ? error.message : '审核失败')
@@ -201,6 +242,12 @@ onMounted(() => {
       <el-table-column label="提交时间" width="170">
         <template #default="{ row }">{{ dateTime(row.appliedAt) }}</template>
       </el-table-column>
+      <el-table-column label="到期时间" width="170">
+        <template #default="{ row }">
+          <span v-if="row.expireAt">{{ dateTime(row.expireAt) }}</span>
+          <span v-else class="muted">永久</span>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="160">
         <template #default="{ row }">
           <button class="btn sm" type="button" @click="review(row, 'APPROVE')">通过</button>
@@ -209,6 +256,30 @@ onMounted(() => {
       </el-table-column>
     </el-table>
     <div v-if="!applications.length" class="notice" style="margin-top: 12px">当前没有待审申请。</div>
+
+    <el-dialog v-model="reviewDialog.visible" title="通过身份申请" width="480px">
+      <p class="muted" style="margin-top: 0">
+        申请人：{{ reviewDialog.application?.roleLabel }}（申请单 #{{ reviewDialog.application?.id }}）。
+        临时授权到期后由系统自动回收为"已过期"，期间该身份正常生效。
+      </p>
+      <div class="field">
+        <label>授权时长</label>
+        <select v-model.number="reviewDialog.expireHours" class="select">
+          <option :value="0">永久授予</option>
+          <option :value="24">临时授权 · 24 小时</option>
+          <option :value="168">临时授权 · 7 天</option>
+          <option :value="720">临时授权 · 30 天</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>审批意见（可选，不少于 5 字）</label>
+        <textarea v-model="reviewDialog.reason" class="textarea" placeholder="例如：材料齐全，同意加入周三投喂排班。" />
+      </div>
+      <template #footer>
+        <button class="btn ghost" type="button" @click="reviewDialog.visible = false">取消</button>
+        <button class="btn" type="button" style="margin-left: 8px" @click="submitReview">确认通过</button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="statusDialog.visible" :title="statusDialog.target === 'DISABLED' ? '禁用账号' : '启用账号'" width="460px">
       <p class="muted" style="margin-top: 0">

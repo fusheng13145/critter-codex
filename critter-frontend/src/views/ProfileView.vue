@@ -314,6 +314,10 @@ onMounted(async () => {
               <span class="muted" style="font-size: 12px">· {{ dateTime(item.appliedAt) }}</span>
               <br />
               <span class="muted" style="font-size: 12px">{{ item.reason ?? '—' }}</span>
+              <br />
+              <span v-if="item.expireAt" class="muted" style="font-size: 12px">
+                临时授权 · {{ dateTime(item.expireAt) }} 到期自动回收
+              </span>
             </span>
             <span
               class="tag"

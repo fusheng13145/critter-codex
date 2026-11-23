@@ -185,3 +185,15 @@ cd critter-frontend && npm install && npm run dev
 - 接口：curl 逐条走过注册→验证→登录→刷新→注销、改密失效、锁定、越权 403、字段错误 30301、字典增改即时生效、附件上传/审核/匿名访问控制、三个统计接口。
 - 本期接口 curl 实测（正常 + 两条失败分支）：找回密码（30105/30410/30301、5 次锁定 30103、重置后新密码可登录且旧令牌失效）、申诉（30402/30410/幂等）、角色权限（30301 自锁拦截、预览不落库、落库后登录菜单即时变化、学生越权 20003）、导出（200 + `application/vnd...sheet` + 6390 字节 + 四张 sheet；学生 20003）。
 - 前端：`npm run build`（`vue-tsc` 类型检查 + 打包）通过；headless（Edge + puppeteer-core）走查"忘记密码→重置→申诉→系统管理员登录→后台角色页预览差异→统计页导出→个人中心申诉卡片"，控制台无报错；导出请求实测 200 且 MIME 正确（无头模式下 blob 不落磁盘，属浏览器行为，非前端缺陷）。
+
+## 7 结论审查整改（2026-11-23）
+
+针对《结论.md》里 A 域的三处落项逐条收口，`mvn test` 全量 **514 例全绿**（本期新增 36），`npm run build` 通过。
+
+| 审查落项 | 整改内容 | 涉及文件 |
+|---|---|---|
+| FR-SYS-03 部分完成：`sys_user_role.expire_at` 未消费，临时授权 24 小时自动失效未实现 | ① 审批接口 `PUT /users/applications/{id}` 新增可选 `expireHours`（1—720，超限 30301），通过即写 `expire_at`；② 新增 `RoleExpiryService` + `job/identity/RoleExpiryJob`（每小时第 40 分，Asia/Shanghai）把到期行回收为 `EXPIRED` 并写 `ROLE_EXPIRE` 批量审计；③ `rolesOf`/菜单计算读侧本就过滤过期行（保持不变），到期后下次登录/刷新即失去角色。前端：审批弹窗加"授权时长"（永久/24h/7 天/30 天），待审列表与个人中心"我的申请"展示到期时间 | `UserService` `RoleExpiryService` `RoleExpiryJob` `UserDtos` `UserController` `UserPanel.vue` `ProfileView.vue` |
+| A 的 1 个约定端点无前端入口：`PUT /files/{fileId}/audit` | 新增辅助端点 `GET /api/v1/files`（按 `auditStatus`/`bizType` 筛选 + 分页，ANIMAL_ADMIN/SYS_ADMIN/SYSTEM_ADMIN，非法枚举 30303）；后台新增第五个页签"附件审核"：缩略图预览、通过/驳回、待审池默认 PENDING。至此 A 的约定端点全部有前端入口 | `FileService` `FileController` `FileDtos` `FileAuditPanel.vue` `AdminView.vue` `api/file.ts` |
+| A 域主链路缺自动化测试（登录、注册、用户、字典、附件、日志） | 新增 6 个测试类 36 例：`AuthFlowTest`（登录成功/锁定计数/账号+IP 双维度/禁用/待验证/注册四分支）、`UserServiceTest`（申请重复校验、审批含 expireHours、超限 30301、重复审批 30407、禁用原因+min-iat）、`RoleExpiryServiceTest`、`DictServiceTest`、`FileServiceTest`（上传双校验/审核流转/列表筛选）、`LogServiceTest` | `src/test/java/com/just/critter/service/{auth,user,support}` |
+
+复核确认（无需再动）：结论里 P01"公告轮播/置顶公告"已由 C 在 `HomeView` 接 `/notices/highlights`；P11"我的捐赠/电子凭证"已由前轮接入 `GET /donations/mine` 与 `GET /donations/{no}/certificate`（ProfileView"我的捐赠"卡片，PDF blob 下载）。P02/P04 的其余缺口（档案合并、二维码、台账导出、捐赠异常标记等）属 B 的页面组，未动。

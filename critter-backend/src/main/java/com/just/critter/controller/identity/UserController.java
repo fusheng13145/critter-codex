@@ -110,7 +110,7 @@ public class UserController {
     public Result<UserDtos.ApplicationView> review(@PathVariable long id,
                                                    @Valid @RequestBody UserDtos.ReviewRequest request) {
         boolean approve = "APPROVE".equalsIgnoreCase(request.decision().trim());
-        return Result.ok(userService.reviewApplication(id, approve, request.reason()));
+        return Result.ok(userService.reviewApplication(id, approve, request.reason(), request.expireHours()));
     }
 
     private static String clientIp(jakarta.servlet.http.HttpServletRequest request) {

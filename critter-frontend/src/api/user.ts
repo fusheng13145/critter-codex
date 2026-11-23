@@ -43,8 +43,14 @@ export function reviewApplication(
   id: number,
   decision: 'APPROVE' | 'REJECT',
   reason?: string,
+  /** 可选临时授权（小时，1—720）；不传即永久授予 */
+  expireHours?: number,
 ): Promise<ApplicationItem> {
-  return put<ApplicationItem>(`/users/applications/${id}`, { decision, reason })
+  return put<ApplicationItem>(`/users/applications/${id}`, {
+    decision,
+    reason,
+    expireHours: expireHours ?? null,
+  })
 }
 
 export function fetchUsers(params: {
