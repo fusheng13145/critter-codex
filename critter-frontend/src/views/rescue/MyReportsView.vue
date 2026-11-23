@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import * as rescueApi from '@/api/rescue'
 import { BizError } from '@/api/http'
 import PageHero from '@/components/PageHero.vue'
@@ -26,6 +27,28 @@ const errorText = ref('')
 const drawerVisible = ref(false)
 const detail = ref<ReportDetail | null>(null)
 const detailError = ref('')
+const confirmBusy = ref(false)
+
+function needsConfirm(row: ReportSummary): boolean {
+  return row.status === 'CLOSED' && !row.invalid && !row.confirmedAt && Boolean(row.confirmDueAt)
+}
+
+async function confirmClose(): Promise<void> {
+  if (!detail.value || confirmBusy.value) return
+  confirmBusy.value = true
+  try {
+    const result = await rescueApi.confirmReportClose(detail.value.id)
+    detail.value.confirmedAt = result.confirmedAt
+    detail.value.confirmDueAt = null
+    detail.value.autoConfirmed = result.autoConfirmed
+    ElMessage.success('已确认结案')
+    await load()
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '确认结案失败')
+  } finally {
+    confirmBusy.value = false
+  }
+}
 
 async function load(): Promise<void> {
   loading.value = true
@@ -104,6 +127,7 @@ onMounted(load)
               <td>
                 <div class="mono">{{ row.reportNo }}</div>
                 <div v-if="row.overdue" class="tag warn">已超受理时限</div>
+                <div v-if="needsConfirm(row)" class="tag warn">待确认结案</div>
               </td>
               <td>{{ reportTypeLabel(row.type) }}</td>
               <td>{{ row.pointName || '—' }}</td>
@@ -150,6 +174,23 @@ onMounted(load)
         </div>
 
         <div v-if="detail.overdue" class="notice">该上报已超过 24 小时受理时限，系统将标记超时。</div>
+
+        <div v-if="detail.invalid" class="notice">
+          该上报已判定无效：{{ detail.invalidReason || '未填写原因' }}，不计入救助统计。
+        </div>
+        <div v-else-if="needsConfirm(detail)" class="notice confirm-box">
+          <div>
+            <b>结案待确认</b><br />
+            管理员已于 {{ dateTime(detail.confirmedAt) }} 前提交结案，请在
+            {{ dateTime(detail.confirmDueAt) }} 前确认；逾期系统将自动确认。
+          </div>
+          <button class="btn sm" type="button" :disabled="confirmBusy" @click="confirmClose">
+            {{ confirmBusy ? '提交中…' : '确认结案' }}
+          </button>
+        </div>
+        <div v-else-if="detail.confirmedAt" class="notice">
+          结案已确认于 {{ dateTime(detail.confirmedAt) }}{{ detail.autoConfirmed ? '（系统自动确认）' : '' }}。
+        </div>
 
         <div class="block">
           <h3>情况描述</h3>
@@ -241,5 +282,13 @@ onMounted(load)
 .info-grid.single {
   grid-template-columns: 1fr 1fr;
   margin-top: 0;
+}
+
+.confirm-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  line-height: 1.8;
 }
 </style>

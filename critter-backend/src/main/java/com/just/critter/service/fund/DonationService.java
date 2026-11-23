@@ -195,27 +195,46 @@ public class DonationService {
         IPage<Donation> result = donations.selectPage(page, query);
         Map<Long, Project> projectById = projectMap(result.getRecords());
         List<DonationSummary> list = result.getRecords().stream()
-                .map(donation -> {
-                    Project project = projectById.get(donation.getProjectId());
-                    return new DonationSummary(
-                            donation.getDonationNo(),
-                            project == null ? null : project.getProjectNo(),
-                            project == null ? null : project.getName(),
-                            donation.getUserId(),
-                            donation.getDonorDisplay(),
-                            donation.getAmount(),
-                            Boolean.TRUE.equals(donation.getAnonymous()),
-                            donation.getMessage(),
-                            donation.getVoucherFileIds(),
-                            donation.getStatus(),
-                            donation.getVerifierId(),
-                            toOffset(donation.getVerifiedAt()),
-                            donation.getAbnormalReason(),
-                            toOffset(donation.getCreatedAt()),
-                            toOffset(donation.getUpdatedAt()));
-                })
+                .map(donation -> toSummary(donation, projectById.get(donation.getProjectId())))
                 .toList();
         return PageResult.of(list, safe.getPage(), safe.getSize(), result.getTotal());
+    }
+
+    private DonationSummary toSummary(Donation donation, Project project) {
+        return new DonationSummary(
+                donation.getDonationNo(),
+                project == null ? null : project.getProjectNo(),
+                project == null ? null : project.getName(),
+                donation.getUserId(),
+                donation.getDonorDisplay(),
+                donation.getAmount(),
+                Boolean.TRUE.equals(donation.getAnonymous()),
+                donation.getMessage(),
+                donation.getVoucherFileIds(),
+                donation.getStatus(),
+                donation.getVerifierId(),
+                toOffset(donation.getVerifiedAt()),
+                donation.getAbnormalReason(),
+                toOffset(donation.getCreatedAt()),
+                toOffset(donation.getUpdatedAt()));
+    }
+
+    /**
+     * 我的捐赠：只返回本人实名捐赠；匿名捐赠 userId 为空，不归到个人中心。
+     */
+    public PageResult<DonationSummary> mine(Long userId, PageQuery pageQuery) {
+        PageQuery safe = pageQuery.normalized();
+        Page<Donation> page = new Page<>(safe.getPage(), safe.getSize());
+        LambdaQueryWrapper<Donation> query = new LambdaQueryWrapper<Donation>()
+                .eq(Donation::getUserId, userId)
+                .orderByDesc(Donation::getCreatedAt)
+                .orderByDesc(Donation::getId);
+        IPage<Donation> result = donations.selectPage(page, query);
+        Map<Long, Project> projectById = projectMap(result.getRecords());
+        List<DonationSummary> rows = result.getRecords().stream()
+                .map(donation -> toSummary(donation, projectById.get(donation.getProjectId())))
+                .toList();
+        return PageResult.of(rows, safe.getPage(), safe.getSize(), result.getTotal());
     }
 
     /**

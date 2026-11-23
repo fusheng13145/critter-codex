@@ -129,7 +129,8 @@ public class StatsService {
                 reportTotal,
                 reports == null ? 0 : asLong(reports.get("pending")),
                 reports == null ? 0 : asLong(reports.get("processing")),
-                reports == null ? 0 : asLong(reports.get("closed")));
+                reports == null ? 0 : asLong(reports.get("closed")),
+                reports == null ? 0 : asLong(reports.get("invalid")));
 
         long orderTotal = orders == null ? 0 : asLong(orders.get("total"));
         long orderClosed = orders == null ? 0 : asLong(orders.get("closed"));

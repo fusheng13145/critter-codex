@@ -98,6 +98,12 @@ public class GroupController {
         return Result.ok(maintenance.split(request.toCommand(code), AuthContext.require().id()));
     }
 
+    @PostMapping("/sightings")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<CreatedSighting> createUnassignedSighting(@RequestBody CreateSightingRequest request) {
+        return Result.ok(service.recordUnassignedSighting(request.toCommand(), AuthContext.require().id()));
+    }
+
     @GetMapping("/sightings")
     public Result<PageResult<SightingView>> listSightings(
             @RequestParam(required = false) String groupCode,

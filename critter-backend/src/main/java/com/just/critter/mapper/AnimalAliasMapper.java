@@ -24,4 +24,7 @@ public interface AnimalAliasMapper extends BaseMapper<AnimalAlias> {
             LIMIT 200
             """)
     List<Long> selectAnimalIdsByAliasLike(@Param("keyword") String keyword);
+
+    @Select("SELECT alias_code FROM animal_alias WHERE animal_id = #{animalId} ORDER BY created_at, alias_code")
+    List<String> selectAliasCodesByAnimalId(@Param("animalId") Long animalId);
 }

@@ -132,10 +132,11 @@ class GroupControllerTest {
     @Test
     @DisplayName("PUT /groups/{code} 返回更新后的规模与点位")
     void update_returns_detail() throws Exception {
-        GroupDetail detail = new GroupDetail("GRP-2026-001",
+        GroupDetail detail = new GroupDetail("GRP-2026-001", "GRP-2026-001",
                 new SpeciesRef(1L, "黄鼬", "哺乳纲"), "毛色偏灰，尾部蓬松", 2, 2, "合并后重新计数",
                 GroupStatus.ACTIVE, "活跃", List.of(new PointRef(8L, "西区草坪")),
                 OffsetDateTime.parse("2026-11-21T09:00:00+08:00"),
+                List.of(), null, null,
                 OffsetDateTime.parse("2026-11-20T09:00:00+08:00"),
                 OffsetDateTime.parse("2026-11-21T09:00:00+08:00"));
         when(groupService.update(eq("GRP-2026-001"), any(), anyLong())).thenReturn(detail);

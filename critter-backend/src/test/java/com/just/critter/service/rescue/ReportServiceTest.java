@@ -237,6 +237,68 @@ class ReportServiceTest {
     }
 
     @Test
+    @DisplayName("有效关闭：写 7 天确认截止，等待上报人确认")
+    void close_valid_starts_confirm_window() {
+        Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        when(reportMapper.selectById(5L)).thenReturn(report);
+
+        ClosedReport closed = service.close(5L, "现场复核已处置", false);
+
+        assertThat(closed.invalid()).isFalse();
+        assertThat(closed.confirmDueAt()).isEqualTo(OffsetDateTime.parse("2026-11-28T10:31:00+08:00"));
+        assertThat(report.getInvalid()).isFalse();
+        assertThat(report.getConfirmedAt()).isNull();
+        assertThat(report.getConfirmDueAt()).isEqualTo(LocalDateTime.parse("2026-11-28T10:31:00"));
+    }
+
+    @Test
+    @DisplayName("无效关闭：立即视为已确认，不进入确认流程")
+    void close_invalid_confirms_immediately() {
+        Report report = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);
+        when(reportMapper.selectById(5L)).thenReturn(report);
+
+        ClosedReport closed = service.close(5L, "重复上报", true);
+
+        assertThat(closed.invalid()).isTrue();
+        assertThat(closed.confirmDueAt()).isNull();
+        assertThat(report.getInvalid()).isTrue();
+        assertThat(report.getInvalidReason()).isEqualTo("重复上报");
+        assertThat(report.getConfirmedAt()).isEqualTo(LocalDateTime.parse("2026-11-21T10:31:00"));
+        assertThat(report.getConfirmDueAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("确认结案：仅上报人本人，且只对已关闭有效上报生效")
+    void confirm_only_reporter_and_valid_closed() {
+        Report report = report(5L, ReportStatus.CLOSED, LocalDateTime.parse("2026-11-20T10:31:00"), 1001L);
+        report.setInvalid(false);
+        report.setConfirmDueAt(LocalDateTime.parse("2026-11-27T10:31:00"));
+        when(reportMapper.selectById(5L)).thenReturn(report);
+
+        ReportConfirmation confirmation = service.confirm(5L, 1001L);
+        assertThat(confirmation.confirmedAt()).isEqualTo(OffsetDateTime.parse("2026-11-21T10:31:00+08:00"));
+        assertThat(confirmation.autoConfirmed()).isFalse();
+        assertThat(report.getConfirmedAt()).isEqualTo(LocalDateTime.parse("2026-11-21T10:31:00"));
+        assertThat(report.getConfirmDueAt()).isNull();
+
+        assertCode(() -> service.confirm(5L, 2002L), 20002);
+    }
+
+    @Test
+    @DisplayName("确认结案：无效上报与已确认上报返回 30602")
+    void confirm_rejects_invalid_and_confirmed() {
+        Report invalid = report(6L, ReportStatus.CLOSED, LocalDateTime.parse("2026-11-20T10:31:00"), 1001L);
+        invalid.setInvalid(true);
+        when(reportMapper.selectById(6L)).thenReturn(invalid);
+        assertCode(() -> service.confirm(6L, 1001L), 30602);
+
+        Report confirmed = report(7L, ReportStatus.CLOSED, LocalDateTime.parse("2026-11-20T10:31:00"), 1001L);
+        confirmed.setConfirmedAt(LocalDateTime.parse("2026-11-21T10:31:00"));
+        when(reportMapper.selectById(7L)).thenReturn(confirmed);
+        assertCode(() -> service.confirm(7L, 1001L), 30602);
+    }
+
+    @Test
     @DisplayName("关闭：空原因 30401，已受理 30602")
     void close_rejects_empty_reason_and_non_pending() {
         Report pending = report(5L, ReportStatus.PENDING, LocalDateTime.parse("2026-11-21T10:31:00"), 1001L);

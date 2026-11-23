@@ -193,6 +193,28 @@ class GroupServiceTest {
     }
 
     @Test
+    @DisplayName("待归属目击：不挂群体、标记 UNASSIGNED，不刷新任何群体最近目击")
+    void record_unassigned_sighting_keeps_group_empty() {
+        when(points.selectById(7L)).thenReturn(point(7L));
+        when(sightings.insert(any(Sighting.class))).thenAnswer(invocation -> {
+            invocation.<Sighting>getArgument(0).setId(101L);
+            return 1;
+        });
+
+        CreatedSighting created = service.recordUnassignedSighting(new CreateSightingCommand(
+                7L, OffsetDateTime.parse("2026-11-21T09:00:00+08:00"), 1, "只拍到背影",
+                List.of("F2026112100014")), 1003L);
+
+        assertThat(created.sightingId()).isEqualTo(101L);
+        ArgumentCaptor<Sighting> sighting = ArgumentCaptor.forClass(Sighting.class);
+        verify(sightings).insert(sighting.capture());
+        assertThat(sighting.getValue().getGroupId()).isNull();
+        assertThat(sighting.getValue().getAssignStatus()).isEqualTo("UNASSIGNED");
+        assertThat(sighting.getValue().getPointId()).isEqualTo(7L);
+        verify(groups, never()).updateById(any(AnimalGroup.class));
+    }
+
+    @Test
     @DisplayName("目击：挂靠群体、标记已归属、刷新最近目击时间")
     void record_sighting_attaches_and_touches_last_seen() {
         when(groups.selectByCode("GRP-2026-001")).thenReturn(group());

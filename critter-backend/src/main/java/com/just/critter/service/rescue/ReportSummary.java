@@ -22,5 +22,10 @@ public record ReportSummary(
         boolean overdue,
         LocalDateTime createdAt,
         OffsetDateTime deadline,
-        Long reporterId) {
+        Long reporterId,
+        OffsetDateTime confirmedAt,
+        OffsetDateTime confirmDueAt,
+        boolean autoConfirmed,
+        boolean invalid,
+        String invalidReason) {
 }

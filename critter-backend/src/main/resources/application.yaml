@@ -69,7 +69,7 @@ critter:
     task-ttl-seconds: 3600
   qrcode:
     # 二维码编码的公开档案页前缀，部署时改成真实域名
-    animal-url-prefix: "http://localhost:5173/animals/"
+    animal-url-prefix: "http://localhost:5173/p/"
   certificate:
     # 留空则自动探测系统字体；Docker 镜像建议装 fonts-noto-cjk 并指向该字体
     font-path: ""

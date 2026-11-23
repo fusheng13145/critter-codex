@@ -54,6 +54,7 @@ const closeVisible = ref(false)
 const closeBusy = ref(false)
 const closeError = ref('')
 const closeReason = ref('')
+const closeInvalid = ref(false)
 
 const animalAdmin = auth.hasRole('ANIMAL_ADMIN')
 
@@ -140,6 +141,7 @@ async function submitAccept(): Promise<void> {
 
 function openClose(): void {
   closeReason.value = ''
+  closeInvalid.value = false
   closeError.value = ''
   closeVisible.value = true
 }
@@ -153,8 +155,16 @@ async function submitClose(): Promise<void> {
   closeBusy.value = true
   closeError.value = ''
   try {
-    await rescueApi.closeReport(detail.value.id, closeReason.value.trim())
-    ElMessage.success('上报已关闭')
+    const result = await rescueApi.closeReport(
+      detail.value.id,
+      closeReason.value.trim(),
+      closeInvalid.value,
+    )
+    ElMessage.success(
+      result.invalid
+        ? '上报已标记无效并结案，不计入统计'
+        : '上报已关闭，等待上报人 7 天内确认',
+    )
     closeVisible.value = false
     await openDetail(detail.value)
     await load()
@@ -226,6 +236,13 @@ onMounted(load)
                 <div class="status-cell">
                   <StatusTag :code="row.status" :label="reportStatusLabel(row.status)" />
                   <span v-if="row.overdue" class="tag danger">超时</span>
+                  <span v-if="row.invalid" class="tag danger">无效</span>
+                  <span
+                    v-else-if="row.status === 'CLOSED' && !row.confirmedAt"
+                    class="tag warn"
+                  >
+                    待确认
+                  </span>
                 </div>
               </td>
               <td class="muted small">{{ dateTime(row.deadline) }}</td>
@@ -264,6 +281,15 @@ onMounted(load)
           </div>
 
           <div v-if="detail.overdue" class="notice danger">已超过受理时限，请优先处置。</div>
+          <div v-if="detail.invalid" class="notice danger">
+            已标记无效：{{ detail.invalidReason || '未填写原因' }}，不计入救助统计。
+          </div>
+          <div v-else-if="detail.status === 'CLOSED' && detail.confirmDueAt" class="notice">
+            已结案，等待上报人确认至 {{ dateTime(detail.confirmDueAt) }}；逾期系统自动确认。
+          </div>
+          <div v-else-if="detail.confirmedAt" class="notice">
+            结案已确认于 {{ dateTime(detail.confirmedAt) }}{{ detail.autoConfirmed ? '（系统自动确认）' : '' }}。
+          </div>
           <div v-if="acceptedOrderNo" class="notice">
             已生成工单 <span class="mono">{{ acceptedOrderNo }}</span>，可在工单看板继续流转。
           </div>
@@ -363,7 +389,20 @@ onMounted(load)
         />
         <div v-if="closeError" class="field-error">{{ closeError }}</div>
       </div>
-      <div class="notice">关闭仅适用于已受理上报；若已有工单，应先在工单看板结案。</div>
+      <label class="invalid-toggle">
+        <input v-model="closeInvalid" type="checkbox" />
+        <span>
+          标记为无效上报
+          <small>重复上报、误报、无法核实等情况勾选；立即结案、不进入确认流程，并从救助统计中排除。</small>
+        </span>
+      </label>
+      <div class="notice">
+        {{
+          closeInvalid
+            ? '无效结案立即生效，无需上报人确认。'
+            : '正常结案后上报人可在 7 天内确认，逾期自动确认。'
+        }}
+      </div>
       <template #footer>
         <button class="btn ghost" type="button" @click="closeVisible = false">取消</button>
         <button class="btn" type="button" :disabled="closeBusy" @click="submitClose">
@@ -446,5 +485,24 @@ onMounted(load)
 .field label b {
   color: var(--danger);
   font-weight: 500;
+}
+
+.invalid-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.invalid-toggle small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
 }
 </style>

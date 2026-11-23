@@ -9,6 +9,7 @@ import SectionTabs from '@/components/SectionTabs.vue'
 import PageState from '@/components/PageState.vue'
 import PanelCard from '@/components/PanelCard.vue'
 import OccurrenceCreateDialog from '@/views/archive/OccurrenceCreateDialog.vue'
+import SpeciesEditDialog from '@/views/archive/SpeciesEditDialog.vue'
 import { dateOnly } from '@/utils/format'
 import { SPECIES_CATEGORY_OPTIONS, groupStatusLabel, occurrenceScaleLabel } from '@/utils/domain'
 import type {
@@ -32,6 +33,8 @@ const loading = ref(false)
 const errorText = ref('')
 const occurrenceVisible = ref(false)
 const presetSpeciesId = ref<number | null>(null)
+const speciesEditVisible = ref(false)
+const editingSpecies = ref<SpeciesItem | null>(null)
 
 const drawerVisible = ref(false)
 const selected = ref<SpeciesItem | null>(null)
@@ -93,6 +96,22 @@ function openOccurrence(item?: SpeciesItem): void {
   occurrenceVisible.value = true
 }
 
+function openSpeciesEdit(item: SpeciesItem | null = null): void {
+  editingSpecies.value = item
+  speciesEditVisible.value = true
+}
+
+async function afterSpeciesSaved(): Promise<void> {
+  await load()
+  if (selected.value) {
+    const fresh = species.value.find((item) => item.id === selected.value?.id)
+    if (fresh) {
+      selected.value = fresh
+      await loadRelations(fresh)
+    }
+  }
+}
+
 function onOccurrenceCreated(speciesId: number): void {
   ElMessage.success('出现记录已登记')
   if (selected.value?.id === speciesId) loadRelations(selected.value)
@@ -118,6 +137,7 @@ onMounted(() => {
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新名录</button>
+        <button v-if="auth.isAdmin" class="btn ghost" type="button" @click="openSpeciesEdit()">新增物种</button>
         <button v-if="auth.isAdmin" class="btn" type="button" @click="openOccurrence()">登记出现记录</button>
       </template>
     </PageHero>
@@ -127,6 +147,8 @@ onMounted(() => {
         { label: '个体档案', path: '/animals', matchPrefix: true },
         { label: '群体档案', path: '/groups' },
         { label: '物种名录', path: '/species' },
+        { label: '点位维护', path: '/points' },
+        { label: '巡查记录', path: '/patrols' },
       ]"
     />
 
@@ -189,6 +211,9 @@ onMounted(() => {
           <button v-if="auth.isAdmin" class="btn sm" type="button" @click="openOccurrence(selected)">
             登记出现
           </button>
+          <button v-if="auth.isAdmin" class="btn sm ghost" type="button" @click="openSpeciesEdit(selected)">
+            编辑物种
+          </button>
         </div>
       </div>
 
@@ -243,6 +268,12 @@ onMounted(() => {
       :points="points"
       :preset-species-id="presetSpeciesId"
       @created="onOccurrenceCreated"
+    />
+
+    <SpeciesEditDialog
+      v-model="speciesEditVisible"
+      :species="editingSpecies"
+      @saved="afterSpeciesSaved"
     />
   </div>
 </template>

@@ -100,7 +100,7 @@ public class CritterProperties {
     @Getter
     @Setter
     public static class Qrcode {
-        private String animalUrlPrefix = "http://localhost:5173/animals/";
+        private String animalUrlPrefix = "http://localhost:5173/p/";
     }
 
     /**

@@ -126,7 +126,7 @@ class StatsExportServiceTest {
 
     private static StatsDtos.EfficiencyResponse efficiency() {
         return new StatsDtos.EfficiencyResponse(
-                new StatsDtos.ReportEfficiency(10, 2, 3, 5),
+                new StatsDtos.ReportEfficiency(10, 2, 3, 5, 1),
                 new StatsDtos.OrderEfficiency(8, 5, 1, 2, 45, 62.5),
                 1, 2);
     }

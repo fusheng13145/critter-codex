@@ -7,7 +7,7 @@ import PageHero from '@/components/PageHero.vue'
 import SectionTabs from '@/components/SectionTabs.vue'
 import PanelCard from '@/components/PanelCard.vue'
 import { dateTime, money, statusLabel } from '@/utils/format'
-import type { LedgerResult, ProjectSummary } from '@/api/types'
+import type { ExportAccepted, ExportTask, LedgerResult, ProjectSummary } from '@/api/types'
 
 /**
  * P04 资金台账：收入只取已入账捐赠，支出只取已复核支出；
@@ -27,6 +27,9 @@ const data = ref<LedgerResult | null>(null)
 const projects = ref<ProjectSummary[]>([])
 const loading = ref(false)
 const errorText = ref('')
+const exporting = ref(false)
+const exportTask = ref<ExportTask | null>(null)
+const exportError = ref('')
 
 const entries = computed(() => {
   const list = data.value?.entries ?? []
@@ -67,6 +70,68 @@ function reset(): void {
   load()
 }
 
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
+/** 同步导出超 5 万行会被后端转成 JSON 受理信封，这里解包后轮询任务。 */
+async function exportLedger(): Promise<void> {
+  if (exporting.value) return
+  exporting.value = true
+  exportError.value = ''
+  exportTask.value = null
+  try {
+    const blob = await fundApi.exportLedger({
+      from: query.from || undefined,
+      to: query.to || undefined,
+      projectNo: query.projectNo || undefined,
+    })
+    if (blob.type.includes('json')) {
+      const envelope = JSON.parse(await blob.text()) as {
+        code: number
+        message: string
+        data: ExportAccepted
+      }
+      if (envelope.code !== 0) {
+        exportError.value = envelope.message || '导出受理失败'
+        return
+      }
+      await pollExport(envelope.data.taskId)
+      return
+    }
+    saveBlob(blob, `资金台账-${query.from || '起始'}-${query.to || '至今'}.xlsx`)
+  } catch (error) {
+    exportError.value = error instanceof BizError ? error.message : '台账导出失败'
+  } finally {
+    exporting.value = false
+  }
+}
+
+async function pollExport(taskId: string): Promise<void> {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const task = await fundApi.fetchLedgerExportTask(taskId)
+    exportTask.value = task
+    if (task.status === 'DONE') {
+      const blob = await fundApi.downloadLedgerExport(taskId)
+      saveBlob(blob, task.fileName || `资金台账-${taskId}.xlsx`)
+      return
+    }
+    if (task.status === 'FAILED') {
+      exportError.value = task.error || '台账导出任务失败'
+      return
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, 900))
+  }
+  exportError.value = '导出任务仍在运行，请稍后重试或联系管理员'
+}
+
 onMounted(() => {
   loadProjects()
   load()
@@ -78,6 +143,9 @@ onMounted(() => {
     <PageHero title="资金台账" desc="逐笔核对每一笔入账与支出；合计恒等于已入账捐赠减已复核支出。">
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新台账</button>
+        <button class="btn" type="button" :disabled="exporting || loading" @click="exportLedger">
+          {{ exporting ? '导出中…' : '导出台账' }}
+        </button>
       </template>
     </PageHero>
 
@@ -106,6 +174,11 @@ onMounted(() => {
         <button class="btn sm" type="button" :disabled="loading" @click="load">查询</button>
         <button class="btn sm ghost" type="button" :disabled="loading" @click="reset">近一年</button>
         <span class="muted result-count">口径：GET /ledger</span>
+      </div>
+
+      <div v-if="exportError" class="notice">{{ exportError }}</div>
+      <div v-else-if="exportTask?.status === 'RUNNING'" class="notice">
+        台账超过 5 万行，已转异步导出（taskId {{ exportTask.taskId }}，已处理 {{ exportTask.rows }} 行）。
       </div>
 
       <div v-if="errorText" class="notice">{{ errorText }}</div>

@@ -42,6 +42,7 @@ public enum ErrorCode {
     RECORD_NOT_FOUND(30410, "记录不存在"),
     CODE_DUPLICATED(30411, "编号重复"),
     PAYMENT_UNVERIFIED(30412, "未入账不得生效"),
+    POINT_REFERENCED(30413, "点位已被引用，只能停用"),
 
     GROUP_NOT_ADOPTABLE(30501, "群体不能参与认养"),
     GROUP_CANNOT_BUILD_ANIMAL(30502, "群体不可建个体档案"),

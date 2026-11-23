@@ -104,10 +104,11 @@ public interface StatsMapper {
     long pendingExpenseTotal();
 
     @Select("""
-            SELECT COUNT(*) AS total,
-                   SUM(CASE WHEN status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
-                   SUM(CASE WHEN status IN ('PROCESSING', 'TO_REVISIT') THEN 1 ELSE 0 END) AS processing,
-                   SUM(CASE WHEN status = 'CLOSED' THEN 1 ELSE 0 END) AS closed
+            SELECT SUM(CASE WHEN invalid = 0 THEN 1 ELSE 0 END) AS total,
+                   SUM(CASE WHEN invalid = 1 THEN 1 ELSE 0 END) AS invalid,
+                   SUM(CASE WHEN invalid = 0 AND status = 'PENDING' THEN 1 ELSE 0 END) AS pending,
+                   SUM(CASE WHEN invalid = 0 AND status IN ('PROCESSING', 'TO_REVISIT') THEN 1 ELSE 0 END) AS processing,
+                   SUM(CASE WHEN invalid = 0 AND status = 'CLOSED' THEN 1 ELSE 0 END) AS closed
             FROM report
             WHERE (#{from} IS NULL OR created_at >= #{from})
               AND (#{to} IS NULL OR created_at < DATE_ADD(#{to}, INTERVAL 1 DAY))

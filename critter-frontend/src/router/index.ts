@@ -27,6 +27,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '登录 / 注册', public: true },
   },
   {
+    path: '/p/:code',
+    name: 'public-animal',
+    component: () => import('@/views/archive/PublicAnimalView.vue'),
+    meta: { title: '公开档案', public: true, owner: 'B' },
+  },
+  {
     path: '/',
     component: AppLayout,
     children: [
@@ -78,6 +84,18 @@ const routes: RouteRecordRaw[] = [
         name: 'species',
         component: () => import('@/views/archive/SpeciesView.vue'),
         meta: { title: '物种名录', menu: 'archive', owner: 'B' },
+      },
+      {
+        path: 'points',
+        name: 'points',
+        component: () => import('@/views/archive/PointManageView.vue'),
+        meta: { title: '点位维护', menu: 'archive', owner: 'B' },
+      },
+      {
+        path: 'patrols',
+        name: 'patrols',
+        component: () => import('@/views/archive/PatrolView.vue'),
+        meta: { title: '巡查记录', menu: 'archive', owner: 'B' },
       },
       {
         path: 'adopt',

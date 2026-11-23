@@ -6,6 +6,7 @@ import com.just.critter.service.archive.BiodiversityService;
 import com.just.critter.service.archive.CreatedOccurrence;
 import com.just.critter.service.archive.OccurrenceFilter;
 import com.just.critter.service.archive.OccurrenceView;
+import com.just.critter.service.archive.PointAdminView;
 import com.just.critter.service.archive.PointView;
 import com.just.critter.service.archive.SpeciesFilter;
 import com.just.critter.service.archive.SpeciesView;
@@ -15,6 +16,7 @@ import com.just.critter.support.api.Result;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.security.AuthContext;
 import com.just.critter.support.security.RequireRoles;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -50,6 +52,19 @@ public class BiodiversityController {
     @GetMapping("/points")
     public Result<List<PointView>> points() {
         return Result.ok(service.listPoints());
+    }
+
+    @GetMapping("/points/admin")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<List<PointAdminView>> adminPoints() {
+        return Result.ok(adminService.listPoints());
+    }
+
+    @DeleteMapping("/points/{id}")
+    @RequireRoles({"ANIMAL_ADMIN", "SYSTEM_ADMIN"})
+    public Result<Void> deletePoint(@PathVariable Long id) {
+        adminService.deletePoint(id, AuthContext.require().id());
+        return Result.ok();
     }
 
     @PostMapping("/points")

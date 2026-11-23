@@ -1,4 +1,4 @@
-import { get, post, put } from './http'
+import { get, getBlob, post, put } from './http'
 import type {
   BatchConfirmResult,
   CreatedDonation,
@@ -8,6 +8,8 @@ import type {
   DonationSummary,
   ExpenseReviewResult,
   ExpenseSummary,
+  ExportAccepted,
+  ExportTask,
   LedgerResult,
   PageData,
   ProjectAuditResult,
@@ -80,6 +82,24 @@ export function fetchDonations(params: DonationQuery): Promise<PageData<Donation
   return get<PageData<DonationSummary>>('/donations', params)
 }
 
+export function fetchMyDonations(params: { page?: number; size?: number } = {}): Promise<PageData<DonationSummary>> {
+  return get<PageData<DonationSummary>>('/donations/mine', params)
+}
+
+export function flagDonation(
+  donationNo: string,
+  payload: { reason: string; voucherFileIds?: string[] },
+): Promise<{ donationNo: string; status: string; abnormalReason: string; voucherFileIds: string[]; flaggedAt: string }> {
+  return put<{ donationNo: string; status: string; abnormalReason: string; voucherFileIds: string[]; flaggedAt: string }>(
+    `/donations/${donationNo}/flag`,
+    payload,
+  )
+}
+
+export function fetchDonationCertificate(donationNo: string): Promise<Blob> {
+  return getBlob(`/donations/${donationNo}/certificate`)
+}
+
 export function createDonation(payload: DonationPayload): Promise<CreatedDonation> {
   return post<CreatedDonation>('/donations', payload)
 }
@@ -137,6 +157,21 @@ export function fetchLedger(params: LedgerQuery = {}): Promise<LedgerResult> {
   return get<LedgerResult>('/ledger', params)
 }
 
+/** 同步导出返回 xlsx；超 5 万行返回 JSON 信封（同步被拒、异步受理） */
+export function exportLedger(params: LedgerQuery = {}): Promise<Blob> {
+  return getBlob('/ledger/export', params)
+}
+
+export function fetchLedgerExportTask(taskId: string): Promise<ExportTask> {
+  return get<ExportTask>(`/ledger/export/${taskId}`)
+}
+
+export function downloadLedgerExport(taskId: string): Promise<Blob> {
+  return getBlob(`/ledger/export/${taskId}/download`)
+}
+
+export type { ExportAccepted }
+
 export interface SettleProjectPayload {
   reportText: string
   balanceTo: string
@@ -152,4 +187,11 @@ export function settleProject(
 
 export function fetchProjectSettlement(projectNo: string): Promise<ProjectSettlementView> {
   return get<ProjectSettlementView>(`/projects/${projectNo}/settlement`)
+}
+
+export function appendSettlementNote(
+  projectNo: string,
+  note: string,
+): Promise<ProjectSettlementView> {
+  return post<ProjectSettlementView>(`/projects/${projectNo}/settlement/notes`, { note })
 }

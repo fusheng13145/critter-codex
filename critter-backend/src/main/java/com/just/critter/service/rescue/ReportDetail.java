@@ -26,5 +26,10 @@ public record ReportDetail(
         Long animalId,
         String animalCode,
         String contact,
-        String orderNo) {
+        String orderNo,
+        OffsetDateTime confirmedAt,
+        OffsetDateTime confirmDueAt,
+        boolean autoConfirmed,
+        boolean invalid,
+        String invalidReason) {
 }

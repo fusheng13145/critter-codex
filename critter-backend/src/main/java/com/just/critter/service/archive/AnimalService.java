@@ -362,6 +362,7 @@ public class AnimalService {
                 Boolean.TRUE.equals(animal.getAdopted()),
                 coverUrl(animal.getCoverFileId()),
                 includeInternalNote ? animal.getInternalNote() : null,
+                aliases.selectAliasCodesByAnimalId(animal.getId()),
                 toOffset(animal.getCreatedAt()),
                 toOffset(animal.getUpdatedAt()));
     }
