@@ -2,6 +2,7 @@ package com.just.critter.controller.identity;
 
 import com.just.critter.controller.dto.FileDtos;
 import com.just.critter.service.support.FileService;
+import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.api.Result;
 import com.just.critter.support.security.AuthInterceptor;
 import com.just.critter.support.security.RequireRoles;
@@ -47,6 +48,17 @@ public class FileController {
     public Result<FileDtos.UploadResponse> upload(@RequestParam("file") MultipartFile file,
                                                   @RequestParam(value = "bizType", defaultValue = "GENERAL") String bizType) {
         return Result.ok(fileService.upload(file, bizType));
+    }
+
+    /** 附件审核工作台列表：审核动作（PUT /{fileId}/audit）的前端入口依赖它。 */
+    @GetMapping
+    @RequireRoles({"ANIMAL_ADMIN", "SYS_ADMIN", "SYSTEM_ADMIN"})
+    public Result<FileDtos.FilePage> list(
+            @RequestParam(required = false) String auditStatus,
+            @RequestParam(required = false) String bizType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(fileService.list(auditStatus, bizType, new PageQuery(page, size)));
     }
 
     @GetMapping("/{fileId}")

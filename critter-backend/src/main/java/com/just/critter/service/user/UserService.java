@@ -16,6 +16,7 @@ import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.cache.KeyValueStore;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
+import com.just.critter.support.exception.FieldErrorItem;
 import com.just.critter.support.log.AuditLogService;
 import com.just.critter.support.security.AesCipher;
 import com.just.critter.support.security.AuthContext;
@@ -44,6 +45,8 @@ public class UserService {
 
     private static final Set<String> APPLICABLE_ROLES = Set.of("ADOPTER", "VOLUNTEER");
     private static final Set<String> USER_STATUSES = Set.of("ACTIVE", "DISABLED", "LOCKED", "PENDING");
+    /** 临时授权上限 30 天（720 小时）；需要更长就永久授予 */
+    private static final int MAX_EXPIRE_HOURS = 720;
 
     private final SysUserMapper userMapper;
     private final SysUserRoleMapper userRoleMapper;
@@ -194,13 +197,23 @@ public class UserService {
     }
 
     @Transactional
-    public UserDtos.ApplicationView reviewApplication(long applicationId, boolean approve, String reason) {
+    /**
+     * 审批身份申请。approve 时可传 expireHours 做临时授权（如志愿者 24 小时），
+     * 到期由 RoleExpiryJob 回收为 EXPIRED；rolesOf 与菜单计算都会即时过滤过期行。
+     */
+    public UserDtos.ApplicationView reviewApplication(long applicationId, boolean approve,
+                                                      String reason, Integer expireHours) {
         SysUserRole row = userRoleMapper.selectById(applicationId);
         if (row == null) {
             throw new BusinessException(ErrorCode.RECORD_NOT_FOUND);
         }
         if (!"PENDING".equals(row.getStatus())) {
             throw new BusinessException(ErrorCode.AUDIT_CONFLICT);
+        }
+        if (approve && expireHours != null && (expireHours < 1 || expireHours > MAX_EXPIRE_HOURS)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID.getCode(),
+                    "临时授权时长需在 1—720 小时之间",
+                    List.of(new FieldErrorItem("expireHours", "临时授权时长需在 1—720 小时之间")));
         }
         CurrentUser reviewer = AuthContext.require();
         SysUserRole patch = new SysUserRole();
@@ -212,11 +225,15 @@ public class UserService {
         if (approve) {
             patch.setGrantedAt(LocalDateTime.now());
             patch.setGrantedBy(reviewer.id());
+            if (expireHours != null) {
+                patch.setExpireAt(LocalDateTime.now().plusHours(expireHours));
+            }
         }
         userRoleMapper.updateById(patch);
         auditLog.success(approve ? "ROLE_APPROVE" : "ROLE_REJECT", "sys_user_role",
                 String.valueOf(applicationId), Map.of("status", "PENDING"),
-                Map.of("status", patch.getStatus()));
+                Map.of("status", patch.getStatus(),
+                        "expireHours", expireHours == null ? "permanent" : expireHours));
         return toApplication(userRoleMapper.selectById(applicationId));
     }
 
@@ -311,7 +328,7 @@ public class UserService {
     private UserDtos.ApplicationView toApplication(SysUserRole row) {
         return new UserDtos.ApplicationView(row.getId(), row.getRoleCode(),
                 MenuMatrix.roleLabel(row.getRoleCode()), row.getStatus(), row.getApplyReason(),
-                row.getCreatedAt(), row.getGrantedBy());
+                row.getCreatedAt(), row.getGrantedBy(), row.getExpireAt());
     }
 
     private SysUser requireUser(long userId) {

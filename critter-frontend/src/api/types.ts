@@ -88,6 +88,8 @@ export interface ApplicationItem {
   reason: string | null
   appliedAt: string
   grantedBy: number | null
+  /** 临时授权到期时间；null 表示永久。EXPIRED 状态即到期已被回收 */
+  expireAt: string | null
 }
 
 export interface LoginLogItem {

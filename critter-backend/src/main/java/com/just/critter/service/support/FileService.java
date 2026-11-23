@@ -1,10 +1,13 @@
 package com.just.critter.service.support;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.just.critter.config.CritterProperties;
 import com.just.critter.controller.dto.FileDtos;
 import com.just.critter.domain.model.SysFile;
 import com.just.critter.mapper.SysFileMapper;
+import com.just.critter.support.api.PageQuery;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.exception.ErrorCode;
 import com.just.critter.support.log.AuditLogService;
@@ -27,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -175,6 +179,44 @@ public class FileService {
         auditLog.success("FILE_AUDIT", "sys_file", fileId,
                 Map.of("auditStatus", row.getAuditStatus()), Map.of("auditStatus", target));
         return meta(fileId);
+    }
+
+    /**
+     * 附件审核工作台列表：按审核状态与业务类型筛选，管理员可见。
+     * 默认按创建时间倒序——待审照片总是最新的先处理。
+     */
+    public FileDtos.FilePage list(String auditStatus, String bizType, PageQuery query) {
+        String status = normalizeEnum(auditStatus, Set.of("PENDING", "PASSED", "REJECTED"), "auditStatus");
+        String type = bizType == null || bizType.isBlank() ? null
+                : normalizeEnum(bizType, ALLOWED_BIZ_TYPES, "bizType");
+
+        PageQuery safe = query.normalized();
+        Page<SysFile> page = new Page<>(safe.getPage(), safe.getSize());
+        IPage<SysFile> rows = fileMapper.selectPage(page, Wrappers.<SysFile>lambdaQuery()
+                .eq(status != null, SysFile::getAuditStatus, status)
+                .eq(type != null, SysFile::getBizType, type)
+                .orderByDesc(SysFile::getId));
+
+        List<FileDtos.FileMeta> items = rows.getRecords().stream()
+                .map(row -> new FileDtos.FileMeta(row.getFileId(), row.getBizType(), row.getBizId(),
+                        row.getName(), row.getMime(), row.getSize() == null ? 0 : row.getSize(),
+                        row.getAuditStatus(), metaUrl(row.getFileId()), contentUrl(row.getFileId()),
+                        row.getCreatedAt()))
+                .toList();
+        return new FileDtos.FilePage(items, new FileDtos.PageMeta(safe.getPage(), safe.getSize(),
+                rows.getTotal(), rows.getPages()));
+    }
+
+    /** 枚举入参归一：空按"不过滤"处理，非法值 30303，而不是静默查全表。 */
+    private static String normalizeEnum(String raw, Set<String> allowed, String field) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String value = raw.trim().toUpperCase(Locale.ROOT);
+        if (!allowed.contains(value)) {
+            throw new BusinessException(ErrorCode.ENUM_INVALID.getCode(), field + " 非法：" + raw);
+        }
+        return value;
     }
 
     private SysFile requireFile(String fileId) {        SysFile row = fileMapper.selectOne(Wrappers.<SysFile>lambdaQuery()

@@ -63,7 +63,9 @@ public final class UserDtos {
             String status,
             String reason,
             LocalDateTime appliedAt,
-            Long grantedBy) {
+            Long grantedBy,
+            /** 临时授权的到期时间；null 表示永久。过期后由 RoleExpiryJob 回收，rolesOf 即时过滤 */
+            LocalDateTime expireAt) {
     }
 
     public record LoginLogView(Long id, String action, String result, String ip,
@@ -96,6 +98,8 @@ public final class UserDtos {
 
     public record ReviewRequest(
             @NotBlank(message = "请选择审核结果") String decision,
-            @Size(max = 255, message = "审核意见过长") String reason) {
+            @Size(max = 255, message = "审核意见过长") String reason,
+            /** 可选：临时授权小时数（1—720）。不传即永久授予，到期由定时任务回收 */
+            Integer expireHours) {
     }
 }
