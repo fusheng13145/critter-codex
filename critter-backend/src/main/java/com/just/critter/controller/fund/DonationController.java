@@ -101,6 +101,13 @@ public class DonationController {
         return Result.ok(service.flag(donationNo, request == null ? null : request.toCommand(), actor));
     }
 
+    @GetMapping("/mine")
+    public Result<PageResult<DonationSummary>> mine(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return Result.ok(service.mine(AuthContext.require().id(), new PageQuery(page, size)));
+    }
+
     @GetMapping("/{donationNo}/certificate")
     public ResponseEntity<byte[]> certificate(@PathVariable String donationNo) {
         CurrentUser actor = AuthContext.require();

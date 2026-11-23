@@ -153,7 +153,7 @@ B 不直接改认养表、就诊表与消息表；需要数据时调用 C 的接
 | 能力 | 接口 | 实现口径 |
 |---|---|---|
 | 重复档案合并 | `POST /animals/{code}/merge` | 主编号在路径，请求 `sourceCodes`（≤20）+ `reason`（≥5 字）；副档不逻辑删除、不物理删除，写 `merged_into_id/merged_at`；副编号写 `animal_alias`，详情/搜索/二维码解析到主档；健康记录与变更历史迁主档；存在 `PENDING_PAYMENT`/`ACTIVE` 认养时返回 30403 |
-| 档案二维码 | `GET /animals/{code}/qrcode` | `image/png`，300×300，UTF-8，纠错 M，margin 1；内容为 `critter.qrcode.animal-url-prefix` + 编号，默认 `http://localhost:5173/animals/` |
+| 档案二维码 | `GET /animals/{code}/qrcode` | `image/png`，300×300，UTF-8，纠错 M，margin 1；内容为 `critter.qrcode.animal-url-prefix` + 编号，默认 `http://localhost:5173/p/`，前端公开扫码页 `/p/:code` |
 | 目击归属修正 | `PUT /sightings/{id}` | `pending=true` 清空为 `UNASSIGNED`；否则按 `groupId`/`groupCode` 置 `ASSIGNED` 并刷新群体 `last_seen_at`；已消失/已合并群体返回 30505 |
 | 群体合并 | `POST /groups/merge` | 仅同物种、主副群体非 GONE；主群体合并点位、规模区间、最近目击时间与 `mergedFrom`；副群体置 `GONE` + `mergedIntoCode`；目击迁主群体 |
 | 群体拆分 | `POST /groups/{code}/split` | 新群体由服务端发号；请求显式给新群体/源群体规模区间与计数依据；可迁移指定目击记录 |
@@ -167,3 +167,24 @@ B 不直接改认养表、就诊表与消息表；需要数据时调用 C 的接
 | 疫苗提醒 | `HealthReminderJob` | 每天扫描 `VACCINE` 且 `next_date ∈ [今天, 今天+3]` 的记录，按 `operatorId` 投递 `HEALTH_REMINDER`，`biz_id=健康记录 id` 幂等去重 |
 
 数据库变更集中在 `V20__p1_merge_alias_and_extensions.sql`：`animal` 加合并字段、新建 `animal_alias`、`animal_group.merged_into_code`、`report.species_id`、`donation.abnormal_reason`、`project_settlement_note`。V19 已被 C 的志愿任务迁移占用，本分支顺延为 V20。
+
+## P2 缺口补齐（2026-11-23）
+
+按《功能模块拆解》与审计结论，成员 B 的 11 个部分完成项与 1 个未完成项（FR-R-05 巡查记录）已闭环。迁移为 `V21__p2_report_confirm_and_patrol.sql`，主库/测试库目标为 V21（43 张业务表 + `seq_no` = 44 张）。
+
+| 缺口 | 交付内容 | 前端入口 |
+|---|---|---|
+| 点位管理 | `GET /points/admin` 含停用与六类引用统计；`DELETE /points/{id}` 无引用才删除，有引用 30413 | 档案中心“点位维护”页签，仅管理员可编辑 |
+| 二维码公开页 | 二维码内容改为 `/p/{code}`；新增独立公开页 `PublicAnimalView`，复用 `GET /animals/{code}` | 档案详情“二维码贴牌”弹窗，可预览与打印 |
+| 档案合并 UI | 后端合并规则沿用 V20；前端补主档只读、副编号批量输入、原因 ≥5 字 | 档案详情“合并重复档案”；旧编号提示并展示并入关系 |
+| 待归属目击 | `POST /sightings` 生成 `UNASSIGNED`；`PUT /sightings/{id}` 指派 | 群体页“登记待归属目击”与待归属表格 |
+| 群体合并/拆分/旧编号 | `GroupDetail` 增 `queriedCode/mergedFrom/splitFrom/mergedIntoCode`；旧编号返回 GONE 源行与主档编号 | 群体详情“合并”“拆分”；旧编号访问提示跳主档 |
+| 物种维护 UI | `POST/PUT /species` 已有，前端补新增/编辑弹窗 | 物种名录“新增物种”、详情“编辑物种” |
+| 结案确认 | 有效结案写 `confirm_due_at=now+7d`；`PUT /reports/{id}/confirm` 仅上报人本人；`ReportConfirmJob` 到期自动确认 | 我的上报显示待确认与倒计时；上报详情可确认 |
+| 无效上报 | `PUT /reports/{id}/close` 支持 `invalid`，立即结案并从统计排除 | 上报处置关闭弹窗“标记无效上报”，队列显示无效/待确认 |
+| 结项追加说明 UI | `POST /projects/{projectNo}/settlement/notes` 已有；前端补列表与管理员追加表单 | 结项公示页“结项后追加说明” |
+| 台账导出 UI | 同步 xlsx 直接下载；超 5 万行按 JSON 信封转异步轮询 | 台账页“导出台账”按钮 |
+| 捐赠异常/凭证 UI | `PUT /donations/{no}/flag` 与 `GET /donations/{no}/certificate` 已有；前端补异常原因展示、标记弹窗、PDF 下载 | 资金页捐赠面板、个人中心“我的捐赠” |
+| 巡查记录 | 新表 `patrol_record`；`GET/POST /patrols`、`POST /patrols/{id}/convert`；最多 6 图，一条只能转一次 | 档案中心“巡查记录”页签，支持登记、筛选、转目击 |
+
+统计口径同步：`GET /stats/efficiency` 的 `reports.total/pending/processing/closed` 排除无效上报，新增 `invalid` 计数；前端效率卡片改为“有效上报总数”。

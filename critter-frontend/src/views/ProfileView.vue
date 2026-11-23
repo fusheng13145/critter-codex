@@ -3,12 +3,14 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as userApi from '@/api/user'
+import * as fundApi from '@/api/fund'
 import { BizError } from '@/api/http'
 import { useAuthStore } from '@/stores/auth'
 import PageHero from '@/components/PageHero.vue'
 import PanelCard from '@/components/PanelCard.vue'
-import { actionLabel, dateTime, roleLabel, statusLabel } from '@/utils/format'
-import type { ApplicationItem, LoginLogItem, Profile } from '@/api/types'
+import { actionLabel, dateTime, money, roleLabel, statusLabel } from '@/utils/format'
+import { donationStatusLabel } from '@/utils/domain'
+import type { ApplicationItem, DonationSummary, LoginLogItem, Profile } from '@/api/types'
 
 /**
  * P11 个人中心：资料、改密、身份申请与登录日志。
@@ -26,6 +28,10 @@ const savingProfile = ref(false)
 const savingPassword = ref(false)
 const submittingApply = ref(false)
 const errorText = ref('')
+const donations = ref<DonationSummary[]>([])
+const donationsLoading = ref(false)
+const donationsError = ref('')
+const certificateBusy = ref('')
 
 const profileForm = reactive({ nickname: '', dept: '', phone: '' })
 const passwordForm = reactive({ oldPassword: '', newPassword: '', confirm: '' })
@@ -117,6 +123,39 @@ async function submitApply(): Promise<void> {
   }
 }
 
+async function loadDonations(): Promise<void> {
+  donationsLoading.value = true
+  donationsError.value = ''
+  try {
+    const result = await fundApi.fetchMyDonations({ page: 1, size: 10 })
+    donations.value = result.list
+  } catch (error) {
+    donationsError.value = error instanceof BizError ? error.message : '我的捐赠加载失败'
+  } finally {
+    donationsLoading.value = false
+  }
+}
+
+async function downloadCertificate(row: DonationSummary): Promise<void> {
+  if (certificateBusy.value) return
+  certificateBusy.value = row.donationNo
+  try {
+    const blob = await fundApi.fetchDonationCertificate(row.donationNo)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `捐赠证书-${row.donationNo}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '证书下载失败')
+  } finally {
+    certificateBusy.value = ''
+  }
+}
+
 async function confirmLogout(): Promise<void> {
   try {
     await ElMessageBox.confirm('确定退出登录吗？', '退出', {
@@ -153,7 +192,10 @@ async function submitAppeal(): Promise<void> {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await load()
+  await loadDonations()
+})
 </script>
 
 <template>
@@ -313,6 +355,60 @@ onMounted(load)
       </template>
     </PanelCard>
 
+    <PanelCard title="我的捐赠" :more="`最近 ${donations.length} 笔 · 仅本人可见`">
+      <div v-if="donationsError" class="notice">{{ donationsError }}</div>
+      <div v-else-if="donationsLoading" class="muted" style="padding: 8px 0">捐赠记录加载中…</div>
+      <div v-else-if="!donations.length" class="muted" style="padding: 8px 0">
+        暂无实名捐赠记录。匿名捐赠不会显示在这里。
+      </div>
+      <table v-else class="native">
+        <thead>
+          <tr>
+            <th>捐赠单号</th>
+            <th>项目</th>
+            <th>金额</th>
+            <th>状态</th>
+            <th>登记时间</th>
+            <th style="width: 92px">凭证</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in donations" :key="row.donationNo">
+            <td class="mono">{{ row.donationNo }}</td>
+            <td>{{ row.projectName }}</td>
+            <td><b>{{ money(row.amount) }}</b></td>
+            <td>
+              <div class="donation-status">
+                <span
+                  class="tag"
+                  :class="{ danger: row.status === 'ABNORMAL', gray: row.status === 'PENDING_VERIFY' }"
+                >
+                  {{ donationStatusLabel(row.status) }}
+                </span>
+                <span v-if="row.abnormalReason" class="abnormal-reason">{{ row.abnormalReason }}</span>
+              </div>
+            </td>
+            <td class="muted small">{{ dateTime(row.createdAt) }}</td>
+            <td>
+              <button
+                v-if="row.status === 'VERIFIED'"
+                class="btn sm link"
+                type="button"
+                :disabled="certificateBusy === row.donationNo"
+                @click="downloadCertificate(row)"
+              >
+                {{ certificateBusy === row.donationNo ? '生成中…' : '电子凭证' }}
+              </button>
+              <span v-else class="muted small">入账后可下载</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="footnote" style="text-align: left">
+        口径：GET /donations/mine；只有 VERIFIED 显示电子凭证，ABNORMAL 会注明异常原因。
+      </div>
+    </PanelCard>
+
     <PanelCard title="登录日志" more="近 30 天，本人可见">
       <table class="native">
         <thead>
@@ -344,3 +440,24 @@ onMounted(load)
     </PanelCard>
   </div>
 </template>
+
+<style scoped>
+.small {
+  font-size: 11px;
+}
+
+.donation-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.abnormal-reason {
+  max-width: 220px;
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: normal;
+}
+</style>

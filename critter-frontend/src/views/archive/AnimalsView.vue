@@ -124,6 +124,8 @@ onMounted(() => {
         { label: '个体档案', path: '/animals', matchPrefix: true },
         { label: '群体档案', path: '/groups' },
         { label: '物种名录', path: '/species' },
+        { label: '点位维护', path: '/points' },
+        { label: '巡查记录', path: '/patrols' },
       ]"
     />
 

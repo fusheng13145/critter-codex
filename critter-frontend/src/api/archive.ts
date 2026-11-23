@@ -1,7 +1,8 @@
-import { get, post, put } from './http'
+import { del, get, getBlob, post, put } from './http'
 import type {
   AnimalChangeLogView,
   AnimalDetail,
+  AnimalMergeResult,
   AnimalStatusLogView,
   AnimalStatusResult,
   AnimalSummary,
@@ -12,10 +13,14 @@ import type {
   CreatedOccurrence,
   CreatedSighting,
   GroupDetail,
+  GroupMergeResult,
+  GroupSplitResult,
   GroupSummary,
   HealthRecordView,
   OccurrenceView,
   PageData,
+  PatrolView,
+  PointAdminView,
   PointView,
   SightingView,
   SpeciesView,
@@ -160,6 +165,18 @@ export function createSighting(code: string, payload: CreateSightingPayload): Pr
   return post<CreatedSighting>(`/groups/${code}/sightings`, payload)
 }
 
+/** 先登记待归属目击，再由后台指派到具体群体 */
+export function createUnassignedSighting(payload: CreateSightingPayload): Promise<CreatedSighting> {
+  return post<CreatedSighting>('/sightings', payload)
+}
+
+export function assignSighting(
+  id: number,
+  payload: { groupCode?: string; pending?: boolean; reason: string },
+): Promise<SightingView> {
+  return put<SightingView>(`/sightings/${id}`, payload)
+}
+
 export function fetchSightings(params: {
   groupCode?: string
   assignStatus?: string
@@ -174,8 +191,115 @@ export function fetchSpecies(params?: { keyword?: string; category?: string }): 
   return get<SpeciesView[]>('/species', params)
 }
 
+export interface SpeciesPayload {
+  commonName?: string
+  scientificName?: string | null
+  category?: string | null
+  protectionLevel?: string | null
+  note?: string | null
+}
+
+export function createSpecies(payload: SpeciesPayload): Promise<SpeciesView> {
+  return post<SpeciesView>('/species', payload)
+}
+
+export function updateSpecies(id: number, payload: SpeciesPayload): Promise<SpeciesView> {
+  return put<SpeciesView>(`/species/${id}`, payload)
+}
+
 export function fetchPoints(): Promise<PointView[]> {
   return get<PointView[]>('/points')
+}
+
+export function fetchAdminPoints(): Promise<PointAdminView[]> {
+  return get<PointAdminView[]>('/points/admin')
+}
+
+export interface PointPayload {
+  pointName?: string
+  area?: string
+  x?: number | null
+  y?: number | null
+  enabled?: boolean
+  note?: string | null
+}
+
+export function createPoint(payload: PointPayload): Promise<PointView> {
+  return post<PointView>('/points', payload)
+}
+
+export function updatePoint(id: number, payload: PointPayload): Promise<PointView> {
+  return put<PointView>(`/points/${id}`, payload)
+}
+
+export function deletePoint(id: number): Promise<void> {
+  return del<void>(`/points/${id}`)
+}
+
+export function mergeAnimal(
+  mainCode: string,
+  payload: { sourceCodes: string[]; reason: string },
+): Promise<AnimalMergeResult> {
+  return post<AnimalMergeResult>(`/animals/${mainCode}/merge`, payload)
+}
+
+/** 二维码 PNG 需要带鉴权请求，直接用浏览器打开会 401 */
+export function fetchAnimalQrCode(code: string): Promise<Blob> {
+  return getBlob(`/animals/${code}/qrcode`)
+}
+
+export interface GroupMergePayload {
+  mainCode: string
+  sourceCodes: string[]
+  reason: string
+}
+
+export function mergeGroups(payload: GroupMergePayload): Promise<GroupMergeResult> {
+  return post<GroupMergeResult>('/groups/merge', payload)
+}
+
+export interface GroupSplitPayload {
+  newFeatures: string
+  newMinSize: number
+  newMaxSize: number
+  newSizeBasis: string
+  pointIds: number[]
+  sourceMinSize: number
+  sourceMaxSize: number
+  sourceSizeBasis: string
+  moveSightingIds?: number[]
+  reason: string
+}
+
+export function splitGroup(code: string, payload: GroupSplitPayload): Promise<GroupSplitResult> {
+  return post<GroupSplitResult>(`/groups/${code}/split`, payload)
+}
+
+export interface PatrolPayload {
+  pointId: number
+  patrolAt: string
+  countEstimate?: number | null
+  hasAnomaly?: boolean
+  anomalyNote?: string | null
+  fileIds?: string[]
+}
+
+export function fetchPatrols(params: {
+  pointId?: number
+  from?: string
+  to?: string
+  page?: number
+  size?: number
+}): Promise<PageData<PatrolView>> {
+  return get<PageData<PatrolView>>('/patrols', params)
+}
+
+export function createPatrol(payload: PatrolPayload): Promise<PatrolView> {
+  return post<PatrolView>('/patrols', payload)
+}
+
+export function convertPatrol(id: number, groupCode?: string | null): Promise<SightingView> {
+  return post<SightingView>(`/patrols/${id}/convert`, { groupCode: groupCode ?? null })
 }
 
 export function fetchOccurrences(params: {

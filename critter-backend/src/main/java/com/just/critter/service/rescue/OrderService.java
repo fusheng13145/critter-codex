@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.just.critter.config.AppConfig;
 import com.just.critter.domain.enums.OrderEvent;
 import com.just.critter.domain.enums.OrderStatus;
+import com.just.critter.domain.enums.ReportStatus;
 import com.just.critter.domain.enums.Role;
 import com.just.critter.domain.model.Animal;
 import com.just.critter.domain.model.BasePoint;
@@ -245,6 +246,9 @@ public class OrderService {
                 actor == null || actor.primaryRole() == null ? "GUEST" : actor.primaryRole(),
                 actionFor(event), BIZ_TYPE, order.getOrderNo(), beforeData, afterData);
 
+        if (next == OrderStatus.CLOSED) {
+            markReportClosed(order, now);
+        }
         notifyReporter(order, next, actor, now);
 
         return new OrderTransitionResult(order.getOrderNo(), next, allowedTargets(next),
@@ -261,6 +265,26 @@ public class OrderService {
                 .toList();
     }
 
+    /**
+     * 工单关闭即上报结案：写入 7 天确认截止时间，上报人确认或定时任务自动确认。
+     */
+    private void markReportClosed(Order order, LocalDateTime now) {
+        if (order.getReportId() == null) {
+            return;
+        }
+        Report report = reports.selectById(order.getReportId());
+        if (report == null || report.getStatus() == ReportStatus.CLOSED) {
+            return;
+        }
+        report.setStatus(ReportStatus.CLOSED);
+        report.setCloseReason(order.getCloseReason());
+        report.setConfirmedAt(null);
+        report.setConfirmDueAt(now.plusDays(7));
+        report.setAutoConfirmed(false);
+        report.setUpdatedAt(now);
+        reports.updateById(report);
+    }
+
     /** 工单每次有效流转都向上报人写一条进展，便于其不看列表也知道处理到哪一步。 */
     private void notifyReporter(Order order, OrderStatus next, CurrentUser actor, LocalDateTime now) {
         Report report = order.getReportId() == null ? null : reports.selectById(order.getReportId());
@@ -268,7 +292,9 @@ public class OrderService {
         if (receiverId == null) {
             return;
         }
-        String title = "工单 " + order.getOrderNo() + " 有新进展：" + next.label();
+        String title = next == OrderStatus.CLOSED
+                ? "工单 " + order.getOrderNo() + " 已结案，请在上报详情确认"
+                : "工单 " + order.getOrderNo() + " 有新进展：" + next.label();
         int rows = messages.insert(new MessageWrite(
                 receiverId, "ORDER_PROGRESS", title, BIZ_TYPE, order.getOrderNo(),
                 actor == null ? null : actor.id(), now));

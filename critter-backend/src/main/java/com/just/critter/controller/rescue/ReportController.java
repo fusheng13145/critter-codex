@@ -6,6 +6,7 @@ import com.just.critter.service.rescue.AcceptedReport;
 import com.just.critter.service.rescue.ClosedReport;
 import com.just.critter.service.rescue.CreatedReport;
 import com.just.critter.service.rescue.ReportDetail;
+import com.just.critter.service.rescue.ReportConfirmation;
 import com.just.critter.service.rescue.ReportFilter;
 import com.just.critter.service.rescue.ReportService;
 import com.just.critter.service.rescue.ReportSummary;
@@ -84,7 +85,12 @@ public class ReportController {
     @PutMapping("/{id}/close")
     @RequireRoles({"ANIMAL_ADMIN"})
     public Result<ClosedReport> close(@PathVariable Long id, @RequestBody CloseReportRequest request) {
-        return Result.ok(service.close(id, request.reason()));
+        return Result.ok(service.close(id, request.reason(), request.invalidFlag()));
+    }
+
+    @PutMapping("/{id}/confirm")
+    public Result<ReportConfirmation> confirm(@PathVariable Long id) {
+        return Result.ok(service.confirm(id, AuthContext.require().id()));
     }
 
     private List<ReportStatus> parseStatuses(String status) {

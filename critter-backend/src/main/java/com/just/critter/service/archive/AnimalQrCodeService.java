@@ -40,7 +40,7 @@ public class AnimalQrCodeService {
         Animal animal = resolve(code);
         String prefix = properties.getQrcode().getAnimalUrlPrefix();
         if (prefix == null || prefix.isBlank()) {
-            prefix = "http://localhost:5173/animals/";
+            prefix = "http://localhost:5173/p/";
         }
         String target = prefix.endsWith("/") ? prefix + animal.getCode() : prefix + "/" + animal.getCode();
         try {
@@ -60,7 +60,7 @@ public class AnimalQrCodeService {
         Animal animal = resolve(code);
         String prefix = properties.getQrcode().getAnimalUrlPrefix();
         if (prefix == null || prefix.isBlank()) {
-            prefix = "http://localhost:5173/animals/";
+            prefix = "http://localhost:5173/p/";
         }
         return prefix.endsWith("/") ? prefix + animal.getCode() : prefix + "/" + animal.getCode();
     }

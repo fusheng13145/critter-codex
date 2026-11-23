@@ -44,7 +44,7 @@ public final class StatsDtos {
                                List<FundProject> unsettled) {
     }
 
-    public record ReportEfficiency(long total, long pending, long processing, long closed) {
+    public record ReportEfficiency(long total, long pending, long processing, long closed, long invalid) {
     }
 
     public record OrderEfficiency(long total, long closed, long timeout, long open,

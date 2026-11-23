@@ -256,7 +256,11 @@ onMounted(load)
     <div class="grid2" style="margin-top: 16px">
       <PanelCard title="上报与工单效率">
         <div class="metrics" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 0">
-          <MetricCard label="上报总数" :value="String(efficiency?.reports.total ?? 0)" :sub="`待受理 ${efficiency?.reports.pending ?? 0}`" />
+          <MetricCard
+            label="有效上报总数"
+            :value="String(efficiency?.reports.total ?? 0)"
+            :sub="`待受理 ${efficiency?.reports.pending ?? 0} · 无效 ${efficiency?.reports.invalid ?? 0}`"
+          />
           <MetricCard label="上报结案率" :value="percent(reportClosedRate)" :sub="`已关闭 ${efficiency?.reports.closed ?? 0}`" />
           <MetricCard label="工单平均受理" :value="`${efficiency?.orders.avgAcceptMinutes ?? 0} 分钟`" sub="从上报到受理" />
           <MetricCard label="工单超时" :value="String(efficiency?.orders.timeout ?? 0)" sub="需说明原因" />
