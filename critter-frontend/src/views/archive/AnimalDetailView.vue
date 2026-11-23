@@ -14,6 +14,8 @@ import HealthRecordPanel from '@/views/archive/HealthRecordPanel.vue'
 import AnimalVisitPanel from '@/views/archive/AnimalVisitPanel.vue'
 import AnimalEditDialog from '@/views/archive/AnimalEditDialog.vue'
 import AnimalStatusDialog from '@/views/archive/AnimalStatusDialog.vue'
+import AnimalMergeDialog from '@/views/archive/AnimalMergeDialog.vue'
+import AnimalQrDialog from '@/views/archive/AnimalQrDialog.vue'
 import CommentPanel from '@/components/CommentPanel.vue'
 import FollowButton from '@/components/FollowButton.vue'
 import { dateOnly, dateTime } from '@/utils/format'
@@ -44,6 +46,8 @@ const loading = ref(false)
 const errorText = ref('')
 const editVisible = ref(false)
 const statusVisible = ref(false)
+const mergeVisible = ref(false)
+const qrVisible = ref(false)
 
 async function load(): Promise<void> {
   if (!code) return
@@ -106,6 +110,8 @@ onMounted(() => {
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
         <FollowButton v-if="animal" biz-type="ANIMAL" :biz-id="animal.code" label="关注这只动物" />
         <button v-if="auth.isAdmin && animal" class="btn ghost" type="button" @click="editVisible = true">编辑档案</button>
+        <button v-if="auth.isAdmin && animal" class="btn ghost" type="button" @click="mergeVisible = true">合并重复档案</button>
+        <button v-if="auth.isAdmin && animal" class="btn ghost" type="button" @click="qrVisible = true">二维码贴牌</button>
         <button
           v-if="auth.hasRole('ANIMAL_ADMIN') && animal && animal.allowedStatuses.length"
           class="btn"
@@ -122,11 +128,18 @@ onMounted(() => {
         { label: '个体档案', path: '/animals', matchPrefix: true },
         { label: '群体档案', path: '/groups' },
         { label: '物种名录', path: '/species' },
+        { label: '点位维护', path: '/points' },
+        { label: '巡查记录', path: '/patrols' },
       ]"
     />
 
     <PageState :loading="loading" :error="errorText" :empty="!animal" empty-text="档案不存在或已被合并">
       <template v-if="animal">
+        <div v-if="code !== animal.code" class="notice" style="margin-bottom: 14px">
+          编号 <span class="mono">{{ code }}</span> 是已并入的旧编号，当前展示主档案
+          <span class="mono">{{ animal.code }}</span>。
+        </div>
+
         <div class="detail-top">
           <PanelCard title="档案概览" :more="`${animal.code}`">
             <div class="profile">
@@ -174,6 +187,12 @@ onMounted(() => {
             </div>
             <div v-if="animal.internalNote" class="notice" style="margin-top: 14px">
               内部备注（仅管理员可见）：{{ animal.internalNote }}
+            </div>
+            <div v-if="animal.mergedCodes.length" class="merge-line">
+              <div class="k">已并入的旧编号</div>
+              <div class="tag-row" style="margin: 6px 0 0">
+                <span v-for="oldCode in animal.mergedCodes" :key="oldCode" class="tag gray mono">{{ oldCode }}</span>
+              </div>
             </div>
           </PanelCard>
         </div>
@@ -243,6 +262,8 @@ onMounted(() => {
 
     <AnimalEditDialog v-model="editVisible" :animal="animal" :points="points" @saved="afterSaved" />
     <AnimalStatusDialog v-model="statusVisible" :animal="animal" @saved="afterSaved" />
+    <AnimalMergeDialog v-model="mergeVisible" :animal="animal" @saved="afterSaved" />
+    <AnimalQrDialog v-model="qrVisible" :animal="animal" />
   </div>
 </template>
 
@@ -307,6 +328,17 @@ onMounted(() => {
 .info-grid.single {
   grid-template-columns: 1fr 1fr;
   margin-top: 0;
+}
+
+.merge-line {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.merge-line .k {
+  font-size: 12px;
+  color: var(--muted);
 }
 
 .empty-line {

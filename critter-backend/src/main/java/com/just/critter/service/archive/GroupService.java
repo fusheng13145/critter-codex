@@ -131,7 +131,7 @@ public class GroupService {
 
     public GroupDetail detail(String code) {
         AnimalGroup group = findByCode(code);
-        return toDetail(group, species.selectById(group.getSpeciesId()),
+        return toDetail(group, code.trim(), species.selectById(group.getSpeciesId()),
                 loadPoints(group.getPointIds()));
     }
 
@@ -141,6 +141,7 @@ public class GroupService {
             throw new BusinessException(ErrorCode.PARAM_INVALID, Map.of("field", "body"));
         }
         AnimalGroup group = findByCode(code);
+        requireNotGone(group);
         int lower = command.minSize() == null ? group.getMinSize() : command.minSize();
         int upper = command.maxSize() == null ? group.getMaxSize() : command.maxSize();
         requireRange(lower, upper);
@@ -159,12 +160,13 @@ public class GroupService {
         group.setUpdatedAt(LocalDateTime.now(clock));
         groups.updateById(group);
 
-        return toDetail(group, species.selectById(group.getSpeciesId()), loadPoints(group.getPointIds()));
+        return toDetail(group, code.trim(), species.selectById(group.getSpeciesId()), loadPoints(group.getPointIds()));
     }
 
     @Transactional
     public CreatedSighting recordSighting(String groupCode, CreateSightingCommand command, Long operatorId) {
         AnimalGroup group = findByCode(groupCode);
+        requireNotGone(group);
         if (command == null) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, Map.of("field", "body"));
         }
@@ -206,6 +208,49 @@ public class GroupService {
             group.setUpdatedAt(now);
             groups.updateById(group);
         }
+        return new CreatedSighting(sighting.getId());
+    }
+
+    /**
+     * 创建待归属目击：尚未确认属于哪个群体时先落库，后台再指派。
+     */
+    @Transactional
+    public CreatedSighting recordUnassignedSighting(CreateSightingCommand command, Long operatorId) {
+        if (command == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, Map.of("field", "body"));
+        }
+        if (command.pointId() == null) {
+            throw new BusinessException(30301, "目击点位必填");
+        }
+        BasePoint point = points.selectById(command.pointId());
+        if (point == null) {
+            throw new BusinessException(30410, "点位不存在");
+        }
+        if (command.seenAt() == null) {
+            throw new BusinessException(30301, "目击时间必填");
+        }
+        if (command.countEstimate() != null && command.countEstimate() <= 0) {
+            throw new BusinessException(30301, "目击数量必须为正整数");
+        }
+        String behavior = command.behavior() == null ? null
+                : requireText(command.behavior(), MAX_BEHAVIOR, "行为描述不能超过 " + MAX_BEHAVIOR + " 字");
+        validateFiles(command.fileIds());
+
+        LocalDateTime seenAt = command.seenAt().atZoneSameInstant(AppConfig.APP_ZONE).toLocalDateTime();
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
+        Sighting sighting = new Sighting();
+        sighting.setGroupId(null);
+        sighting.setPointId(point.getId());
+        sighting.setSeenAt(seenAt);
+        sighting.setCountEstimate(command.countEstimate());
+        sighting.setBehavior(behavior);
+        sighting.setFileIds(command.fileIds() == null ? null : List.copyOf(command.fileIds()));
+        sighting.setRecorderId(operatorId);
+        sighting.setAssignStatus("UNASSIGNED");
+        sighting.setCreatedAt(now);
+        sighting.setUpdatedAt(now);
+        sighting.setCreatedBy(operatorId);
+        sightings.insert(sighting);
         return new CreatedSighting(sighting.getId());
     }
 
@@ -309,6 +354,15 @@ public class GroupService {
         return group;
     }
 
+    private void requireNotGone(AnimalGroup group) {
+        if (group.getStatus() == GroupStatus.GONE) {
+            String merged = group.getMergedIntoCode();
+            throw new BusinessException(30505, merged == null
+                    ? "该群体已标记消失，不能继续登记或修改"
+                    : "该群体已合并到 " + merged + "，请到主群体操作");
+        }
+    }
+
     private String requireText(String value, int maxLength, String message) {
         String text = trimToNull(value);
         if (text == null) {
@@ -344,11 +398,15 @@ public class GroupService {
                 group.getStatus().label(), pointRefs(group.getPointIds(), pointMap), toOffset(group.getLastSeenAt()));
     }
 
-    private GroupDetail toDetail(AnimalGroup group, BaseSpecies speciesRow, Map<Long, BasePoint> pointMap) {
-        return new GroupDetail(group.getGroupCode(), toSpeciesRef(speciesRow), group.getFeatures(),
+    private GroupDetail toDetail(AnimalGroup group, String queriedCode, BaseSpecies speciesRow,
+                                 Map<Long, BasePoint> pointMap) {
+        return new GroupDetail(group.getGroupCode(), queriedCode, toSpeciesRef(speciesRow), group.getFeatures(),
                 group.getMinSize(), group.getMaxSize(), group.getSizeBasis(), group.getStatus(),
                 group.getStatus().label(), pointRefs(group.getPointIds(), pointMap),
-                toOffset(group.getLastSeenAt()), toOffset(group.getCreatedAt()), toOffset(group.getUpdatedAt()));
+                toOffset(group.getLastSeenAt()),
+                group.getMergedFrom() == null ? List.of() : List.copyOf(group.getMergedFrom()),
+                group.getSplitFrom(), group.getMergedIntoCode(),
+                toOffset(group.getCreatedAt()), toOffset(group.getUpdatedAt()));
     }
 
     private SpeciesRef toSpeciesRef(BaseSpecies row) {

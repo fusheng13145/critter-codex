@@ -262,6 +262,7 @@ public class StatsExportService {
             effRow = kv(efficiencySheet, effRow, "上报待处理", String.valueOf(efficiency.reports().pending()), null);
             effRow = kv(efficiencySheet, effRow, "上报处理中", String.valueOf(efficiency.reports().processing()), null);
             effRow = kv(efficiencySheet, effRow, "上报已结案", String.valueOf(efficiency.reports().closed()), null);
+            effRow = kv(efficiencySheet, effRow, "无效上报（已排除）", String.valueOf(efficiency.reports().invalid()), null);
             effRow = kv(efficiencySheet, effRow, "工单总数", String.valueOf(efficiency.orders().total()), null);
             effRow = kv(efficiencySheet, effRow, "工单已结案", String.valueOf(efficiency.orders().closed()), null);
             effRow = kv(efficiencySheet, effRow, "工单超时", String.valueOf(efficiency.orders().timeout()), null);

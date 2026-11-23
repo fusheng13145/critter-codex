@@ -31,6 +31,11 @@ public class Report {
     private Long speciesId;
     private ReportStatus status;
     private String closeReason;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime confirmDueAt;
+    private Boolean autoConfirmed;
+    private Boolean invalid;
+    private String invalidReason;
     private String contact;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -122,6 +127,46 @@ public class Report {
 
     public void setCloseReason(String closeReason) {
         this.closeReason = closeReason;
+    }
+
+    public LocalDateTime getConfirmedAt() {
+        return confirmedAt;
+    }
+
+    public void setConfirmedAt(LocalDateTime confirmedAt) {
+        this.confirmedAt = confirmedAt;
+    }
+
+    public LocalDateTime getConfirmDueAt() {
+        return confirmDueAt;
+    }
+
+    public void setConfirmDueAt(LocalDateTime confirmDueAt) {
+        this.confirmDueAt = confirmDueAt;
+    }
+
+    public Boolean getAutoConfirmed() {
+        return autoConfirmed;
+    }
+
+    public void setAutoConfirmed(Boolean autoConfirmed) {
+        this.autoConfirmed = autoConfirmed;
+    }
+
+    public Boolean getInvalid() {
+        return invalid;
+    }
+
+    public void setInvalid(Boolean invalid) {
+        this.invalid = invalid;
+    }
+
+    public String getInvalidReason() {
+        return invalidReason;
+    }
+
+    public void setInvalidReason(String invalidReason) {
+        this.invalidReason = invalidReason;
     }
 
     public String getContact() {

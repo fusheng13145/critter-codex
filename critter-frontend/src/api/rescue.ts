@@ -63,8 +63,16 @@ export function acceptReport(
   return post<AcceptedReport>(`/reports/${id}/accept`, payload)
 }
 
-export function closeReport(id: number, reason: string): Promise<ClosedReport> {
-  return put<ClosedReport>(`/reports/${id}/close`, { reason })
+export function closeReport(id: number, reason: string, invalid = false): Promise<ClosedReport> {
+  return put<ClosedReport>(`/reports/${id}/close`, { reason, invalid })
+}
+
+export function confirmReportClose(
+  id: number,
+): Promise<{ reportNo: string; status: string; confirmedAt: string; autoConfirmed: boolean }> {
+  return put<{ reportNo: string; status: string; confirmedAt: string; autoConfirmed: boolean }>(
+    `/reports/${id}/confirm`,
+  )
 }
 
 export function fetchOrders(params: OrderQuery): Promise<PageData<OrderSummary>> {

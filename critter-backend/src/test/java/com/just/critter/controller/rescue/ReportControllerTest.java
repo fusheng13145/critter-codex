@@ -36,6 +36,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -115,7 +116,8 @@ class ReportControllerTest {
                 new ReportSummary(5L, "RP20261121007", ReportType.INJURED, 7L, "东区宿舍七号楼",
                         "右后腿受伤无法正常站立", List.of("F1"), ReportStatus.PENDING, true,
                         java.time.LocalDateTime.parse("2026-11-20T10:31:00"),
-                        OffsetDateTime.parse("2026-11-21T10:31:00+08:00"), 1001L)), 1, 10, 1));
+                        OffsetDateTime.parse("2026-11-21T10:31:00+08:00"), 1001L,
+                        null, null, false, false, null)), 1, 10, 1));
 
         mvc.perform(get("/api/v1/reports")
                         .param("status", "PENDING")
@@ -149,7 +151,8 @@ class ReportControllerTest {
                 "右后腿受伤无法正常站立", List.of("F1"), ReportStatus.PENDING, false,
                 java.time.LocalDateTime.parse("2026-11-20T10:31:00"),
                 OffsetDateTime.parse("2026-11-21T10:31:00+08:00"),
-                1001L, null, null, null, null));
+                1001L, null, null, null, null,
+                null, null, false, false, null));
 
         mvc.perform(get("/api/v1/reports/5"))
                 .andExpect(status().isOk())
@@ -184,14 +187,15 @@ class ReportControllerTest {
     @Test
     @DisplayName("PUT /reports/{id}/close 关闭无效上报")
     void close_returns_closed_status() throws Exception {
-        when(reportService.close(eq(5L), any()))
-                .thenReturn(new ClosedReport("RP20261121007", ReportStatus.CLOSED, "重复上报"));
+        when(reportService.close(eq(5L), any(), anyBoolean()))
+                .thenReturn(new ClosedReport("RP20261121007", ReportStatus.CLOSED, "重复上报", true, null));
 
         mvc.perform(put("/api/v1/reports/5/close")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"reason\":\"重复上报\"}"))
+                        .content("{\"reason\":\"重复上报\",\"invalid\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CLOSED"))
+                .andExpect(jsonPath("$.data.invalid").value(true))
                 .andExpect(jsonPath("$.data.closeReason").value("重复上报"));
     }
 

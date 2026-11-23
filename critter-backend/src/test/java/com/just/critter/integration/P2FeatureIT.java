@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * P2 收口功能的真库验收：V21 表可写、领养回访三次、排班三次缺勤暂停、
+ * P2 收口功能的真库验收：V22 表可写、领养回访三次、排班三次缺勤暂停、
  * 认养终止后 403、用药计划逾期置顶、首页公示 highlights。
  */
 @SpringBootTest(properties = {

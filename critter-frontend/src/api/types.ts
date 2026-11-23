@@ -219,7 +219,7 @@ export interface FundStats {
 }
 
 export interface EfficiencyStats {
-  reports: { total: number; pending: number; processing: number; closed: number }
+  reports: { total: number; pending: number; processing: number; closed: number; invalid: number }
   orders: {
     total: number
     closed: number
@@ -495,6 +495,8 @@ export interface AnimalDetail {
   coverUrl: string | null
   /** 仅管理员视图返回，公开视图不出现该字段 */
   internalNote?: string | null
+  /** 已并入本主档的旧编号，用于详情页展示合并关系 */
+  mergedCodes: string[]
   createdAt: string
   updatedAt: string
 }
@@ -569,6 +571,11 @@ export interface GroupSummary {
 }
 
 export interface GroupDetail extends GroupSummary {
+  /** 实际请求的编号；与 groupCode 不同说明查到的是旧编号 */
+  queriedCode: string
+  mergedFrom: string[]
+  splitFrom: string | null
+  mergedIntoCode: string | null
   createdAt: string
   updatedAt: string
 }
@@ -616,6 +623,56 @@ export interface PointView {
   y: number
   enabled: boolean
   note: string | null
+}
+
+export interface PointAdminView extends PointView {
+  animalCount: number
+  groupCount: number
+  sightingCount: number
+  occurrenceCount: number
+  reportCount: number
+  patrolCount: number
+  referenceCount: number
+  deletable: boolean
+}
+
+export interface PatrolView {
+  id: number
+  point: PointRef | null
+  patrolAt: string
+  countEstimate: number | null
+  hasAnomaly: boolean
+  anomalyNote: string | null
+  fileIds: string[]
+  recorderId: number | null
+  convertedSightingId: number | null
+  createdAt: string
+}
+
+export interface AnimalMergeResult {
+  mainCode: string
+  mergedCodes: string[]
+  aliases: string[]
+  movedHealthRecords: number
+}
+
+export interface GroupMergeResult {
+  mainCode: string
+  mergedCodes: string[]
+  minSize: number
+  maxSize: number
+  pointIds: number[]
+  movedSightings: number
+}
+
+export interface GroupSplitResult {
+  sourceCode: string
+  newCode: string
+  sourceMinSize: number
+  sourceMaxSize: number
+  newMinSize: number
+  newMaxSize: number
+  movedSightings: number
 }
 
 export interface OccurrenceView {
@@ -714,6 +771,7 @@ export interface DonationSummary {
   status: 'PENDING_VERIFY' | 'VERIFIED' | 'ABNORMAL'
   verifierId: number | null
   verifiedAt: string | null
+  abnormalReason: string | null
   createdAt: string
   updatedAt: string
 }
@@ -830,6 +888,7 @@ export interface ProjectSettlementView {
   balance: number
   balanceTo: string
   attachments: string[]
+  appendNotes: { note: string; createdAt: string; operatorId: number | null }[]
   publishedAt: string
 }
 
@@ -846,6 +905,11 @@ export interface ReportSummary {
   createdAt: string
   deadline: string
   reporterId: number
+  confirmedAt: string | null
+  confirmDueAt: string | null
+  autoConfirmed: boolean
+  invalid: boolean
+  invalidReason: string | null
 }
 
 export interface ReportDetail extends ReportSummary {
@@ -875,6 +939,8 @@ export interface ClosedReport {
   reportNo: string
   status: 'CLOSED'
   closeReason: string
+  invalid: boolean
+  confirmDueAt: string | null
 }
 
 export type OrderStatusCode =

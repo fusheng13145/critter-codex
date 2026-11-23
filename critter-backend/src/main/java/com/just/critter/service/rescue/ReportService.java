@@ -47,6 +47,7 @@ public class ReportService {
     private static final int MIN_DESCRIPTION_LENGTH = 10;
     private static final int MAX_CONTACT_LENGTH = 64;
     private static final int DEDUP_HOURS = 24;
+    private static final int CONFIRM_DAYS = 7;
 
     private final ReportMapper reports;
     private final BasePointMapper points;
@@ -224,11 +225,25 @@ public class ReportService {
                 report.getAnimalId(),
                 animal == null ? null : animal.getCode(),
                 contactVisible ? report.getContact() : null,
-                order == null ? null : order.getOrderNo());
+                order == null ? null : order.getOrderNo(),
+                toOffset(report.getConfirmedAt()),
+                toOffset(report.getConfirmDueAt()),
+                Boolean.TRUE.equals(report.getAutoConfirmed()),
+                Boolean.TRUE.equals(report.getInvalid()),
+                report.getInvalidReason());
     }
 
     @Transactional
     public ClosedReport close(Long id, String reason) {
+        return close(id, reason, false);
+    }
+
+    /**
+     * 管理员关闭上报。invalid=true 表示判定为无效上报：立即结案且不进入确认流程；
+     * 有效关闭会写入 7 天确认截止时间，等待上报人确认。
+     */
+    @Transactional
+    public ClosedReport close(Long id, String reason, boolean invalid) {
         Report report = requireReport(id);
         if (report.getStatus() != ReportStatus.PENDING) {
             throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "仅待受理上报可关闭");
@@ -240,12 +255,55 @@ public class ReportService {
         LocalDateTime now = LocalDateTime.now(clock).withNano(0);
         report.setStatus(ReportStatus.CLOSED);
         report.setCloseReason(closeReason);
+        report.setInvalid(invalid);
+        report.setInvalidReason(invalid ? closeReason : null);
+        report.setAutoConfirmed(false);
+        if (invalid) {
+            report.setConfirmedAt(now);
+            report.setConfirmDueAt(null);
+        } else {
+            report.setConfirmedAt(null);
+            report.setConfirmDueAt(now.plusDays(CONFIRM_DAYS));
+        }
         report.setUpdatedAt(now);
         reports.updateById(report);
         auditLog.success("REPORT_CLOSE", "REPORT", report.getReportNo(),
                 Map.of("status", ReportStatus.PENDING.name()),
-                Map.of("status", ReportStatus.CLOSED.name(), "closeReason", closeReason));
-        return new ClosedReport(report.getReportNo(), report.getStatus(), closeReason);
+                Map.of("status", ReportStatus.CLOSED.name(), "closeReason", closeReason,
+                        "invalid", invalid,
+                        "confirmDueAt", report.getConfirmDueAt() == null ? "" : report.getConfirmDueAt()));
+        return new ClosedReport(report.getReportNo(), report.getStatus(), closeReason,
+                invalid, toOffset(report.getConfirmDueAt()));
+    }
+
+    /**
+     * 上报人确认结案。只有上报人本人、已关闭且未被标记无效的上报可以确认。
+     */
+    @Transactional
+    public ReportConfirmation confirm(Long id, Long reporterId) {
+        Report report = requireReport(id);
+        if (reporterId == null || !reporterId.equals(report.getReporterId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "只有上报人本人可以确认结案");
+        }
+        if (report.getStatus() != ReportStatus.CLOSED) {
+            throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "仅已结案上报可以确认");
+        }
+        if (Boolean.TRUE.equals(report.getInvalid())) {
+            throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "无效上报无需确认");
+        }
+        if (report.getConfirmedAt() != null) {
+            throw new BusinessException(ErrorCode.ORDER_STATE_INVALID, "该上报已确认结案");
+        }
+        LocalDateTime now = LocalDateTime.now(clock).withNano(0);
+        report.setConfirmedAt(now);
+        report.setConfirmDueAt(null);
+        report.setAutoConfirmed(false);
+        report.setUpdatedAt(now);
+        reports.updateById(report);
+        auditLog.success("REPORT_CONFIRM", "REPORT", report.getReportNo(), null,
+                Map.of("confirmedAt", now, "autoConfirmed", false));
+        return new ReportConfirmation(report.getReportNo(), report.getStatus().name(),
+                toOffset(now), false);
     }
 
     private Report requireReport(Long id) {
@@ -269,7 +327,12 @@ public class ReportService {
                 overdue(report, now),
                 report.getCreatedAt(),
                 deadline(report.getCreatedAt()),
-                report.getReporterId());
+                report.getReporterId(),
+                toOffset(report.getConfirmedAt()),
+                toOffset(report.getConfirmDueAt()),
+                Boolean.TRUE.equals(report.getAutoConfirmed()),
+                Boolean.TRUE.equals(report.getInvalid()),
+                report.getInvalidReason());
     }
 
     private boolean overdue(Report report, LocalDateTime now) {

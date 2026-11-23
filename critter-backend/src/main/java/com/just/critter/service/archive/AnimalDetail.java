@@ -29,6 +29,7 @@ public record AnimalDetail(
         boolean adopted,
         String coverUrl,
         String internalNote,
+        List<String> mergedCodes,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }

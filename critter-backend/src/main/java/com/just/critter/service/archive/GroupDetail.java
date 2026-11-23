@@ -10,6 +10,7 @@ import java.util.List;
  */
 public record GroupDetail(
         String groupCode,
+        String queriedCode,
         SpeciesRef species,
         String features,
         int minSize,
@@ -19,6 +20,9 @@ public record GroupDetail(
         String statusLabel,
         List<PointRef> points,
         OffsetDateTime lastSeenAt,
+        List<String> mergedFrom,
+        String splitFrom,
+        String mergedIntoCode,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt) {
 }

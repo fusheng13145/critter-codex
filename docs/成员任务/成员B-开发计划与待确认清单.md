@@ -409,3 +409,26 @@ Q-B-04 已闭环：本机 MySQL 8.4，`root/1234`，`127.0.0.1:3306`；`critter_
 | 编号器 | `seq_no` 取号 | 修复新建库首次 `LAST_INSERT_ID()` 返回行号导致首号回退；改为同事务读回 `current_no` |
 
 **验证**：后端全量 431 个单测通过；真库 51 个 IT 通过（含 V20 / 43 表断言）；前端 `npm run build` 通过。
+
+## 16 P2 缺口清零（2026-11-23）
+
+对照 2026-11-23 审计的 12 个缺口（11 个部分完成 + 1 个未完成 FR-R-05），本轮把“后端规则 + 数据库迁移 + 前端入口 + 可验证测试”全部补齐。迁移 `V21__p2_report_confirm_and_patrol.sql` 已应用主库，版本 v21；主库 44 张业务表（含 `seq_no`，不含 `flyway_schema_history`）。
+
+| 缺口 | 后端 | 前端入口 | 验证 |
+|---|---|---|---|
+| 点位管理 | `GET /points/admin`、`DELETE /points/{id}`；六类引用统计，有引用 30413 | 档案中心“点位维护”页签 | `BaseDataAdminServiceTest` 新增 2 例 |
+| 二维码公开页 | 二维码前缀改 `/p/`；公开详情复用 `GET /animals/{code}` | `PublicAnimalView` + 详情“二维码贴牌” | `AnimalQrCodeServiceTest` |
+| 档案合并 UI | 合并口径沿用 V20 | 详情“合并重复档案”；旧编号提示 `mergedCodes` | `AnimalMergeServiceTest`、`AnimalArchiveIT` |
+| 待归属目击 | `POST /sightings` 生成 `UNASSIGNED` | 群体页“登记待归属目击”与指派表格 | `GroupServiceTest` 新增 1 例、`GroupMaintenanceServiceTest` |
+| 群体合并/拆分/旧编号 | `GroupDetail` 增 `queriedCode/mergedFrom/splitFrom/mergedIntoCode` | 详情“合并”“拆分”、旧编号跳主档 | `GroupMaintenanceServiceTest` |
+| 物种维护 UI | `POST/PUT /species` 已有 | 物种名录新增/编辑弹窗 | `BaseDataAdminServiceTest` |
+| 结案确认 | 7 天确认窗口、`PUT /reports/{id}/confirm`、`ReportConfirmJob` 自动确认 | 我的上报待确认提示与确认按钮 | `ReportServiceTest` 新增 4 例、`ReportConfirmJobTest` 2 例 |
+| 无效上报 | `close` 支持 `invalid`，统计排除 | 关闭弹窗“标记无效上报”，队列显示无效/待确认 | `ReportControllerTest`、`ReportServiceTest` |
+| 结项追加说明 UI | `POST /settlement/notes` 已有 | 结项公示页追加说明列表/表单 | `ProjectSettlementNoteTest` |
+| 台账导出 UI | 同步/异步导出已有 | 台账页“导出台账” | `LedgerExportServiceTest` |
+| 捐赠异常/凭证 UI | `flag`/`certificate`/`mine` 已有 | 捐赠面板、个人中心“我的捐赠” | `DonationServiceTest`、`DonationIT` |
+| 巡查记录 | `patrol_record`、`GET/POST /patrols`、`POST /patrols/{id}/convert` | 档案中心“巡查记录”页签 | `PatrolServiceTest` 5 例 |
+
+**本轮修复**：真库 IT 发现 `AnimalAliasMapper.selectAliasCodesByAnimalId` 按不存在的 `id` 列排序；`animal_alias` 的主键是 `alias_code`，改为 `ORDER BY created_at, alias_code` 后通过。
+
+**验证**：`mvn -B -q test` 516 个用例 0 失败；`CRITTER_MYSQL_IT=true mvn -B -q -Dtest=*IT test` 52 个用例 0 失败；`npm run build` 通过。

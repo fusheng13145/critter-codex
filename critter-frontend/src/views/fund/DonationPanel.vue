@@ -51,6 +51,13 @@ const batchReport = ref<string[]>([])
 const voucherPreview = ref<string[]>([])
 const voucherVisible = ref(false)
 
+const flagTarget = ref<DonationSummary | null>(null)
+const flagReason = ref('')
+const flagVisible = ref(false)
+const flagBusy = ref(false)
+const flagError = ref('')
+const certificateBusy = ref('')
+
 async function load(): Promise<void> {
   loading.value = true
   errorText.value = ''
@@ -165,6 +172,59 @@ function openVouchers(ids: string[]): void {
   voucherVisible.value = ids.length > 0
 }
 
+function canFlag(row: DonationSummary): boolean {
+  return row.status === 'PENDING_VERIFY' || row.status === 'ABNORMAL'
+}
+
+function openFlag(row: DonationSummary): void {
+  flagTarget.value = row
+  flagReason.value = row.abnormalReason ?? ''
+  flagError.value = ''
+  flagVisible.value = true
+}
+
+async function submitFlag(): Promise<void> {
+  if (!flagTarget.value || flagBusy.value) return
+  const reason = flagReason.value.trim()
+  if (reason.length < 5) {
+    flagError.value = '异常原因至少 5 个字'
+    return
+  }
+  flagBusy.value = true
+  flagError.value = ''
+  try {
+    const result = await fundApi.flagDonation(flagTarget.value.donationNo, { reason })
+    ElMessage.success(`已标记异常：${result.donationNo}`)
+    flagVisible.value = false
+    await load()
+    emit('changed')
+  } catch (error) {
+    flagError.value = error instanceof BizError ? error.message : '标记异常失败'
+  } finally {
+    flagBusy.value = false
+  }
+}
+
+async function downloadCertificate(row: DonationSummary): Promise<void> {
+  if (certificateBusy.value) return
+  certificateBusy.value = row.donationNo
+  try {
+    const blob = await fundApi.fetchDonationCertificate(row.donationNo)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `捐赠证书-${row.donationNo}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '证书下载失败')
+  } finally {
+    certificateBusy.value = ''
+  }
+}
+
 watch(
   () => props.projectNo,
   () => {
@@ -226,7 +286,7 @@ onMounted(load)
               <th>凭证</th>
               <th>状态</th>
               <th>登记时间</th>
-              <th style="width: 86px">操作</th>
+              <th style="width: 130px">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -259,18 +319,40 @@ onMounted(load)
               </td>
               <td>
                 <StatusTag :code="row.status" :label="donationStatusLabel(row.status)" />
+                <div v-if="row.abnormalReason" class="abnormal-reason">异常：{{ row.abnormalReason }}</div>
               </td>
               <td class="muted small">{{ dateTime(row.createdAt) }}</td>
               <td>
-                <button
-                  v-if="isPending(row)"
-                  class="btn sm link"
-                  type="button"
-                  @click="openConfirm(row)"
-                >
-                  核对
-                </button>
-                <span v-else class="muted small">{{ row.verifiedAt ? dateTime(row.verifiedAt) : '—' }}</span>
+                <div class="action-cell">
+                  <button
+                    v-if="isPending(row)"
+                    class="btn sm link"
+                    type="button"
+                    @click="openConfirm(row)"
+                  >
+                    核对
+                  </button>
+                  <button
+                    v-if="canFlag(row)"
+                    class="btn sm link danger-link"
+                    type="button"
+                    @click="openFlag(row)"
+                  >
+                    标记异常
+                  </button>
+                  <button
+                    v-if="row.status === 'VERIFIED'"
+                    class="btn sm link"
+                    type="button"
+                    :disabled="certificateBusy === row.donationNo"
+                    @click="downloadCertificate(row)"
+                  >
+                    {{ certificateBusy === row.donationNo ? '生成中…' : '电子凭证' }}
+                  </button>
+                  <span v-if="!isPending(row) && row.status !== 'VERIFIED'" class="muted small">
+                    {{ row.verifiedAt ? dateTime(row.verifiedAt) : '—' }}
+                  </span>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -319,6 +401,36 @@ onMounted(load)
     <el-dialog v-model="voucherVisible" title="捐赠凭证" width="720px" append-to-body>
       <PhotoGallery :file-ids="voucherPreview" empty-text="未上传凭证" />
     </el-dialog>
+
+    <el-dialog v-model="flagVisible" title="标记凭证异常" width="520px" append-to-body>
+      <div v-if="flagTarget" class="confirm-body">
+        <div class="mono">{{ flagTarget.donationNo }}</div>
+        <div class="confirm-row">
+          <span>{{ flagTarget.donorDisplay }}</span>
+          <b>{{ money(flagTarget.amount) }}</b>
+        </div>
+        <div class="field">
+          <label>异常原因 <b>*</b></label>
+          <textarea
+            v-model="flagReason"
+            class="textarea"
+            rows="3"
+            maxlength="255"
+            placeholder="例如：转账凭证姓名与登记人不一致，待补充说明"
+          />
+        </div>
+        <div v-if="flagError" class="field-error">{{ flagError }}</div>
+        <div class="notice">
+          已入账（VERIFIED）的流水不能直接标异常，需先冲正；这里只处理待核对与已异常流水。
+        </div>
+      </div>
+      <template #footer>
+        <button class="btn ghost" type="button" @click="flagVisible = false">取消</button>
+        <button class="btn" type="button" :disabled="flagBusy" @click="submitFlag">
+          {{ flagBusy ? '提交中…' : '确认标记' }}
+        </button>
+      </template>
+    </el-dialog>
   </PanelCard>
 </template>
 
@@ -358,5 +470,24 @@ onMounted(load)
 
 .confirm-row b {
   color: var(--accent);
+}
+
+.abnormal-reason {
+  margin-top: 4px;
+  max-width: 180px;
+  color: var(--danger);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: normal;
+}
+
+.action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.danger-link {
+  color: var(--danger);
 }
 </style>

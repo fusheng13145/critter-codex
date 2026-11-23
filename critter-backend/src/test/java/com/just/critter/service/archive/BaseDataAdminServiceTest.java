@@ -3,6 +3,7 @@ package com.just.critter.service.archive;
 import com.just.critter.domain.model.BaseSpecies;
 import com.just.critter.mapper.BasePointMapper;
 import com.just.critter.mapper.BaseSpeciesMapper;
+import com.just.critter.mapper.PointReferenceMapper;
 import com.just.critter.support.exception.BusinessException;
 import com.just.critter.support.log.AuditLogService;
 import org.junit.jupiter.api.DisplayName;
@@ -19,6 +20,9 @@ import java.time.ZoneId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -34,6 +38,8 @@ class BaseDataAdminServiceTest {
     private BasePointMapper points;
     @Mock
     private BaseSpeciesMapper species;
+    @Mock
+    private PointReferenceMapper pointReferences;
     @Mock
     private AuditLogService auditLog;
 
@@ -72,6 +78,29 @@ class BaseDataAdminServiceTest {
     }
 
     @Test
+    @DisplayName("删除点位：有业务引用返回 30413，不物理删除")
+    void delete_point_rejects_referenced() {
+        when(points.selectById(7L)).thenReturn(point());
+        when(pointReferences.countReports(7L)).thenReturn(1L);
+
+        assertThatThrownBy(() -> service().deletePoint(7L, 9001L))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo(30413));
+        verify(points, never()).deleteById(anyLong());
+    }
+
+    @Test
+    @DisplayName("删除点位：无引用时物理删除并写审计")
+    void delete_point_without_reference() {
+        when(points.selectById(7L)).thenReturn(point());
+
+        service().deletePoint(7L, 9001L);
+
+        verify(points).deleteById(7L);
+        verify(auditLog).successAs(anyLong(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     @DisplayName("新增物种：俗名唯一，学名与保护级别保存")
     void create_species_saves_fields() {
         when(species.selectCount(any())).thenReturn(0L);
@@ -88,7 +117,15 @@ class BaseDataAdminServiceTest {
         assertThat(view.protectionLevel()).isEqualTo("国家二级");
     }
 
+    private com.just.critter.domain.model.BasePoint point() {
+        com.just.critter.domain.model.BasePoint point = new com.just.critter.domain.model.BasePoint();
+        point.setId(7L);
+        point.setPointName("北区实验楼后草坪");
+        point.setEnabled(true);
+        return point;
+    }
+
     private BaseDataAdminService service() {
-        return new BaseDataAdminService(points, species, auditLog, CLOCK);
+        return new BaseDataAdminService(points, species, pointReferences, auditLog, CLOCK);
     }
 }
