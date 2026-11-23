@@ -92,6 +92,18 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '认养方案配置', menu: 'adopt', owner: 'C' },
       },
       {
+        path: 'adopt/handovers',
+        name: 'handovers',
+        component: () => import('@/views/adopt/HandoverView.vue'),
+        meta: { title: '领养回访', menu: 'adopt', owner: 'C' },
+      },
+      {
+        path: 'adopt/:no/benefits',
+        name: 'adoption-benefits',
+        component: () => import('@/views/adopt/AdoptionBenefitsView.vue'),
+        meta: { title: '认养人专属页', menu: 'adopt', owner: 'C' },
+      },
+      {
         path: 'adopt/:no',
         name: 'adoption-detail',
         component: () => import('@/views/AdoptionDetailView.vue'),
@@ -162,6 +174,18 @@ const routes: RouteRecordRaw[] = [
         name: 'medical',
         component: () => import('@/views/MedicalView.vue'),
         meta: { title: '医疗协作', menu: 'medical', owner: 'C' },
+      },
+      {
+        path: 'medical/plans',
+        name: 'care-plans',
+        component: () => import('@/views/care/CarePlanView.vue'),
+        meta: { title: '疫苗与用药计划', menu: 'medical', owner: 'C' },
+      },
+      {
+        path: 'schedule',
+        name: 'volunteer-schedule',
+        component: () => import('@/views/volunteer/ShiftView.vue'),
+        meta: { title: '志愿排班', menu: 'volunteer', owner: 'C' },
       },
       {
         path: 'tnr',

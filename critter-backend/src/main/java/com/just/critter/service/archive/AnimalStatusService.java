@@ -1,5 +1,6 @@
 package com.just.critter.service.archive;
 
+import com.just.critter.adopt.benefit.AnimalDeathService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.just.critter.domain.enums.AnimalEvent;
 import com.just.critter.domain.enums.AnimalStatus;
@@ -37,13 +38,16 @@ public class AnimalStatusService {
     private final AnimalMapper animals;
     private final AnimalStatusLogMapper statusLogs;
     private final HealthRecordMapper healthRecords;
+    private final AnimalDeathService animalDeaths;
     private final Clock clock;
 
     public AnimalStatusService(AnimalMapper animals, AnimalStatusLogMapper statusLogs,
-                               HealthRecordMapper healthRecords, Clock clock) {
+                               HealthRecordMapper healthRecords, AnimalDeathService animalDeaths,
+                               Clock clock) {
         this.animals = animals;
         this.statusLogs = statusLogs;
         this.healthRecords = healthRecords;
+        this.animalDeaths = animalDeaths;
         this.clock = clock;
     }
 
@@ -88,6 +92,10 @@ public class AnimalStatusService {
         log.setUpdatedAt(now);
         log.setCreatedBy(operatorId);
         statusLogs.insert(log);
+
+        if (next == AnimalStatus.DECEASED) {
+            animalDeaths.onDeath(animal.getId(), animal.getCode(), operatorId, now);
+        }
 
         return new AnimalStatusResult(animal.getCode(), next,
                 StateMachines.animal().allowedTargets(next), toOffset(now));

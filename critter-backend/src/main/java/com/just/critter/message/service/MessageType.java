@@ -11,7 +11,10 @@ public enum MessageType {
     DONATION_PROGRESS,
     ORDER_PROGRESS,
     APPROVAL_RESULT,
-    HEALTH_REMINDER;
+    HEALTH_REMINDER,
+    ANIMAL_DEATH,
+    CARE_REMINDER,
+    VOLUNTEER_SUSPEND;
 
     public static MessageType parse(String value) {
         return MessageType.valueOf(value.trim().toUpperCase(Locale.ROOT));

@@ -169,6 +169,22 @@ class NoticeServiceTests {
     }
 
     @Test
+    @DisplayName("首页 highlights：条数收敛到 1..10，置顶与公示优先由仓储排序")
+    void highlightsClampLimit() {
+        when(notices.findHighlights(5)).thenReturn(List.of(
+                new NoticeSummaryRecord(1L, "NT20261121001", "PUBLICITY",
+                        "结项公示", true, NOW),
+                new NoticeSummaryRecord(2L, "NT20261121002", "PUBLICITY",
+                        "认养公示", false, NOW.minusHours(1))));
+
+        var list = service.highlights(99);
+
+        assertThat(list).hasSize(2);
+        assertThat(list.getFirst().pinned()).isTrue();
+        verify(notices).findHighlights(5);
+    }
+
+    @Test
     @DisplayName("写入 0 行返回 50002")
     void rejectsFailedInsert() {
         when(sequences.next("NOTICE", 2026)).thenReturn(2);

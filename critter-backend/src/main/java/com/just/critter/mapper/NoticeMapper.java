@@ -46,6 +46,23 @@ public interface NoticeMapper extends BaseMapper<NoticeEntity> {
                              @Param("size") int size);
 
     @Select("""
+            SELECT id,
+                   notice_no AS noticeNo,
+                   category,
+                   title,
+                   pinned,
+                   published_at AS publishedAt
+            FROM notice
+            WHERE published_at IS NOT NULL
+            ORDER BY pinned DESC,
+                     CASE WHEN category = 'PUBLICITY' THEN 0 ELSE 1 END,
+                     published_at DESC,
+                     id DESC
+            LIMIT #{limit}
+            """)
+    List<NoticeRow> findHighlights(@Param("limit") int limit);
+
+    @Select("""
             SELECT n.id,
                    n.notice_no AS noticeNo,
                    n.category,

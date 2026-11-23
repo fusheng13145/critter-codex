@@ -56,6 +56,13 @@ public class NoticeService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.RECORD_NOT_FOUND));
     }
 
+    public List<NoticeView> highlights(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, 5));
+        return notices.findHighlights(safeLimit).stream()
+                .map(this::toView)
+                .toList();
+    }
+
     @Transactional
     public NoticeView publish(NoticeCommand command, long authorId) {
         if (command == null) {

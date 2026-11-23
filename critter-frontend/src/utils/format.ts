@@ -105,6 +105,9 @@ export const MESSAGE_TYPE_LABELS: Record<string, string> = {
   ORDER_PROGRESS: '工单进展',
   APPROVAL_RESULT: '审批结果',
   HEALTH_REMINDER: '健康提醒',
+  ANIMAL_DEATH: '动物离世',
+  CARE_REMINDER: '计划提醒',
+  VOLUNTEER_SUSPEND: '志愿暂停',
 }
 
 export function messageTypeLabel(code: string | null | undefined): string {

@@ -201,6 +201,7 @@ onMounted(load)
   <PageHero title="志愿任务" desc="管理员发布任务，活跃志愿者报名；到场拍照打卡后按任务时长累计服务时长。">
     <template #actions>
       <button v-if="isAdmin" class="btn" type="button" @click="openCreate">发布任务</button>
+      <button class="btn ghost" type="button" @click="$router.push('/schedule')">周排班</button>
       <button v-if="canVolunteer" class="btn ghost" type="button" @click="activeTab = 'mine'; loadMine()">
         我的任务
       </button>

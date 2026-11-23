@@ -3,11 +3,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as adoptionsApi from '@/api/adoptions'
+import * as benefitApi from '@/api/adoptionBenefits'
 import { BizError } from '@/api/http'
 import PageHero from '@/components/PageHero.vue'
 import AdoptionPaymentDialog from '@/components/AdoptionPaymentDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import type { AdoptionPlan, AdoptionSummary } from '@/api/types'
+import type { VisitAdminView } from '@/api/p2types'
 import {
   adoptionStatusLabel,
   adoptionStatusType,
@@ -30,6 +32,9 @@ const adminRows = ref<AdoptionSummary[]>([])
 const adminStatus = ref('PENDING_AUDIT')
 const adminPage = reactive({ page: 1, size: 10, total: 0 })
 const loadingAdmin = ref(false)
+
+const visitRows = ref<VisitAdminView[]>([])
+const loadingVisits = ref(false)
 
 const mineRows = ref<AdoptionSummary[]>([])
 const mineStatus = ref('')
@@ -95,8 +100,7 @@ async function loadAdmin(): Promise<void> {
   }
 }
 
-async function loadMine(): Promise<void> {
-  loadingMine.value = true
+async function loadMine(): Promise<void> {  loadingMine.value = true
   try {
     const data = await adoptionsApi.fetchMyAdoptions({
       status: mineStatus.value || undefined,
@@ -109,6 +113,46 @@ async function loadMine(): Promise<void> {
     ElMessage.error(error instanceof BizError ? error.message : '我的认养加载失败')
   } finally {
     loadingMine.value = false
+  }
+}
+
+async function loadVisits(): Promise<void> {
+  if (!isAdmin.value) return
+  loadingVisits.value = true
+  try {
+    visitRows.value = await benefitApi.fetchPendingVisits(50)
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '探视预约加载失败')
+  } finally {
+    loadingVisits.value = false
+  }
+}
+
+async function reviewVisit(row: VisitAdminView, decision: 'APPROVE' | 'REJECT'): Promise<void> {
+  let reason = ''
+  if (decision === 'REJECT') {
+    try {
+      const value = await ElMessageBox.prompt('驳回探视必须填写原因', '驳回预约', {
+        inputPlaceholder: '不少于 5 个字',
+      })
+      reason = value.value?.trim() ?? ''
+    } catch {
+      return
+    }
+    if (reason.length < 5) {
+      ElMessage.warning('驳回原因至少 5 个字')
+      return
+    }
+  }
+  try {
+    await benefitApi.reviewAdoptionVisit(row.adoptionNo, row.id, {
+      decision,
+      reason: reason || undefined,
+    })
+    ElMessage.success(decision === 'APPROVE' ? '探视预约已通过' : '已驳回探视预约')
+    await loadVisits()
+  } catch (error) {
+    ElMessage.error(error instanceof BizError ? error.message : '探视审核失败')
   }
 }
 
@@ -225,7 +269,7 @@ function onMinePage(page: number): void {
 }
 
 onMounted(async () => {
-  await Promise.all([loadPlans(), loadMine(), loadAdmin()])
+  await Promise.all([loadPlans(), loadMine(), loadAdmin(), loadVisits()])
 })
 </script>
 
@@ -234,6 +278,7 @@ onMounted(async () => {
     <PageHero title="认养专区" desc="申请 → 审核 → 缴费入账 → 生效。审核通过只转待缴费，动物标记只在入账事务中变更。">
       <template #actions>
         <button v-if="isAdmin" class="btn ghost" type="button" @click="router.push({ name: 'plan-manage' })">方案管理</button>
+        <button v-if="isAdmin" class="btn ghost" type="button" @click="router.push({ name: 'handovers' })">领养回访</button>
         <button class="btn" type="button" @click="openApply">提交认养申请</button>
       </template>
     </PageHero>
@@ -306,6 +351,29 @@ onMounted(async () => {
               @current-change="onAdminPage"
             />
           </div>
+        </el-tab-pane>
+
+        <el-tab-pane v-if="isAdmin" label="探视预约" name="visits">
+          <div class="toolbar">
+            <span class="muted">待审核的探视预约共 {{ visitRows.length }} 条</span>
+            <el-button :loading="loadingVisits" @click="loadVisits">刷新</el-button>
+          </div>
+          <el-table v-loading="loadingVisits" :data="visitRows" stripe>
+            <el-table-column prop="adoptionNo" label="认养单号" min-width="150" />
+            <el-table-column label="动物" min-width="110">
+              <template #default="{ row }">{{ row.animalCode }}</template>
+            </el-table-column>
+            <el-table-column prop="adopterName" label="认养人" width="110" />
+            <el-table-column prop="visitDate" label="日期" width="110" />
+            <el-table-column prop="timeSlot" label="时段" width="110" />
+            <el-table-column prop="note" label="备注" min-width="140" show-overflow-tooltip />
+            <el-table-column label="操作" width="150">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" @click="reviewVisit(row, 'APPROVE')">通过</el-button>
+                <el-button size="small" @click="reviewVisit(row, 'REJECT')">驳回</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-tab-pane>
 
         <el-tab-pane label="我的认养" name="mine">

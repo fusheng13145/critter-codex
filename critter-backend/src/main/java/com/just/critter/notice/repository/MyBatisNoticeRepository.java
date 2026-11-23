@@ -39,6 +39,19 @@ public class MyBatisNoticeRepository implements NoticeRepository {
     }
 
     @Override
+    public List<NoticeSummaryRecord> findHighlights(int limit) {
+        return mapper.findHighlights(limit).stream()
+                .map(row -> new NoticeSummaryRecord(
+                        row.getId() == null ? 0 : row.getId(),
+                        row.getNoticeNo(),
+                        row.getCategory(),
+                        row.getTitle(),
+                        Boolean.TRUE.equals(row.getPinned()),
+                        row.getPublishedAt()))
+                .toList();
+    }
+
+    @Override
     public Optional<NoticeDetail> findById(long id) {
         return Optional.ofNullable(mapper.findById(id)).map(this::toDetail);
     }
