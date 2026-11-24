@@ -82,12 +82,8 @@ onMounted(() => {
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark">青</div>
-        <div>
-          <b>青檐万灵册</b>
-          <small>校园生物档案与救助平台</small>
-        </div>
+        <b>青檐万灵册</b>
       </div>
-      <div class="theme-tag">青绿自然 · 统一风格</div>
       <nav>
         <button
           v-for="menu in menus"
@@ -101,15 +97,11 @@ onMounted(() => {
           <span>{{ menu.title }}</span>
         </button>
       </nav>
-      <div class="side-foot">
-        三人小组 · A 身份与看板<br />
-        B 档案与资金 · C 认养与医疗
-      </div>
     </aside>
 
     <div class="main">
       <header class="topbar">
-        <div class="crumb">青檐万灵册 / <b>{{ crumb }}</b></div>
+        <div class="crumb"><b>{{ crumb }}</b></div>
         <div class="top-actions">
           <span class="pill">{{ auth.user?.primaryRoleLabel ?? '游客' }}</span>
           <span class="muted" style="font-size: 12px">{{ today }}</span>

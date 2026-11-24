@@ -95,7 +95,7 @@ function localDateTime(value: Date): string {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="dialog-note">
-      {{ group?.groupCode }} · {{ group?.species.commonName }}；数量为估计值，可留空表示“有活动但未计数”。
+      {{ group?.groupCode }} · {{ group?.species.commonName }}
     </div>
 
     <div class="field">
@@ -129,7 +129,6 @@ function localDateTime(value: Date): string {
         v-model="form.fileIds"
         :max="6"
         biz-type="REPORT_PHOTO"
-        hint="可选，最多 6 张；用于证明目击事实"
       />
     </div>
 

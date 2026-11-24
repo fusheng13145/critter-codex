@@ -95,9 +95,6 @@ async function submit(): Promise<void> {
     append-to-body
     @update:model-value="emit('update:modelValue', false)"
   >
-    <div class="dialog-note">
-      先不指定群体，记录会以 <span class="mono">UNASSIGNED</span> 落库；在群体档案页的“待归属目击”里指派。
-    </div>
     <div class="form-grid">
       <div class="field">
         <label>目击点位 <b>*</b></label>

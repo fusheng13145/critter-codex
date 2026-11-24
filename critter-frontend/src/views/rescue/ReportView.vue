@@ -44,7 +44,6 @@ onMounted(loadPoints)
   <div>
     <PageHero
       title="救助上报"
-      desc="上报进入待受理队列，不等于已受理；受理后生成工单，工单流转与上报状态分开记录。"
     >
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/report/mine')">我的上报</button>
@@ -84,10 +83,7 @@ onMounted(loadPoints)
     <ReportQueue v-if="activeTab === 'queue'" />
     <ReportForm v-else :points="points" />
 
-    <div class="footnote" style="text-align: left">
-      接口：POST /api/v1/reports（登录）、GET /api/v1/reports（管理员）。
-      五类枚举与点位来自后端字典/基础数据，页面不硬编码业务状态。
-    </div>
+
   </div>
 </template>
 

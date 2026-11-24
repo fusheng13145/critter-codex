@@ -231,7 +231,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHero title="认养专区" desc="申请 → 审核 → 缴费入账 → 生效。审核通过只转待缴费，动物标记只在入账事务中变更。">
+    <PageHero title="认养专区">
       <template #actions>
         <button v-if="isAdmin" class="btn ghost" type="button" @click="router.push({ name: 'plan-manage' })">方案管理</button>
         <button class="btn" type="button" @click="openApply">提交认养申请</button>
@@ -422,9 +422,6 @@ onMounted(async () => {
           />
         </el-form-item>
       </el-form>
-      <el-alert type="info" :closable="false" show-icon>
-        通过只转“待缴费”，不会立即生效；必须再完成缴费入账。
-      </el-alert>
       <template #footer>
         <el-button @click="auditVisible = false">取消</el-button>
         <el-button type="primary" :loading="auditing" @click="submitAudit">提交审核</el-button>

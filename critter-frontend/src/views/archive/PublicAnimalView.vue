@@ -81,7 +81,6 @@ onMounted(load)
           </div>
         </div>
       </article>
-      <p class="public-foot">扫码查看 · 档案由校园志愿者与管理员共同维护</p>
     </main>
   </div>
 </template>
@@ -250,14 +249,6 @@ onMounted(load)
 
 .public-merged span {
   margin-left: 6px;
-}
-
-.public-foot {
-  margin-top: 22px;
-  text-align: center;
-  color: #8a999b;
-  font-size: 11px;
-  letter-spacing: 0.08em;
 }
 
 @media (max-width: 760px) {

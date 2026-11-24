@@ -23,7 +23,6 @@
   --chip: #f2f6f3;
   --hover: #f7faf8;
   --table-head: #f0f5f2;
-  --hero: linear-gradient(120deg, #eef5ef, #fbfdf8);
 
   --radius: 14px;
   --radius-sm: 9px;
@@ -171,23 +170,6 @@ p {
   font-family: var(--head);
 }
 
-.brand small {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  letter-spacing: 0.2px;
-}
-
-.theme-tag {
-  margin: 0 8px;
-  padding: 8px 10px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-}
-
 nav {
   display: flex;
   flex-direction: column;
@@ -228,14 +210,6 @@ nav {
   color: var(--accent);
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--accent);
-}
-
-.side-foot {
-  margin-top: auto;
-  padding: 10px 8px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 11px;
 }
 
 .main {
@@ -302,40 +276,20 @@ nav {
   margin: 0 auto;
 }
 
-/* ---------- 通用块 ---------- */
-.hero {
-  position: relative;
-  overflow: hidden;
-  background: var(--hero);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 24px 26px;
-  margin-bottom: 20px;
+/* ---------- 页头 ---------- */
+.page-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
-  box-shadow: var(--shadow);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
-.hero:after {
-  content: '青';
-  position: absolute;
-  right: 26px;
-  top: -30px;
-  font-size: 120px;
-  color: rgba(47, 107, 87, 0.06);
-  font-family: 'SimSun', serif;
-  pointer-events: none;
-}
-
-.hero h1 {
-  margin-bottom: 6px;
-}
-
-.hero p {
-  color: var(--muted);
-  font-size: 13px;
+.page-head h1 {
+  font-size: 22px;
+  letter-spacing: 0;
 }
 
 .metrics {
@@ -408,11 +362,6 @@ nav {
   justify-content: space-between;
   margin-bottom: 14px;
   gap: 10px;
-}
-
-.card-head .more {
-  color: var(--muted);
-  font-size: 12px;
 }
 
 .list {
@@ -490,11 +439,11 @@ nav {
   color: var(--muted);
 }
 
-.footnote {
-  margin-top: 16px;
-  color: var(--muted);
+/* 状态行：只放动态事实（已发至哪个邮箱、剩余多少秒），不放解释 */
+.state-line {
   font-size: 12px;
-  text-align: center;
+  color: var(--muted);
+  margin-bottom: 12px;
 }
 
 /* ---------- 按钮 ---------- */
@@ -678,6 +627,14 @@ table.native tbody tr:hover {
   color: var(--muted);
 }
 
+/* 计数：待办右侧的数字与说明文字分离，扫视时先看到数量 */
+.count {
+  min-width: 28px;
+  text-align: right;
+  font-size: 14px;
+  color: var(--ink);
+}
+
 .progress {
   height: 8px;
   border-radius: 999px;
@@ -699,65 +656,25 @@ table.native tbody tr:hover {
 /* ---------- 登录页 ---------- */
 .auth {
   min-height: 100vh;
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  background: var(--bg);
-}
-
-.auth-side {
-  background: var(--hero);
-  border-right: 1px solid var(--line);
-  padding: 54px 56px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  position: relative;
-  overflow: hidden;
-}
-
-.auth-side:after {
-  content: '青';
-  position: absolute;
-  right: 40px;
-  bottom: -60px;
-  font-size: 260px;
-  color: rgba(47, 107, 87, 0.06);
-  font-family: 'SimSun', serif;
-}
-
-.auth-side h1 {
-  font-size: 34px;
-  line-height: 1.35;
-  margin: 26px 0 12px;
-}
-
-.auth-side p {
-  color: var(--muted);
-  max-width: 420px;
-}
-
-.auth-points {
-  list-style: none;
-  padding: 0;
-  margin: 26px 0 0;
-  display: grid;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.auth-points li::before {
-  content: '·';
-  color: var(--accent);
-  font-weight: 700;
-  margin-right: 8px;
-}
-
-.auth-main {
-  display: flex;
   align-items: center;
   justify-content: center;
   padding: 40px 24px;
+  background: var(--bg);
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.auth-brand b {
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  font-family: var(--head);
 }
 
 .auth-card {
@@ -796,21 +713,11 @@ table.native tbody tr:hover {
   box-shadow: 0 1px 4px rgba(42, 80, 65, 0.08);
 }
 
-.auth-foot {
-  margin-top: 14px;
-  font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-}
-
 .demo-accounts {
   margin-top: 16px;
-  font-size: 12px;
-  color: var(--muted);
-  background: var(--chip);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
-  line-height: 1.9;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .demo-accounts b {
@@ -915,10 +822,7 @@ table.native tbody tr:hover {
   }
 
   .brand b,
-  .brand small,
-  .theme-tag,
-  .nav-item span + span,
-  .side-foot {
+  .nav-item span + span {
     display: none;
   }
 

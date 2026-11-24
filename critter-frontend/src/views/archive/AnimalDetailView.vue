@@ -103,7 +103,6 @@ onMounted(() => {
   <div>
     <PageHero
       :title="animal?.name || code || '档案详情'"
-      :desc="animal ? `编号 ${animal.code} · ${categoryLabel(animal.category)} · ${animal.point?.name ?? '点位待补'}` : errorText ? '档案读取失败，请返回列表或刷新重试。' : '正在读取档案…'"
     >
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/animals')">返回列表</button>
@@ -133,15 +132,15 @@ onMounted(() => {
       ]"
     />
 
-    <PageState :loading="loading" :error="errorText" :empty="!animal" empty-text="档案不存在或已被合并">
+    <PageState :loading="loading" :error="errorText" :empty="!animal">
       <template v-if="animal">
         <div v-if="code !== animal.code" class="notice" style="margin-bottom: 14px">
-          编号 <span class="mono">{{ code }}</span> 是已并入的旧编号，当前展示主档案
+          编号 <span class="mono">{{ code }}</span> 已并入，当前为主档案
           <span class="mono">{{ animal.code }}</span>。
         </div>
 
         <div class="detail-top">
-          <PanelCard title="档案概览" :more="`${animal.code}`">
+          <PanelCard title="档案概览">
             <div class="profile">
               <div class="profile-cover">
                 <AuthImage :file-id="fileIdFromUrl(animal.coverUrl)" :alt="animal.name ?? animal.code" fit="cover" />
@@ -166,7 +165,7 @@ onMounted(() => {
             </div>
           </PanelCard>
 
-          <PanelCard title="照护坐标" more="字段只展示，不生成推断">
+          <PanelCard title="照护坐标">
             <div class="info-grid single">
               <div class="info">
                 <div class="k">常驻点位</div>
@@ -203,7 +202,7 @@ onMounted(() => {
 
         <CommentPanel biz-type="ANIMAL" :biz-id="animal.code" />
 
-        <PanelCard v-if="auth.hasRole('ANIMAL_ADMIN')" title="状态时间线" :more="`共 ${statusHistory.length} 条`">
+        <PanelCard v-if="auth.hasRole('ANIMAL_ADMIN')" title="状态时间线">
           <div v-if="statusHistoryError" class="notice">{{ statusHistoryError }}</div>
           <div v-else-if="!statusHistory.length" class="muted empty-line">暂无状态迁移记录</div>
           <div v-else class="status-timeline">
@@ -221,12 +220,10 @@ onMounted(() => {
               </div>
             </div>
           </div>
-          <div class="footnote" style="text-align: left">
-            来源：GET /animals/{code}/status-history，仅 ANIMAL_ADMIN 可见；迁移原因不可为空。
-          </div>
+
         </PanelCard>
 
-        <PanelCard v-if="auth.isAdmin" title="字段级变更历史" :more="`共 ${history.length} 条`">
+        <PanelCard v-if="auth.isAdmin" title="字段级变更历史">
           <div v-if="historyError" class="notice">{{ historyError }}</div>
           <div v-else-if="!history.length" class="muted empty-line">暂无变更记录</div>
           <div v-else class="table-wrap history-table">
@@ -253,9 +250,7 @@ onMounted(() => {
               </tbody>
             </table>
           </div>
-          <div class="footnote" style="text-align: left">
-            来源：GET /animals/{code}/history，仅 ANIMAL_ADMIN / SYSTEM_ADMIN 可见。
-          </div>
+
         </PanelCard>
       </template>
     </PageState>

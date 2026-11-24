@@ -71,8 +71,7 @@ async function submit(): Promise<void> {
     @update:model-value="emit('update:modelValue', false)"
   >
     <div class="dialog-note">
-      主群体 <span class="mono">{{ group?.groupCode }}</span> 保留；副群体状态置为 GONE 并记录
-      <span class="mono">mergedIntoCode</span>，旧编号仍可追溯。副群体目击会迁到主群体。
+      主群体 <span class="mono">{{ group?.groupCode }}</span>
     </div>
     <div class="field">
       <label>并入的副群体编号 <b>*</b></label>

@@ -118,7 +118,6 @@ onMounted(load)
   <div>
     <PageHero
       title="点位维护"
-      desc="点位只停用不误删：有动物、群体、目击、上报或巡查引用时，后端返回 30413，只能把 enabled 置为 false。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
@@ -137,11 +136,11 @@ onMounted(load)
     />
 
     <div v-if="!auth.isAdmin" class="notice" style="margin-bottom: 16px">
-      点位维护需要管理员身份；当前账号只能查看公开点位。
+      需管理员权限
     </div>
 
-    <PageState :loading="loading" :error="errorText" :empty="!points.length" empty-text="暂无点位">
-      <PanelCard title="点位与引用" :more="`${points.length} 个`">
+    <PageState :loading="loading" :error="errorText" :empty="!points.length">
+      <PanelCard title="点位与引用">
         <div class="table-wrap">
           <table class="native">
             <thead>
@@ -230,7 +229,7 @@ onMounted(load)
           <label>启用状态</label>
           <label class="switch-line">
             <input v-model="form.enabled" type="checkbox" />
-            启用后出现在上报与档案的公开点位下拉
+            
           </label>
         </div>
         <div class="field form-span-2">

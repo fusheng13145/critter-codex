@@ -214,7 +214,6 @@ onMounted(() => loadTasks())
   <div>
     <PageHero
       title="TNR 全链路"
-      desc="校园流浪动物抓捕、转运、绝育手术、放归与观察五个节点闭环留痕；末节点完成自动写入绝育标记。"
     >
       <template #actions>
         <el-button v-if="auth.isAdmin" type="primary" @click="openCreate">发起 TNR</el-button>
@@ -246,7 +245,6 @@ onMounted(() => loadTasks())
       <div class="section-head">
         <div>
           <h2 class="section-title">任务看板</h2>
-          <p class="muted">按阶段与动物编号筛选；登录用户均可查看，发起与推进仅管理员。</p>
         </div>
         <el-button text :loading="loading" @click="loadTasks()">刷新</el-button>
       </div>
@@ -333,17 +331,9 @@ onMounted(() => loadTasks())
     </div>
 
     <el-dialog v-model="createVisible" title="发起 TNR 任务" width="560px" :close-on-click-modal="false">
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        title="首节点固定为抓捕；同一动物存在未完成 TNR 任务时不能重复发起。"
-        class="dialog-alert"
-      />
       <el-form label-width="100px">
         <el-form-item label="动物 ID" required>
           <el-input-number v-model="createForm.animalId" :min="1" :controls="false" placeholder="档案主键" />
-          <span class="field-hint">暂以档案 ID 关联，可在档案详情查看。</span>
         </el-form-item>
         <el-form-item label="抓捕时间" required>
           <el-date-picker v-model="createForm.occurredAt" type="datetime" style="width: 100%" />
@@ -374,22 +364,6 @@ onMounted(() => loadTasks())
       width="560px"
       :close-on-click-modal="false"
     >
-      <el-alert
-        v-if="advancingStage === 'SURGERY'"
-        type="warning"
-        :closable="false"
-        show-icon
-        title="手术节点必须至少上传一张照片编号，作为绝育手术留痕。"
-        class="dialog-alert"
-      />
-      <el-alert
-        v-else-if="advancingStage === 'OBSERVE'"
-        type="success"
-        :closable="false"
-        show-icon
-        title="观察节点完成后任务闭环，动物绝育标记与绝育日期将同步更新。"
-        class="dialog-alert"
-      />
       <el-form label-width="100px">
         <el-form-item label="任务编号">
           <span class="mono">{{ advancingTask?.tnrNo }}</span>
@@ -397,7 +371,6 @@ onMounted(() => loadTasks())
         </el-form-item>
         <el-form-item label="节点时间" required>
           <el-date-picker v-model="advanceForm.occurredAt" type="datetime" style="width: 100%" />
-          <span class="field-hint">必须晚于上一节点时间。</span>
         </el-form-item>
         <el-form-item label="节点备注">
           <el-input

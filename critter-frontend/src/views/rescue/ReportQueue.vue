@@ -206,7 +206,6 @@ onMounted(load)
       :loading="loading"
       :error="errorText"
       :empty="!pageData.list.length"
-      empty-text="当前筛选下没有上报"
     >
       <div class="table-wrap">
         <table class="native">
@@ -265,12 +264,10 @@ onMounted(load)
       />
     </PageState>
 
-    <div class="footnote" style="text-align: left">
-      来源：GET /reports?status=…；列表与详情对 ANIMAL_ADMIN / SYSTEM_ADMIN 开放，受理与关闭只允许 ANIMAL_ADMIN。
-    </div>
+
 
     <el-drawer v-model="drawerVisible" title="上报详情" size="560px" append-to-body>
-      <PageState :loading="detailLoading" :error="detailError" :empty="!detail" empty-text="上报不存在">
+      <PageState :loading="detailLoading" :error="detailError" :empty="!detail">
         <div v-if="detail" class="drawer-body">
           <div class="drawer-head">
             <div>
@@ -280,18 +277,18 @@ onMounted(load)
             <StatusTag :code="detail.status" :label="reportStatusLabel(detail.status)" />
           </div>
 
-          <div v-if="detail.overdue" class="notice danger">已超过受理时限，请优先处置。</div>
+          <div v-if="detail.overdue" class="notice danger">已超过受理时限</div>
           <div v-if="detail.invalid" class="notice danger">
-            已标记无效：{{ detail.invalidReason || '未填写原因' }}，不计入救助统计。
+            已标记无效：{{ detail.invalidReason || '未填写原因' }}
           </div>
           <div v-else-if="detail.status === 'CLOSED' && detail.confirmDueAt" class="notice">
-            已结案，等待上报人确认至 {{ dateTime(detail.confirmDueAt) }}；逾期系统自动确认。
+            已结案，待确认至 {{ dateTime(detail.confirmDueAt) }}，逾期自动确认。
           </div>
           <div v-else-if="detail.confirmedAt" class="notice">
             结案已确认于 {{ dateTime(detail.confirmedAt) }}{{ detail.autoConfirmed ? '（系统自动确认）' : '' }}。
           </div>
           <div v-if="acceptedOrderNo" class="notice">
-            已生成工单 <span class="mono">{{ acceptedOrderNo }}</span>，可在工单看板继续流转。
+            已生成工单 <span class="mono">{{ acceptedOrderNo }}</span>
           </div>
 
           <div class="block">
@@ -301,7 +298,7 @@ onMounted(load)
 
           <div class="block">
             <h3>现场照片</h3>
-            <PhotoGallery :file-ids="detail.photos" empty-text="无现场照片" />
+            <PhotoGallery :file-ids="detail.photos" />
           </div>
 
           <div class="block">
@@ -351,9 +348,7 @@ onMounted(load)
               关闭上报
             </button>
           </div>
-          <div v-else class="footnote" style="text-align: left">
-            SYSTEM_ADMIN 可查看队列，但受理/关闭需要 ANIMAL_ADMIN。
-          </div>
+
         </div>
       </PageState>
     </el-drawer>
@@ -368,7 +363,6 @@ onMounted(load)
         <textarea v-model="acceptForm.note" class="textarea" maxlength="255" placeholder="例如：已联系志愿者，预计 30 分钟到场" />
       </div>
       <div v-if="acceptError" class="field-error">{{ acceptError }}</div>
-      <div class="notice">受理后上报转 PROCESSING，并生成 PENDING 工单；工单另行流转。</div>
       <template #footer>
         <button class="btn ghost" type="button" @click="acceptVisible = false">取消</button>
         <button class="btn" type="button" :disabled="acceptBusy" @click="submitAccept">
@@ -393,14 +387,14 @@ onMounted(load)
         <input v-model="closeInvalid" type="checkbox" />
         <span>
           标记为无效上报
-          <small>重复上报、误报、无法核实等情况勾选；立即结案、不进入确认流程，并从救助统计中排除。</small>
+          <small></small>
         </span>
       </label>
       <div class="notice">
         {{
           closeInvalid
-            ? '无效结案立即生效，无需上报人确认。'
-            : '正常结案后上报人可在 7 天内确认，逾期自动确认。'
+            ? '立即生效'
+            : '7 天内可确认，逾期自动确认'
         }}
       </div>
       <template #footer>

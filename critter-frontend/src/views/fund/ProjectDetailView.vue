@@ -136,7 +136,6 @@ onMounted(load)
   <div>
     <PageHero
       :title="project?.name || '项目详情'"
-      :desc="project ? `${project.projectNo} · ${targetTypeLabel(project.targetType)} · ${project.startDate} 至 ${project.endDate}` : errorText ? '项目读取失败，请返回列表或刷新重试。' : '正在读取项目…'"
     >
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/projects')">返回列表</button>
@@ -182,7 +181,7 @@ onMounted(load)
       ]"
     />
 
-    <PageState :loading="loading" :error="errorText" :empty="!project" empty-text="项目不存在或已下架">
+    <PageState :loading="loading" :error="errorText" :empty="!project">
       <template v-if="project">
         <div class="project-status-line">
           <StatusTag :code="project.status" :label="projectStatusLabel(project.status)" />
@@ -246,7 +245,7 @@ onMounted(load)
             </div>
           </PanelCard>
 
-          <PanelCard title="预算明细" :more="`${project.budget.length} 项`">
+          <PanelCard title="预算明细">
             <div v-if="!project.budget.length" class="muted empty-line">未登记预算</div>
             <div v-else class="table-wrap budget-table">
               <table class="native">
@@ -273,7 +272,7 @@ onMounted(load)
           </PanelCard>
         </div>
 
-        <PanelCard title="已入账捐赠" :more="`展示最近 ${project.donations.length} 笔`">
+        <PanelCard title="已入账捐赠">
           <div v-if="!project.donations.length" class="muted empty-line">暂无已入账捐赠</div>
           <ul v-else class="list">
             <li v-for="donation in project.donations" :key="donation.donationNo">
@@ -286,9 +285,7 @@ onMounted(load)
               <span class="time">{{ donation.verifiedAt ? dateTime(donation.verifiedAt) : '—' }}</span>
             </li>
           </ul>
-          <div class="footnote" style="text-align: left">
-            公开页只展示 VERIFIED 流水；PENDING_VERIFY / ABNORMAL 仅管理员核对面板可见。
-          </div>
+
         </PanelCard>
 
         <CommentPanel biz-type="PROJECT" :biz-id="project.projectNo" />

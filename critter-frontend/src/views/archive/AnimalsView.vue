@@ -111,7 +111,6 @@ onMounted(() => {
   <div>
     <PageHero
       title="生物档案"
-      desc="个体、群体、出现记录三层分开建档；个体档案按编号贯穿救助、认养与资金流向。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
@@ -165,7 +164,6 @@ onMounted(() => {
       :loading="loading"
       :error="errorText"
       :empty="!pageData.list.length"
-      empty-text="当前筛选条件下没有档案"
     >
       <div class="table-wrap">
         <table class="native">

@@ -182,7 +182,7 @@ onMounted(load)
         <pre class="json">{{ pretty(detail.beforeJson) }}</pre>
         <h3 style="margin: 14px 0 6px">变更后</h3>
         <pre class="json">{{ pretty(detail.afterJson) }}</pre>
-        <div class="footnote" style="text-align: left">requestId：{{ detail.requestId ?? '—' }}</div>
+
       </div>
     </el-dialog>
   </div>

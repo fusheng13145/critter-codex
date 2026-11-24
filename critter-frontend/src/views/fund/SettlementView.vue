@@ -70,9 +70,6 @@ async function appendNote(): Promise<void> {
   <div>
     <PageHero
       :title="settlement?.projectName || '结项公示'"
-      :desc="settlement
-        ? `${settlement.projectNo} · 发布于 ${dateTime(settlement.publishedAt)}`
-        : errorText || '正在读取结项公示…'"
     >
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push(`/projects/${projectNo}`)">返回项目</button>
@@ -88,7 +85,7 @@ async function appendNote(): Promise<void> {
       ]"
     />
 
-    <PageState :loading="loading" :error="errorText" :empty="!settlement" empty-text="项目尚未发布结项公示">
+    <PageState :loading="loading" :error="errorText" :empty="!settlement">
       <template v-if="settlement">
         <div class="metrics">
           <div class="metric">
@@ -122,7 +119,7 @@ async function appendNote(): Promise<void> {
           </PanelCard>
         </div>
 
-        <PanelCard title="公示附件" :more="`${settlement.attachments.length} 个`">
+        <PanelCard title="公示附件">
           <div v-if="!settlement.attachments.length" class="muted empty-line">未上传附件</div>
           <div v-else class="attachment-list">
             <a
@@ -139,17 +136,14 @@ async function appendNote(): Promise<void> {
           </div>
         </PanelCard>
 
-        <div class="footnote">
-          结项公示与资金台账同源：收入取已核对捐赠，支出取已复核支出；公开接受全校监督。
-        </div>
+
 
         <PanelCard
           title="结项后追加说明"
-          :more="`${settlement.appendNotes.length} 条`"
           style="margin-top: 16px"
         >
           <div v-if="!settlement.appendNotes.length" class="muted empty-line">
-            暂无追加说明。结项后如有资金去向补充、退款处置等，由管理员在此留痕。
+            暂无追加说明
           </div>
           <div v-else class="note-list">
             <div v-for="(item, index) in settlement.appendNotes" :key="index" class="note-item">

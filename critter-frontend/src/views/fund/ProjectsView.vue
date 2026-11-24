@@ -80,7 +80,6 @@ onMounted(load)
   <div>
     <PageHero
       title="募捐项目"
-      desc="目标、已筹、已支出三条线分开记账；已筹只统计核对入账后的捐赠，不把待核对金额算进进度。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
@@ -124,7 +123,6 @@ onMounted(load)
       :loading="loading"
       :error="errorText"
       :empty="!pageData.list.length"
-      empty-text="当前筛选条件下没有募捐项目"
     >
       <div class="project-grid">
         <ProjectCard v-for="project in pageData.list" :key="project.projectNo" :project="project" />

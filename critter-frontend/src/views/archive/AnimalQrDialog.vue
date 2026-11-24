@@ -83,7 +83,6 @@ function printCard(): void {
       <h1>${title}</h1>
       <div class="code">${code}</div>
       <img src="${objectUrl.value}" alt="档案二维码" />
-      <div class="hint">扫码查看青檐万灵册公开档案</div>
       <script>window.onload = function () { window.print(); }<\/script>
     </body></html>`)
   win.document.close()
@@ -107,9 +106,6 @@ function printCard(): void {
         <b>{{ animal?.name || animal?.code }}</b>
         <span class="mono">{{ animal?.code }}</span>
       </div>
-      <p class="muted qr-hint">
-        二维码内容为公开扫码页 <span class="mono">/p/{{ animal?.code }}</span>，可直接贴牌打印。
-      </p>
     </div>
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">关闭</button>
@@ -147,8 +143,4 @@ function printCard(): void {
   font-size: 12px;
 }
 
-.qr-hint {
-  margin-top: 10px;
-  font-size: 12px;
-}
 </style>

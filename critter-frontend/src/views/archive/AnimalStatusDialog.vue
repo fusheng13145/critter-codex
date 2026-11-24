@@ -79,11 +79,10 @@ async function submit(): Promise<void> {
     <div class="dialog-note">
       当前状态：<b>{{ animal ? animalStatusLabel(animal.status) : '—' }}</b>
       · 编号 <span class="mono">{{ animal?.code }}</span>
-      · 迁移会写入不可篡改的状态日志。
     </div>
 
     <div v-if="!targets.length" class="notice">
-      当前状态没有可用的下一步；终态不可再迁移。
+      
     </div>
 
     <template v-else>
@@ -97,7 +96,7 @@ async function submit(): Promise<void> {
       </div>
 
       <div v-if="form.targetStatus === 'RELEASED'" class="notice" style="margin-top: 12px">
-        转「已放归」要求该个体已有绝育/TNR 病史记录，否则后端会拒绝迁移。
+        
       </div>
 
       <div class="field" style="margin-top: 14px">

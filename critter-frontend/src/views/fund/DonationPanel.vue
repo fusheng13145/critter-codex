@@ -237,7 +237,7 @@ onMounted(load)
 </script>
 
 <template>
-  <PanelCard title="捐赠核对（管理员）" :more="`待核对优先 · 共 ${pageData.page.total} 笔`">
+  <PanelCard title="捐赠核对（管理员）">
     <div class="toolbar">
       <select :value="query.status" class="select" @change="onStatusChange">
         <option value="">全部状态</option>
@@ -254,7 +254,6 @@ onMounted(load)
       >
         {{ batchBusy ? '核对中…' : `批量按登记金额入账（${selected.length}）` }}
       </button>
-      <span class="muted batch-hint">批量只按登记金额入账；金额不符请逐笔核对。</span>
     </div>
 
     <div v-if="batchReport.length" class="notice batch-report">
@@ -265,7 +264,6 @@ onMounted(load)
       :loading="loading"
       :error="errorText"
       :empty="!pageData.list.length"
-      empty-text="当前筛选下没有捐赠流水"
     >
       <div class="table-wrap">
         <table class="native">
@@ -370,9 +368,7 @@ onMounted(load)
       />
     </PageState>
 
-    <div class="footnote" style="text-align: left">
-      口径：登记 ≠ 入账；只有 VERIFIED 才递增项目 raisedAmount。ABNORMAL 保持原进度，实收金额写入审计日志。
-    </div>
+
 
     <el-dialog v-model="confirmVisible" title="核对捐赠入账" width="540px" append-to-body>
       <div v-if="confirming" class="confirm-body">
@@ -387,7 +383,6 @@ onMounted(load)
           <input v-model="note" class="input" maxlength="255" placeholder="金额不一致时必须说明原因" />
         </div>
         <div v-if="confirmError" class="field-error">{{ confirmError }}</div>
-        <div class="notice">实收金额与登记金额不一致时转 ABNORMAL，不计入项目进度。</div>
       </div>
 
       <template #footer>
@@ -399,7 +394,7 @@ onMounted(load)
     </el-dialog>
 
     <el-dialog v-model="voucherVisible" title="捐赠凭证" width="720px" append-to-body>
-      <PhotoGallery :file-ids="voucherPreview" empty-text="未上传凭证" />
+      <PhotoGallery :file-ids="voucherPreview" />
     </el-dialog>
 
     <el-dialog v-model="flagVisible" title="标记凭证异常" width="520px" append-to-body>
@@ -420,9 +415,6 @@ onMounted(load)
           />
         </div>
         <div v-if="flagError" class="field-error">{{ flagError }}</div>
-        <div class="notice">
-          已入账（VERIFIED）的流水不能直接标异常，需先冲正；这里只处理待核对与已异常流水。
-        </div>
       </div>
       <template #footer>
         <button class="btn ghost" type="button" @click="flagVisible = false">取消</button>
@@ -435,10 +427,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.batch-hint {
-  font-size: 11px;
-}
-
 .batch-report {
   margin-bottom: 12px;
 }

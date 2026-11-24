@@ -120,7 +120,7 @@ async function submit(): Promise<void> {
       <label>展示方式</label>
       <label class="switch-line">
         <input v-model="form.anonymous" type="checkbox" />
-        <span>匿名捐赠（公开流水只显示“匿名爱心人士”）</span>
+        <span>匿名捐赠</span>
       </label>
     </div>
 
@@ -137,15 +137,11 @@ async function submit(): Promise<void> {
         :max="5"
         biz-type="GENERAL"
         accept="image/jpeg,image/png,image/webp,application/pdf"
-        hint="支持图片或 PDF，最多 5 个附件"
         @uploading="uploaded = $event"
       />
       <div v-if="errors.vouchers" class="field-error">{{ errors.vouchers }}</div>
     </div>
 
-    <div class="notice">
-      登记只生成 PENDING_VERIFY 单据，公开“已筹金额”不会立即增加；管理员核对金额一致后才计入项目进度。
-    </div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>

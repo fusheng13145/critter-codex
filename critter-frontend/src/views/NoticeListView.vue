@@ -114,7 +114,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHero title="校园公告" desc="救助进展、领养公示与科普内容在此发布，重要公告在首页置顶。">
+    <PageHero title="校园公告">
       <template #actions>
         <el-tag type="warning" effect="plain">置顶 {{ pinnedCount }} 条</el-tag>
         <el-button :loading="loading" @click="loadNotices">刷新</el-button>
@@ -158,7 +158,7 @@ onMounted(() => {
 
       <div v-if="!loading && !rows.length" class="empty">
         <b>暂无公告</b>
-        <span>管理员发布进展、公示或科普后，会在这里按置顶与时间排序展示。</span>
+        <span></span>
       </div>
     </section>
 
@@ -198,7 +198,7 @@ onMounted(() => {
         </el-form-item>
         <el-form-item label="置顶">
           <el-switch v-model="form.pinned" />
-          <span class="muted" style="margin-left: 10px">置顶公告优先于发布时间排序</span>
+          <span class="muted" style="margin-left: 10px"></span>
         </el-form-item>
       </el-form>
       <template #footer>

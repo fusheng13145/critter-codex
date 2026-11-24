@@ -254,7 +254,6 @@ onMounted(loadClinics)
   <div>
     <PageHero
       title="医疗协作"
-      desc="合作医院、就诊登记与处置留痕。费用按整数分入账；无工单就诊必须备注来源。"
     >
       <template #actions>
         <el-button @click="router.push('/tnr')">TNR 看板</el-button>
@@ -266,7 +265,6 @@ onMounted(loadClinics)
       <div class="section-head">
         <div>
           <h2 class="section-title">查询就诊记录</h2>
-          <p class="muted">凭就诊编号查看诊断、处置、费用与关联影像；无需工单也可查询。</p>
         </div>
       </div>
       <div class="lookup-row">
@@ -285,7 +283,6 @@ onMounted(loadClinics)
       <div class="section-head">
         <div>
           <h2 class="section-title">合作医院</h2>
-          <p class="muted">报价为课程示例，仅作内部协作参考，不构成真实价格承诺。</p>
         </div>
         <div class="section-actions">
           <el-button v-if="auth.isAdmin" type="primary" plain @click="openCreateClinic">新增医院</el-button>
@@ -333,7 +330,6 @@ onMounted(loadClinics)
             show-word-limit
             placeholder="如绝育 280 元、疫苗 60 元/针（示例价）"
           />
-          <span class="field-hint">仅作内部协作参考，页面不构成真实价格承诺。</span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -346,11 +342,9 @@ onMounted(loadClinics)
       <el-form label-width="110px">
         <el-form-item label="动物 ID" required>
           <el-input-number v-model="form.animalId" :min="1" :controls="false" placeholder="档案主键" />
-          <span class="field-hint">档案页由成员 B 实现，暂以档案 ID 关联。</span>
         </el-form-item>
         <el-form-item label="关联工单 ID">
           <el-input-number v-model="form.orderId" :min="1" :controls="false" placeholder="可空" />
-          <span class="field-hint">填写后工单动物必须与就诊动物一致。</span>
         </el-form-item>
         <el-form-item label="合作医院" required>
           <el-select v-model="form.clinicId" filterable placeholder="选择合作医院" style="width: 100%">
@@ -411,13 +405,6 @@ onMounted(loadClinics)
     </el-dialog>
 
     <el-dialog v-model="editVisible" title="纠错就诊记录" width="620px" :close-on-click-modal="false">
-      <el-alert
-        type="warning"
-        :closable="false"
-        show-icon
-        title="仅更正主诉、诊断、处置、费用与影像；动物、医院与到院时间不可改，变更原因写入审计日志。"
-        class="edit-alert"
-      />
       <el-form label-width="100px">
         <el-form-item label="主诉">
           <el-input v-model="editForm.complaint" maxlength="255" show-word-limit />
@@ -502,7 +489,6 @@ onMounted(loadClinics)
             <el-tag v-for="fileId in detail.fileIds" :key="fileId" effect="plain">{{ fileId }}</el-tag>
           </div>
           <p v-else class="muted">无影像关联</p>
-          <p class="muted small">仅记录附件编号，公开访问仍需通过附件审核与授权。</p>
         </div>
         <div v-if="detail.sourceNote" class="detail-block">
           <h3>来源备注</h3>

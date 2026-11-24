@@ -1,28 +1,25 @@
 <script setup lang="ts">
-/** 页头（原型 .hero）：标题 + 说明 + 右侧操作区。 */
-defineProps<{
-  title: string
-  desc?: string
-}>()
+/**
+ * 页头：标题 + 右侧操作区，只承担这两件事。
+ * 不给说明文字留入口——页面如果需要一句话才看得懂，那是布局没表达清楚，
+ * 应当改表头、字段标签或分组，而不是往这里补文案。
+ */
+defineProps<{ title: string }>()
 </script>
 
 <template>
-  <div class="hero">
-    <div>
-      <h1>{{ title }}</h1>
-      <p v-if="desc">{{ desc }}</p>
-    </div>
-    <div class="hero-actions">
+  <div class="page-head">
+    <h1>{{ title }}</h1>
+    <div class="page-actions">
       <slot name="actions" />
     </div>
   </div>
 </template>
 
 <style scoped>
-.hero-actions {
+.page-actions {
   display: flex;
   gap: 8px;
-  position: relative;
-  z-index: 1;
+  flex: 0 0 auto;
 }
 </style>

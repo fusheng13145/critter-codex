@@ -114,15 +114,13 @@ async function submit(): Promise<void> {
       <span>受理截止：{{ dateTime(lastCreated.deadline) }}</span>
     </div>
     <div v-if="lastCreated.duplicated" class="notice">
-      与 {{ lastCreated.duplicateOf }} 可能重复：系统仍会生成新工单，请勿重复催促。
+      与 {{ lastCreated.duplicateOf }} 可能重复
     </div>
     <div class="success-actions">
       <button class="btn" type="button" @click="router.push('/report/mine')">查看我的上报</button>
       <button class="btn ghost" type="button" @click="resetForm">再报一条</button>
     </div>
-    <div class="footnote" style="text-align: left">
-      提交只代表进入待受理队列，不代表已受理或已救助；可在“我的上报”查看本机回执。
-    </div>
+
   </div>
 
   <div v-else class="form-shell">
@@ -156,7 +154,6 @@ async function submit(): Promise<void> {
           v-model="form.photos"
           :max="3"
           biz-type="REPORT_PHOTO"
-          hint="至少 1 张，最多 3 张，单张不超过 5MB"
           @uploading="uploaded = $event"
         />
         <div v-if="errors.photos" class="field-error">{{ errors.photos }}</div>
@@ -168,7 +165,7 @@ async function submit(): Promise<void> {
           v-model="form.description"
           class="textarea"
           maxlength="500"
-          placeholder="请描述动物状态、受伤部位、周围环境、是否需要紧急救助等（至少 10 个字）"
+          placeholder="如：后腿流血，趴在图书馆北侧草坪"
           :class="{ invalid: errors.description }"
         />
         <div class="desc-meta">
@@ -195,7 +192,6 @@ async function submit(): Promise<void> {
             {{ item.commonName }}{{ item.scientificName ? ` · ${item.scientificName}` : '' }}
           </option>
         </select>
-        <div class="field-hint">选择野猪等大型野生动物时，平台会提示联系后勤，不会生成自行处置工单。</div>
       </div>
 
       <div class="field">
@@ -204,9 +200,6 @@ async function submit(): Promise<void> {
       </div>
     </div>
 
-    <div class="notice">
-      照片和描述会影响受理优先级；恶意上报、重复占用工单会被记录。提交后请在“我的上报”保留回执。
-    </div>
 
     <div class="form-actions">
       <button class="btn ghost" type="button" @click="resetForm">清空</button>

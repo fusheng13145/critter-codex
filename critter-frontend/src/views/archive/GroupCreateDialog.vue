@@ -187,10 +187,6 @@ async function submit(): Promise<void> {
       <div v-if="errors.sizeBasis" class="field-error">{{ errors.sizeBasis }}</div>
     </div>
 
-    <div class="notice">
-      {{ editing ? '物种建后不可改；规模区间与计数依据可直接修正，保存后立即生效。' : '群体不参与认养；群体编号由服务端生成，规模以区间返回，不得把中位数当作事实。' }}
-    </div>
-
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>
       <button class="btn" type="button" :disabled="submitting" @click="submit">

@@ -132,7 +132,7 @@ async function submit(): Promise<void> {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="dialog-note">
-      编号 <span class="mono">{{ animal?.code }}</span> 不可修改；保存后可在详情页查看字段级变更历史。
+      编号 <span class="mono">{{ animal?.code }}</span>
     </div>
 
     <div class="form-grid">

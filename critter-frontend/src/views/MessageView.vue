@@ -211,7 +211,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHero title="消息中心" desc="审批结果、认养到期、募捐进度、工单进展与健康提醒，五类消息在此汇总。">
+    <PageHero title="消息中心">
       <template #actions>
         <el-tag type="warning" effect="plain">未读 {{ unreadTotal }} 条</el-tag>
         <el-button @click="router.push('/notices')">校园公告</el-button>
@@ -317,9 +317,6 @@ onMounted(async () => {
         />
       </div>
 
-      <el-alert type="info" :closable="false" show-icon>
-        消息保留 180 天。审批结果与认养关系消息可直接跳转到认养单详情。
-      </el-alert>
     </section>
   </div>
 </template>

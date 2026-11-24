@@ -212,10 +212,10 @@ onMounted(() => {
 
     <el-dialog v-model="statusDialog.visible" :title="statusDialog.target === 'DISABLED' ? '禁用账号' : '启用账号'" width="460px">
       <p class="muted" style="margin-top: 0">
-        {{ statusDialog.target === 'DISABLED' ? '禁用后该用户所有已签发令牌立即失效，登录返回 30104。' : '启用后用户可重新登录。' }}
+        {{ statusDialog.target === 'DISABLED' ? '禁用后立即失效' : '启用后恢复登录' }}
       </p>
       <div class="field">
-        <label>{{ statusDialog.target === 'DISABLED' ? '禁用原因（不少于 5 字，写入操作日志）' : '备注（可选）' }}</label>
+        <label>{{ statusDialog.target === 'DISABLED' ? '禁用原因（不少于 5 字）' : '备注（可选）' }}</label>
         <textarea v-model="statusDialog.reason" class="textarea" :placeholder="`账号：${statusDialog.nickname}`" />
       </div>
       <template #footer>

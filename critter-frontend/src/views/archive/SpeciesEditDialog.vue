@@ -80,9 +80,6 @@ async function submit(): Promise<void> {
     append-to-body
     @update:model-value="emit('update:modelValue', false)"
   >
-    <div class="dialog-note">
-      俗名重复会返回 30411；学名与保护级别按名录登记值保存，前端不做推断。
-    </div>
 
     <div class="form-grid">
       <div class="field">

@@ -1,70 +1,73 @@
 <script setup lang="ts">
 /**
- * 页面状态容器：把"加载中 / 请求失败 / 暂无数据"三种分支收口，
- * 页面只关心成功态，避免每个列表页重复写三层 v-if。
+ * 页面状态容器：加载、失败、空三种分支收口，页面只关心成功态。
+ * 文案只在"失败"时出现，因为失败信息本身要可读；
+ * 加载与空态用形态表达（骨架条 / 空框），不再各页写一句解释。
  */
 defineProps<{
   loading?: boolean
   error?: string
   empty?: boolean
-  loadingText?: string
-  emptyText?: string
 }>()
 </script>
 
 <template>
-  <div v-if="loading" class="page-state" role="status">
-    <span class="pulse" />
-    <span>{{ loadingText ?? '正在读取数据…' }}</span>
+  <div v-if="loading" class="state-skeleton" role="status" aria-label="加载中">
+    <i /><i /><i />
   </div>
   <div v-else-if="error" class="notice">{{ error }}</div>
-  <div v-else-if="empty" class="page-state">
-    <span class="ring" />
-    <span>{{ emptyText ?? '暂无数据' }}</span>
+  <div v-else-if="empty" class="state-empty" aria-label="暂无数据">
+    <span />
   </div>
   <slot v-else />
 </template>
 
 <style scoped>
-.page-state {
+.state-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.state-skeleton i {
+  display: block;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--chip), var(--hover), var(--chip));
+  background-size: 200% 100%;
+  animation: sweep 1.4s linear infinite;
+}
+
+.state-skeleton i:nth-child(2) {
+  width: 86%;
+}
+
+.state-skeleton i:nth-child(3) {
+  width: 72%;
+}
+
+.state-empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 120px;
-  padding: 24px;
-  color: var(--muted);
-  background: var(--panel);
+  min-height: 96px;
   border: 1px dashed var(--line);
   border-radius: var(--radius);
-  font-size: 13px;
 }
 
-.pulse {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: pulse 1.1s ease-in-out infinite;
+.state-empty span {
+  width: 28px;
+  height: 2px;
+  background: var(--line);
 }
 
-.ring {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid var(--line);
-  border-top-color: var(--accent-2);
-}
-
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: scale(0.9);
+@keyframes sweep {
+  from {
+    background-position: 200% 0;
   }
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
+  to {
+    background-position: -200% 0;
   }
 }
 </style>

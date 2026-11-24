@@ -18,7 +18,6 @@ const active = ref('logs')
   <div>
     <PageHero
       title="后台管理"
-      desc="系统管理员负责治理：账号状态、身份审批、字典口径、日志审计与角色权限查看。业务审核（认养、支出）不在这里。"
     />
 
     <div class="card">

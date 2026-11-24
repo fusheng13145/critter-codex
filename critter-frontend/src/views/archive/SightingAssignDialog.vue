@@ -74,7 +74,7 @@ async function submit(): Promise<void> {
     <div class="field">
       <label>目标群体 <b>*</b></label>
       <select v-model="form.groupCode" class="select mono">
-        <option value="" disabled>请选择未消失/未合并的群体</option>
+        <option value="" disabled>选择群体</option>
         <option
           v-for="group in groups"
           :key="group.groupCode"

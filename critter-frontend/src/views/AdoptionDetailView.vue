@@ -83,7 +83,7 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHero :title="`认养详情 ${no}`" desc="缴费、状态与证书均以服务端记录为准。">
+    <PageHero :title="`认养详情 ${no}`">
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/adopt')">返回认养专区</button>
         <button
@@ -102,7 +102,7 @@ onMounted(load)
     </div>
 
     <div v-else v-loading="loading" class="grid2 align-start">
-      <PanelCard title="认养关系" :more="detail ? adoptionStatusLabel(detail.status) : '加载中'">
+      <PanelCard title="认养关系">
         <template v-if="detail">
           <div class="status-line">
             <el-tag :type="adoptionStatusType(detail.status)" effect="dark">
@@ -124,11 +124,9 @@ onMounted(load)
             </li>
           </ul>
           <div v-if="detail.status === 'PENDING_PAYMENT' && detail.payDeadline" class="notice">
-            缴费截止：{{ dateTime(detail.payDeadline) }}。逾期未入账不会生效。
+            缴费截止：{{ dateTime(detail.payDeadline) }}
           </div>
-          <div v-if="detail.auditReason" class="footnote" style="text-align: left">
-            审核说明：{{ detail.auditReason }}
-          </div>
+
           <div v-if="isAdmin" class="actions">
             <el-button
               v-if="detail.status === 'PENDING_PAYMENT'"
@@ -144,7 +142,7 @@ onMounted(load)
         </template>
       </PanelCard>
 
-      <PanelCard title="缴费流水" :more="`${detail?.payments.length ?? 0} 条`">
+      <PanelCard title="缴费流水">
         <el-table v-if="detail?.payments.length" :data="detail.payments" size="small">
           <el-table-column prop="paymentNo" label="流水号" min-width="140" />
           <el-table-column label="实收" width="100">
@@ -169,9 +167,6 @@ onMounted(load)
     />
 
     <el-dialog v-model="terminateVisible" title="终止认养关系" width="480px">
-      <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 16px">
-        终止后认养单转 TERMINATED，动物恢复为在校园；已签发的历史证书仍可查看。
-      </el-alert>
       <el-form label-width="86px">
         <el-form-item label="终止原因" required>
           <el-input

@@ -79,9 +79,6 @@ async function submit(): Promise<void> {
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div class="dialog-note">
-      结项后项目进入 SETTLED，报告与收支合计对全体用户公开；存在待复核支出时无法结项。
-    </div>
 
     <div class="settle-metrics">
       <div><span>已筹</span><b>{{ money(project?.raisedAmount ?? 0) }}</b></div>
@@ -96,7 +93,7 @@ async function submit(): Promise<void> {
         class="textarea"
         maxlength="10000"
         rows="6"
-        placeholder="说明资金使用情况、救助成效、票据归档与后续计划（至少 20 字）"
+        placeholder="如：结余转入下期绝育专项，凭证见附件"
       />
       <div class="counter">{{ form.reportText.trim().length }} / 10000</div>
     </div>
@@ -117,7 +114,6 @@ async function submit(): Promise<void> {
         v-model="form.attachments"
         :max="10"
         biz-type="PROJECT_SETTLEMENT"
-        hint="可上传结项报告、票据汇总等，最多 10 个，公示后公开可读"
       />
     </div>
 

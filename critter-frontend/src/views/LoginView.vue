@@ -244,31 +244,12 @@ function useDemo(account: string, password: string): void {
 
 <template>
   <div class="auth">
-    <aside class="auth-side">
-      <div>
-        <div class="brand">
-          <div class="brand-mark">青</div>
-          <div>
-            <b>青檐万灵册</b>
-            <small>校园生物档案与救助平台</small>
-          </div>
-        </div>
-        <h1>让每一只校园生灵<br />都被看见、被记录</h1>
-        <p>
-          从一次上报开始，到建档、治疗、认养、募捐与结项公示，
-          每一步都留痕、每一笔都说得清。
-        </p>
-        <ul class="auth-points">
-          <li>实名学籍校验，只对本校师生开放</li>
-          <li>状态机驱动的档案流转，非法操作拦得住</li>
-          <li>资金双人复核，台账与档案可互相追问</li>
-        </ul>
-      </div>
-      <div class="muted" style="font-size: 12px">软件体系结构课程设计 · 三人小组 · 2026 秋</div>
-    </aside>
+    <div class="auth-brand">
+      <div class="brand-mark">青</div>
+      <b>青檐万灵册</b>
+    </div>
 
-    <main class="auth-main">
-      <div class="auth-card">
+    <div class="auth-card">
         <div class="auth-tabs">
           <button type="button" :class="{ on: mode === 'login' }" @click="switchMode('login')">登录</button>
           <button type="button" :class="{ on: mode === 'register' || mode === 'verify' }" @click="switchMode('register')">注册</button>
@@ -306,7 +287,6 @@ function useDemo(account: string, password: string): void {
           <button class="btn" style="width: 100%" type="submit" :disabled="submitting">
             {{ submitting ? '登录中…' : '登录' }}
           </button>
-          <div class="auth-foot">连续 5 次密码错误将锁定 10 分钟</div>
           <div style="display: flex; gap: 8px; margin-top: 10px">
             <button class="btn ghost sm" type="button" style="flex: 1" @click="switchMode('forgot')">忘记密码？</button>
             <button class="btn ghost sm" type="button" style="flex: 1" @click="switchMode('appeal')">账号被禁用？申诉</button>
@@ -326,13 +306,13 @@ function useDemo(account: string, password: string): void {
             <div v-if="fieldErrors.email" class="field-error">{{ fieldErrors.email }}</div>
           </div>
           <div class="field">
-            <label>昵称</label>
-            <input v-model="registerForm.nickname" class="input" :class="{ invalid: !!fieldErrors.nickname }" placeholder="2—16 字，公开页展示" />
+            <label>昵称（2—16 字）</label>
+            <input v-model="registerForm.nickname" class="input" :class="{ invalid: !!fieldErrors.nickname }" />
             <div v-if="fieldErrors.nickname" class="field-error">{{ fieldErrors.nickname }}</div>
           </div>
           <div class="field">
-            <label>院系（可选，默认取学籍名单）</label>
-            <input v-model="registerForm.dept" class="input" placeholder="例如 计算机学院" />
+            <label>院系（可选）</label>
+            <input v-model="registerForm.dept" class="input" placeholder="计算机学院" />
           </div>
           <div class="field">
             <label>密码（8—32 位，含字母与数字）</label>
@@ -347,17 +327,15 @@ function useDemo(account: string, password: string): void {
           <button class="btn" style="width: 100%" type="submit" :disabled="submitting">
             {{ submitting ? '提交中…' : '注册并发送验证码' }}
           </button>
-          <div class="auth-foot">学号需在校内学籍名单内，注册后需邮箱验证码激活</div>
         </form>
 
         <!-- 验证码 -->
         <form v-else-if="mode === 'verify'" @submit.prevent="submitVerify">
-          <div class="notice" style="margin-bottom: 16px">
-            验证码已发送至 <b>{{ verifyState.email }}</b>，{{ verifyState.countdown }} 秒内有效。
+          <div class="state-line">
+            已发送至 <b>{{ verifyState.email }}</b> · 剩余 {{ verifyState.countdown }}s
           </div>
           <div v-if="verifyState.devCode" class="demo-accounts">
-            演示环境未接入邮件通道，本次验证码为 <b>{{ verifyState.devCode }}</b>
-            （生产环境置 <code>critter.register.expose-verification-code=false</code> 即不再回传）
+            验证码 <b>{{ verifyState.devCode }}</b>
           </div>
           <div class="field" style="margin-top: 16px">
             <label>6 位验证码</label>
@@ -373,9 +351,6 @@ function useDemo(account: string, password: string): void {
 
         <!-- 找回密码 -->
         <form v-else-if="mode === 'forgot'" @submit.prevent="forgotState.sent ? submitResetPassword() : sendResetCode()">
-          <div class="notice" style="margin-bottom: 14px">
-            凭学号或校园邮箱接收验证码，5 分钟内有效；连续 5 次验证码错误与登录一样会锁定 10 分钟。
-          </div>
           <div class="field">
             <label>学号 / 校园邮箱</label>
             <input
@@ -390,9 +365,9 @@ function useDemo(account: string, password: string): void {
 
           <template v-if="forgotState.sent">
             <div class="demo-accounts" style="margin-bottom: 12px">
-              验证码已发送至 <b>{{ forgotState.emailMasked }}</b>，{{ forgotState.countdown }} 秒内有效。
+              已发送至 <b>{{ forgotState.emailMasked }}</b> · 剩余 {{ forgotState.countdown }}s
               <template v-if="forgotState.devCode">
-                <br />演示环境未接入邮件通道，本次验证码为 <b>{{ forgotState.devCode }}</b>
+                <br />验证码 <b>{{ forgotState.devCode }}</b>
               </template>
             </div>
             <div class="field">
@@ -439,9 +414,6 @@ function useDemo(account: string, password: string): void {
             <button class="btn" style="width: 100%" type="button" @click="switchMode('login')">返回登录</button>
           </template>
           <template v-else>
-            <div class="notice" style="margin-bottom: 14px">
-              账号被禁用后无法登录，可在此提交申诉。管理员核实后会在后台处理，请留下可联系的方式。
-            </div>
             <div class="field">
               <label>学号 / 工号</label>
               <input v-model="appealState.userNo" class="input" placeholder="例如 2023010105" />
@@ -453,12 +425,11 @@ function useDemo(account: string, password: string): void {
                 class="input"
                 rows="4"
                 style="resize: vertical"
-                placeholder="例如：账号被误判为违规，附上当时的活动说明。"
               />
             </div>
             <div class="field">
               <label>联系方式（可选）</label>
-              <input v-model="appealState.contact" class="input" placeholder="手机号或邮箱，便于回访" />
+              <input v-model="appealState.contact" class="input" placeholder="手机号或邮箱" />
             </div>
             <button class="btn" style="width: 100%" type="submit" :disabled="submitting">
               {{ submitting ? '提交中…' : '提交申诉' }}
@@ -470,17 +441,10 @@ function useDemo(account: string, password: string): void {
         </form>
 
         <div class="demo-accounts">
-          演示账号（本地库已播种）<br />
-          <b>学生</b> 2023019001 / Qy@2026 ·
-          <b>动物管理员</b> 2023010101 / Admin@2026 ·
-          <b>系统管理员</b> 2023010102 / Admin@2026
-          <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap">
-            <button class="btn sm ghost" type="button" @click="useDemo('2023019001', 'Qy@2026')">填入学生</button>
-            <button class="btn sm ghost" type="button" @click="useDemo('2023010101', 'Admin@2026')">填入动物管理员</button>
-            <button class="btn sm ghost" type="button" @click="useDemo('2023010102', 'Admin@2026')">填入系统管理员</button>
-          </div>
+          <button class="btn sm ghost" type="button" @click="useDemo('2023019001', 'Qy@2026')">学生 2023019001</button>
+          <button class="btn sm ghost" type="button" @click="useDemo('2023010101', 'Admin@2026')">动物管理员 2023010101</button>
+          <button class="btn sm ghost" type="button" @click="useDemo('2023010102', 'Admin@2026')">系统管理员 2023010102</button>
         </div>
       </div>
-    </main>
   </div>
 </template>

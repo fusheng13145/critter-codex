@@ -140,7 +140,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHero title="资金台账" desc="逐笔核对每一笔入账与支出；合计恒等于已入账捐赠减已复核支出。">
+    <PageHero title="资金台账">
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新台账</button>
         <button class="btn" type="button" :disabled="exporting || loading" @click="exportLedger">
@@ -157,7 +157,7 @@ onMounted(() => {
       ]"
     />
 
-    <div v-if="!auth.isAdmin" class="notice">资金台账含捐赠人展示名与支出详情，仅管理员可查看。</div>
+    <div v-if="!auth.isAdmin" class="notice">只需管理员可读</div>
 
     <template v-else>
       <div class="toolbar">
@@ -178,7 +178,7 @@ onMounted(() => {
 
       <div v-if="exportError" class="notice">{{ exportError }}</div>
       <div v-else-if="exportTask?.status === 'RUNNING'" class="notice">
-        台账超过 5 万行，已转异步导出（taskId {{ exportTask.taskId }}，已处理 {{ exportTask.rows }} 行）。
+        异步导出中（taskId {{ exportTask.taskId }}，已处理 {{ exportTask.rows }} 行）
       </div>
 
       <div v-if="errorText" class="notice">{{ errorText }}</div>
@@ -208,14 +208,14 @@ onMounted(() => {
           </div>
         </div>
 
-        <PanelCard title="逐笔流水" :more="`${entries.length} 笔`">
+        <PanelCard title="逐笔流水">
           <div class="toolbar inner">
             <select v-model="typeFilter" class="select">
               <option value="">全部方向</option>
               <option value="INCOME">收入</option>
               <option value="EXPENSE">支出</option>
             </select>
-            <span class="muted small">方向由后端按状态判定，前端不推断。</span>
+            <span class="muted small"></span>
           </div>
 
           <div v-if="!entries.length" class="muted empty-line">当前条件下没有流水</div>
@@ -261,9 +261,7 @@ onMounted(() => {
           </div>
         </PanelCard>
 
-        <div class="footnote" style="text-align: left">
-          收入 = 已核对入账捐赠（VERIFIED）；支出 = 已复核支出（APPROVED）。待核对与待复核均不进入台账。
-        </div>
+
       </template>
     </template>
   </div>

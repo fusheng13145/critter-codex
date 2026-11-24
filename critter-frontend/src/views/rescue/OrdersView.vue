@@ -164,7 +164,6 @@ onMounted(() => {
   <div>
     <PageHero
       title="工单看板"
-      desc="工单状态由状态机驱动：待受理 → 处置中 → 待回访 / 已结案；超时只作为风险标记，不篡改业务状态。"
     >
       <template #actions>
         <button class="btn ghost" type="button" @click="router.push('/report')">上报处理</button>
@@ -209,7 +208,6 @@ onMounted(() => {
         :loading="loading"
         :error="errorText"
         :empty="!pageData.list.length"
-        empty-text="当前筛选下没有工单"
       >
         <div class="table-wrap">
           <table class="native">
@@ -258,13 +256,11 @@ onMounted(() => {
         />
       </PageState>
 
-      <div class="footnote" style="text-align: left">
-        来源：GET /orders、GET /orders/{no}；状态迁移 PUT /orders/{no}/status 只允许 ANIMAL_ADMIN。
-      </div>
+
     </template>
 
     <el-drawer v-model="drawerVisible" title="工单详情" size="580px" append-to-body>
-      <PageState :loading="detailLoading" :error="detailError" :empty="!detail" empty-text="工单不存在">
+      <PageState :loading="detailLoading" :error="detailError" :empty="!detail">
         <div v-if="detail" class="drawer-body">
           <div class="drawer-head">
             <div>
@@ -314,7 +310,7 @@ onMounted(() => {
 
           <div class="block">
             <h3>现场照片</h3>
-            <PhotoGallery :file-ids="detail.photos" empty-text="无现场照片" />
+            <PhotoGallery :file-ids="detail.photos" />
           </div>
 
           <div v-if="detail.disposeNote || detail.closeReason" class="block">
@@ -356,9 +352,7 @@ onMounted(() => {
               {{ orderStatusLabel(code) }}
             </button>
           </div>
-          <div v-else-if="!animalAdmin" class="footnote" style="text-align: left">
-            SYSTEM_ADMIN 可查看工单，但状态迁移只允许 ANIMAL_ADMIN。
-          </div>
+
         </div>
       </PageState>
     </el-drawer>
@@ -379,7 +373,7 @@ onMounted(() => {
         <textarea v-model="reason" class="textarea" maxlength="255" placeholder="无法处置、误报等情况在此说明" />
       </div>
 
-      <div class="footnote" style="text-align: left">{{ requiredHint(target ?? 'PROCESSING').hint }}</div>
+
       <div v-if="transitionError" class="field-error">{{ transitionError }}</div>
 
       <template #footer>

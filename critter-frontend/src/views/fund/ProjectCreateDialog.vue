@@ -246,14 +246,6 @@ async function save(submit: boolean): Promise<void> {
       </div>
     </div>
 
-    <div class="notice" style="margin-top: 12px">
-      <template v-if="editing">
-        仅草稿或已驳回项目可编辑；“保存”后仍保持当前状态，驳回项目可再点“提交审核”重新送审。
-      </template>
-      <template v-else>
-        “存草稿”不会进入审核；“提交审核”后状态为 PENDING_AUDIT，需动物管理员通过后才公开募捐。
-      </template>
-    </div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>

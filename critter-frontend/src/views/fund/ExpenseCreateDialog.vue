@@ -146,15 +146,12 @@ function localDateTime(value: Date): string {
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div class="dialog-note">
-      支出必须同时挂靠项目和动物；登记后只进入「待复核」，复核通过才计入项目已支出。
-    </div>
 
     <div class="form-grid">
       <div class="field form-span-2">
         <label>关联项目 <b>*</b></label>
         <select v-model="form.projectNo" class="select">
-          <option value="" disabled>请选择募捐中或待结项项目</option>
+          <option value="" disabled>选择项目</option>
           <option v-for="project in projects" :key="project.projectNo" :value="project.projectNo">
             {{ project.projectNo }} · {{ project.name }}（余额 {{ money(project.raisedAmount - project.spentAmount) }}）
           </option>
@@ -210,14 +207,13 @@ function localDateTime(value: Date): string {
           v-model="form.voucherFileIds"
           :max="10"
           biz-type="EXPENSE_VOUCHER"
-          hint="至少 1 张，最多 10 张；单张不超过 5MB"
         />
       </div>
     </div>
 
     <div class="double-rule">
       <b>双签规则</b>
-      <span>单笔超过 500.00 元需要两名不同管理员先后复核，登记人不能复核自己。</span>
+      <span></span>
     </div>
 
     <div v-if="errorText" class="notice danger" style="margin-top: 12px">{{ errorText }}</div>

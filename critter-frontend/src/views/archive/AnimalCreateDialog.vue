@@ -205,9 +205,7 @@ async function submit(): Promise<void> {
         <label>照片 <b>*</b></label>
         <PhotoUploader v-model="form.photos" :max="6" biz-type="ANIMAL_PUBLIC" />
         <div v-if="errors.photos" class="field-error">{{ errors.photos }}</div>
-        <div class="footnote" style="text-align: left">
-          公开照片使用 ANIMAL_PUBLIC，管理员审核通过后才会出现在公开页。
-        </div>
+
       </div>
 
       <div class="field form-span-2">
@@ -216,7 +214,6 @@ async function submit(): Promise<void> {
       </div>
     </div>
 
-    <div class="notice">编号由服务端按“类别-年份-流水”生成；同一类别流水连续，前端不得传 code。</div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>

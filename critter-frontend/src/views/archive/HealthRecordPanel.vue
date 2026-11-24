@@ -86,7 +86,7 @@ watch(() => props.code, load, { immediate: true })
 </script>
 
 <template>
-  <PanelCard title="健康与防疫记录" :more="`共 ${records.length} 条`">
+  <PanelCard title="健康与防疫记录">
     <template #extra>
       <button v-if="editable" class="btn sm ghost" type="button" @click="openCreate">登记记录</button>
     </template>
@@ -95,7 +95,6 @@ watch(() => props.code, load, { immediate: true })
       :loading="loading"
       :error="errorText"
       :empty="!records.length"
-      empty-text="暂无疫苗、驱虫、体重或病史记录"
     >
       <ul class="list">
         <li v-for="record in records" :key="record.id">
@@ -114,9 +113,7 @@ watch(() => props.code, load, { immediate: true })
       </ul>
     </PageState>
 
-    <div class="footnote" style="text-align: left">
-      GET /animals/{code}/health 登录可见；POST 仅 ANIMAL_ADMIN / SYSTEM_ADMIN。
-    </div>
+
 
     <el-dialog v-model="dialogVisible" title="登记健康记录" width="560px" append-to-body>
       <div class="field">
@@ -148,7 +145,7 @@ watch(() => props.code, load, { immediate: true })
       <div class="field">
         <label>下次计划日期</label>
         <input v-model="form.nextDate" class="input" type="date" />
-        <div class="footnote" style="text-align: left">疫苗记录建议填写，三天内会在列表显示“临期”角标。</div>
+
       </div>
 
       <template #footer>

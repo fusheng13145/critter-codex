@@ -167,7 +167,6 @@ onMounted(() => {
   <div>
     <PageHero
       title="巡查记录"
-      desc="巡查先留痕，再按需转目击；转目击选定群体后，群体最近目击与活动点位会同步更新。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
@@ -185,11 +184,11 @@ onMounted(() => {
     />
 
     <div v-if="!auth.isAdmin" class="notice" style="margin-bottom: 16px">
-      巡查登记与转目击需要动物管理员 / 系统管理员身份。
+      需动物管理员权限
     </div>
 
     <div class="patrol-layout">
-      <PanelCard title="登记巡查" more="FR-R-05">
+      <PanelCard title="登记巡查">
         <div class="form-grid">
           <div class="field">
             <label>巡查点位 <b>*</b></label>
@@ -242,8 +241,8 @@ onMounted(() => {
           <button class="btn sm ghost" type="button" @click="resetFilter">重置</button>
         </div>
 
-        <PageState :loading="loading" :error="errorText" :empty="!records.length" empty-text="所选区间没有巡查记录">
-          <PanelCard title="巡查流水" :more="`共 ${total} 条`">
+        <PageState :loading="loading" :error="errorText" :empty="!records.length">
+          <PanelCard title="巡查流水">
             <div class="table-wrap">
               <table class="native">
                 <thead>
@@ -294,8 +293,6 @@ onMounted(() => {
     <el-dialog v-model="convertVisible" title="巡查转目击" width="520px" append-to-body>
       <div class="dialog-note">
         巡查 #{{ converting?.id }} · {{ converting?.point?.name }} · {{ dateTime(converting?.patrolAt) }}
-        <br />
-        不填群体编号时生成 <span class="mono">UNASSIGNED</span> 待归属目击，可在群体档案页指派。
       </div>
       <div class="field">
         <label>目标群体编号（可空）</label>

@@ -47,7 +47,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHero title="公告详情" desc="公告正文与发布信息。">
+    <PageHero title="公告详情">
       <template #actions>
         <el-button @click="backToList">返回公告列表</el-button>
       </template>
@@ -72,14 +72,11 @@ onMounted(() => {
 
         <article class="notice-content">{{ notice.content }}</article>
 
-        <div class="notice-foot muted">
-          公示类公告用于领养与救助结果公开；如需更正，请联系发布管理员。
-        </div>
       </template>
 
       <div v-else-if="!loading" class="notice-empty">
         <b>公告不可用</b>
-        <span>该公告可能不存在或已下线，请返回列表查看其它内容。</span>
+        <span>公告不存在或已下线</span>
       </div>
     </section>
   </div>

@@ -200,7 +200,7 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHero title="个人中心" desc="资料、密码与叠加身份申请都在这里；联系方式只对本人与管理员可见。">
+    <PageHero title="个人中心">
       <template #actions>
         <button class="btn ghost" type="button" @click="confirmLogout">退出登录</button>
       </template>
@@ -237,7 +237,7 @@ onMounted(async () => {
     </div>
 
     <div class="grid2">
-      <PanelCard title="修改资料" more="昵称会出现在公开页">
+      <PanelCard title="修改资料">
         <div class="field">
           <label>昵称</label>
           <input v-model="profileForm.nickname" class="input" maxlength="16" />
@@ -253,12 +253,10 @@ onMounted(async () => {
         <button class="btn" type="button" :disabled="savingProfile" @click="saveProfile">
           {{ savingProfile ? '保存中…' : '保存资料' }}
         </button>
-        <div class="footnote" style="text-align: left">
-          手机号在库内为 AES 密文，接口返回按角色脱敏；本人可见全量，其他人只看 138****2210。
-        </div>
+
       </PanelCard>
 
-      <PanelCard title="修改密码" more="改密后所有旧令牌立即失效">
+      <PanelCard title="修改密码">
         <div class="field">
           <label>原密码</label>
           <input v-model="passwordForm.oldPassword" class="input" type="password" autocomplete="current-password" />
@@ -274,14 +272,12 @@ onMounted(async () => {
         <button class="btn" type="button" :disabled="savingPassword" @click="savePassword">
           {{ savingPassword ? '提交中…' : '更新密码' }}
         </button>
-        <div class="footnote" style="text-align: left">
-          修改成功后会自动退出：服务端用"最小签发时间"让旧访问令牌与刷新令牌同时作废，无需逐个拉黑。
-        </div>
+
       </PanelCard>
     </div>
 
     <div class="grid2 align-start">
-      <PanelCard title="申请叠加身份" more="志愿者 / 认养人">
+      <PanelCard title="申请叠加身份">
         <div class="field">
           <label>申请身份</label>
           <select v-model="applyForm.roleCode" class="select">
@@ -300,12 +296,10 @@ onMounted(async () => {
         <button class="btn" type="button" :disabled="submittingApply" @click="submitApply">
           {{ submittingApply ? '提交中…' : '提交申请' }}
         </button>
-        <div class="footnote" style="text-align: left">
-          审核通过后菜单才变化：申请单据会以 PENDING 状态保存，未通过不会提前拿到权限。
-        </div>
+
       </PanelCard>
 
-      <PanelCard title="我的身份申请" :more="`共 ${applications.length} 条`">
+      <PanelCard title="我的身份申请">
         <ul class="list">
           <li v-for="item in applications" :key="item.id">
             <span class="dot" :class="{ gray: item.status !== 'GRANTED' }" />
@@ -328,7 +322,7 @@ onMounted(async () => {
       </PanelCard>
     </div>
 
-    <PanelCard title="账号申诉" more="被禁用后同样可在登录页提交">
+    <PanelCard title="账号申诉">
       <template v-if="appealForm.submitted">
         <div class="notice" style="margin-bottom: 12px">{{ appealForm.message }}</div>
         <button class="btn ghost" type="button" @click="appealForm.submitted = false">再提交一条</button>
@@ -339,7 +333,7 @@ onMounted(async () => {
           <textarea
             v-model="appealForm.reason"
             class="textarea"
-            placeholder="例如：账号被误判为违规，附上当时的活动说明。"
+            placeholder="账号被误判为违规"
           />
         </div>
         <div class="field">
@@ -349,18 +343,13 @@ onMounted(async () => {
         <button class="btn" type="button" :disabled="submittingAppeal" @click="submitAppeal">
           {{ submittingAppeal ? '提交中…' : '提交申诉' }}
         </button>
-        <div class="footnote" style="text-align: left">
-          申诉是公开接口：账号被禁用后无法登录，走登录页的"账号被禁用？申诉"同样能提交。
-        </div>
+
       </template>
     </PanelCard>
 
-    <PanelCard title="我的捐赠" :more="`最近 ${donations.length} 笔 · 仅本人可见`">
+    <PanelCard title="我的捐赠">
       <div v-if="donationsError" class="notice">{{ donationsError }}</div>
       <div v-else-if="donationsLoading" class="muted" style="padding: 8px 0">捐赠记录加载中…</div>
-      <div v-else-if="!donations.length" class="muted" style="padding: 8px 0">
-        暂无实名捐赠记录。匿名捐赠不会显示在这里。
-      </div>
       <table v-else class="native">
         <thead>
           <tr>
@@ -404,12 +393,10 @@ onMounted(async () => {
           </tr>
         </tbody>
       </table>
-      <div class="footnote" style="text-align: left">
-        口径：GET /donations/mine；只有 VERIFIED 显示电子凭证，ABNORMAL 会注明异常原因。
-      </div>
+
     </PanelCard>
 
-    <PanelCard title="登录日志" more="近 30 天，本人可见">
+    <PanelCard title="登录日志">
       <table class="native">
         <thead>
           <tr>

@@ -73,7 +73,6 @@ function choose(point: PointView): void {
           </button>
         </div>
       </div>
-      <div class="map-note">坐标来自 <span class="mono">GET /points</span>，底图待校准；当前按相对坐标示意落点。</div>
     </div>
   </div>
 </template>
@@ -213,15 +212,6 @@ function choose(point: PointView): void {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);
-}
-
-.map-note {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--line);
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.6;
 }
 
 @media (max-width: 1000px) {

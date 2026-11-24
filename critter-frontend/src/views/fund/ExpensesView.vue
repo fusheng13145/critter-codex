@@ -110,7 +110,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <PageHero title="支出复核" desc="支出登记后只进入待复核；复核通过才扣减项目余额，超 500 元必须两签。">
+    <PageHero title="支出复核">
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
         <button v-if="canReview" class="btn" type="button" @click="createVisible = true">登记支出</button>
@@ -126,7 +126,7 @@ onMounted(() => {
     />
 
     <div v-if="!canReview" class="notice">
-      支出登记与复核仅 ANIMAL_ADMIN 可操作；SYSTEM_ADMIN 不参与业务审核。
+      
     </div>
 
     <template v-else>
@@ -139,7 +139,7 @@ onMounted(() => {
         <div class="metric">
           <div class="label">当前筛选笔数</div>
           <div class="num">{{ total }}</div>
-          <div class="sub">全部状态含已复核与已驳回</div>
+          <div class="sub"></div>
         </div>
         <div class="metric">
           <div class="label">本页金额</div>
@@ -148,7 +148,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <PanelCard title="支出列表" :more="`共 ${total} 笔`">
+      <PanelCard title="支出列表">
         <div class="toolbar">
           <select v-model="statusFilter" class="select">
             <option value="">全部状态</option>
@@ -233,9 +233,7 @@ onMounted(() => {
           </button>
         </div>
 
-        <div class="footnote" style="text-align: left">
-          来源：GET /expenses。金额为整数分；待复核不进入公开进度，复核通过才计入 spentAmount。
-        </div>
+
       </PanelCard>
     </template>
 

@@ -150,12 +150,6 @@ onMounted(load)
   <div v-loading="loading">
     <div v-if="errorText" class="notice" style="margin-bottom: 12px">{{ errorText }}</div>
 
-    <div class="notice" style="margin-bottom: 16px">
-      系统管理员不具备业务审核权：<span class="mono">adoption:audit</span> 与
-      <span class="mono">expense:review</span> 不在其权限集合内，审核类接口只对动物管理员开放。
-      在线调整时系统管理员必须保留 <span class="mono">menu:admin</span> 与 <span class="mono">role:manage</span>，
-      避免把管理员锁在门外。
-    </div>
 
     <div class="card">
       <div class="card-head">
@@ -176,7 +170,7 @@ onMounted(load)
           </option>
         </select>
         <span class="muted" style="font-size: 12px; margin-left: auto">
-          系统管理员两套码（SYS_ADMIN / SYSTEM_ADMIN）会同步修改
+          
         </span>
       </div>
 

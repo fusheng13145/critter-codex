@@ -227,7 +227,6 @@ onMounted(() => {
   <div>
     <PageHero
       title="群体档案"
-      desc="群体与个体物理分离；规模用闭区间与计数依据表达，不把估算值写成精确只数。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
@@ -276,7 +275,6 @@ onMounted(() => {
       :loading="loading"
       :error="errorText"
       :empty="!pageData.list.length"
-      empty-text="当前筛选条件下没有群体档案"
     >
       <div class="table-wrap">
         <table class="native">
@@ -335,7 +333,6 @@ onMounted(() => {
     <PanelCard
       v-if="auth.isAdmin"
       title="待归属目击"
-      :more="`${pendingSightings.length} 条 · UNASSIGNED`"
       style="margin-top: 16px"
     >
       <div v-if="pendingLoading" class="muted line">正在读取待归属目击…</div>
@@ -370,9 +367,7 @@ onMounted(() => {
           </tbody>
         </table>
       </div>
-      <div class="footnote" style="text-align: left">
-        来源：GET /sightings?assignStatus=UNASSIGNED；指派后群体最近目击时间会同步刷新。
-      </div>
+
     </PanelCard>
 
     <GroupCreateDialog
@@ -419,7 +414,7 @@ onMounted(() => {
     />
 
     <el-drawer v-model="drawerVisible" title="群体详情" size="520px" append-to-body>
-      <PageState :loading="detailLoading" :error="detailError" :empty="!detail" empty-text="群体不存在">
+      <PageState :loading="detailLoading" :error="detailError" :empty="!detail">
         <div v-if="detail" class="drawer-body">
           <div class="drawer-title">
             <span class="mono">{{ detail.groupCode }}</span>
@@ -457,7 +452,7 @@ onMounted(() => {
             <button class="inline-link mono" type="button" @click="openMergedTarget">
               {{ detail.mergedIntoCode }}
             </button>
-            ，当前编号只用于追溯，不能继续登记或修改。
+            （已合并）
           </div>
           <div v-if="detail.mergedFrom.length" class="lineage-line">
             由以下群体合并而来：
@@ -530,7 +525,6 @@ onMounted(() => {
             </ul>
           </div>
 
-          <div class="notice">群体不参与认养，也不能直接建个体档案；需要个体化时走群体拆分流程。</div>
         </div>
       </PageState>
     </el-drawer>

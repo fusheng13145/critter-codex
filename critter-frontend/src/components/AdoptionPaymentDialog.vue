@@ -98,9 +98,6 @@ async function submit(): Promise<void> {
 
 <template>
   <el-dialog v-model="visible" title="缴费入账" width="560px" destroy-on-close>
-    <el-alert type="warning" :closable="false" show-icon style="margin-bottom: 16px">
-      审核通过不等于生效。只有本操作写入缴费流水后，认养单才转 ACTIVE、动物才标记已认养。
-    </el-alert>
     <el-form label-width="92px">
       <el-form-item label="认养单号">
         <span class="mono">{{ adoption?.adoptionNo }}</span>
@@ -124,7 +121,7 @@ async function submit(): Promise<void> {
       <el-form-item label="转账凭证" required>
         <input type="file" multiple accept="image/*,.pdf" @change="onFiles" />
         <div class="muted" style="font-size: 12px; margin-top: 6px">
-          支持 jpg / png / webp / pdf，单张不超过 5MB；已选 {{ files.length }} 个文件。
+          已选 {{ files.length }} 个文件。
         </div>
       </el-form-item>
       <el-form-item label="差额说明">

@@ -105,15 +105,12 @@ async function submit(): Promise<void> {
         v-model="form.reason"
         class="textarea"
         maxlength="255"
-        placeholder="通过时可填写备注；驳回时必须说明原因，至少 5 个字"
+        placeholder="驳回须填原因"
         :class="{ invalid: errors.reason }"
       />
       <div v-if="errors.reason" class="field-error">{{ errors.reason }}</div>
     </div>
 
-    <div class="notice">
-      通过后项目状态变为 FUNDING，公开页可见；驳回后管理员可修改并重新提交。
-    </div>
 
     <template #footer>
       <button class="btn ghost" type="button" @click="emit('update:modelValue', false)">取消</button>

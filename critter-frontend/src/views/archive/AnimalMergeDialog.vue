@@ -74,8 +74,7 @@ async function submit(): Promise<void> {
     @update:model-value="emit('update:modelValue', false)"
   >
     <div class="dialog-note">
-      主档 <span class="mono">{{ animal?.code }}</span> 保留；副档不会物理删除，旧编号会写入
-      <span class="mono">animal_alias</span>，扫码或搜索旧编号仍会回到主档。有生效认养时后端返回 30403。
+      主档 <span class="mono">{{ animal?.code }}</span>
     </div>
 
     <div class="field">

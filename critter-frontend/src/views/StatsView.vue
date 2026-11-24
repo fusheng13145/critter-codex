@@ -123,7 +123,7 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHero title="数据统计" desc="生物、资金、效率三块口径分开统计；资金只计已入账捐赠与已复核支出。">
+    <PageHero title="数据统计">
       <template #actions>
         <span v-if="exportHint" class="muted" style="font-size: 12px; margin-right: 8px">{{ exportHint }}</span>
         <button class="btn ghost" type="button" :disabled="exporting" @click="exportStats">
@@ -142,9 +142,6 @@ onMounted(load)
       <input v-model="to" class="input" type="date" style="min-width: 160px" />
       <button class="btn ghost sm" type="button" @click="load">应用</button>
       <button class="btn ghost sm" type="button" @click="resetRange">重置</button>
-      <span class="muted" style="font-size: 12px; margin-left: auto">
-        生物总览固定看近 6 个月；资金与效率按所选区间
-      </span>
     </div>
 
     <div class="metrics">
@@ -160,7 +157,7 @@ onMounted(load)
     </div>
 
     <div class="grid2 align-start">
-      <PanelCard title="档案状态分布" :more="`${biology?.groupCount ?? 0} 个群体 · ${biology?.occurrenceCount ?? 0} 条出现记录`">
+      <PanelCard title="档案状态分布">
         <div v-if="statusSlices.length" style="display: grid; gap: 10px">
           <div v-for="slice in statusSlices" :key="slice.status">
             <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--muted)">
@@ -173,13 +170,10 @@ onMounted(load)
           </div>
         </div>
         <div v-else class="muted">暂无档案数据</div>
-        <div class="footnote" style="text-align: left; margin-top: 12px">
-          来源：<span class="mono">v_animal_overview</span>（排除软删与已离世）；群体规模区间
-          {{ biology?.groupSizeMin ?? 0 }}—{{ biology?.groupSizeMax ?? 0 }}。
-        </div>
+
       </PanelCard>
 
-      <PanelCard title="近半年新增档案" more="单位：只">
+      <PanelCard title="近半年新增档案">
         <BarChart v-if="fundPoints.length >= 0 && (biology?.months.length ?? 0) > 0"
           :points="(biology?.months ?? []).map((item) => ({ label: `${Number(item.month.slice(5))}月`, value: item.newAnimals }))"
           :alt-from="3"
@@ -187,7 +181,7 @@ onMounted(load)
       </PanelCard>
     </div>
 
-    <PanelCard title="资金月度流水" more="只计已入账捐赠与已复核支出">
+    <PanelCard title="资金月度流水">
       <div v-if="fundPoints.length" class="grid2" style="margin-bottom: 0">
         <BarChart :points="fundPoints" :alt-from="3" />
         <table class="native" style="min-width: 0">
@@ -210,12 +204,10 @@ onMounted(load)
         </table>
       </div>
       <div v-else class="muted">所选区间内没有资金流水</div>
-      <div class="footnote" style="text-align: left; margin-top: 12px">
-        来源：<span class="mono">v_project_fund</span>，结余恒等于"已筹 − 已支出"；接口自检不通过会返回 50001 而不是矛盾数字。
-      </div>
+
     </PanelCard>
 
-    <PanelCard title="项目资金明细" more="点击项目编号可到资金页（B 域）">
+    <PanelCard title="项目资金明细">
       <table class="native">
         <thead>
           <tr>
@@ -253,7 +245,7 @@ onMounted(load)
       </table>
     </PanelCard>
 
-    <div class="grid2" style="margin-top: 16px">
+    <div style="margin-top: 16px">
       <PanelCard title="上报与工单效率">
         <div class="metrics" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 0">
           <MetricCard
@@ -265,15 +257,6 @@ onMounted(load)
           <MetricCard label="工单平均受理" :value="`${efficiency?.orders.avgAcceptMinutes ?? 0} 分钟`" sub="从上报到受理" />
           <MetricCard label="工单超时" :value="String(efficiency?.orders.timeout ?? 0)" sub="需说明原因" />
         </div>
-      </PanelCard>
-
-      <PanelCard title="口径说明">
-        <ul class="list">
-          <li><span class="dot" /><span class="grow">在册数 = 未软删且未离世的个体，群体不并入计算</span></li>
-          <li><span class="dot gray" /><span class="grow">已筹只计 <span class="mono">status=VERIFIED</span> 的捐赠，登记未入账不计</span></li>
-          <li><span class="dot gray" /><span class="grow">已支出只计 <span class="mono">status=APPROVED</span> 的支出，待复核不计</span></li>
-          <li><span class="dot gray" /><span class="grow">认养覆盖率取 animal.adopted，与列表筛选同源</span></li>
-        </ul>
       </PanelCard>
     </div>
   </div>

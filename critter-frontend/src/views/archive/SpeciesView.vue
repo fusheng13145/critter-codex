@@ -133,7 +133,6 @@ onMounted(() => {
   <div>
     <PageHero
       title="物种名录"
-      desc="保护级别只展示名录登记值，不做保护等级推断；群体与出现记录按 speciesId 关联。"
     >
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新名录</button>
@@ -170,7 +169,7 @@ onMounted(() => {
       <span class="muted result-count">共 {{ species.length }} 种</span>
     </div>
 
-    <PageState :loading="loading" :error="errorText" :empty="!species.length" empty-text="没有匹配的物种">
+    <PageState :loading="loading" :error="errorText" :empty="!species.length">
       <div class="species-grid">
         <button
           v-for="item in species"
@@ -222,9 +221,8 @@ onMounted(() => {
       <PageState
         :loading="relationLoading"
         :error="relationError"
-        empty-text="暂无关联群体与出现记录"
       >
-        <PanelCard title="关联群体" :more="`${groups.length} 个`">
+        <PanelCard title="关联群体">
           <div v-if="!groups.length" class="muted empty-line">暂无按该物种登记的群体</div>
           <ul v-else class="list">
             <li v-for="group in groups" :key="group.groupCode">
@@ -241,7 +239,7 @@ onMounted(() => {
           </ul>
         </PanelCard>
 
-        <PanelCard title="最近出现记录" :more="`${occurrences.length} 条`">
+        <PanelCard title="最近出现记录">
           <div v-if="!occurrences.length" class="muted empty-line">暂无出现记录</div>
           <ul v-else class="list">
             <li v-for="occurrence in occurrences" :key="occurrence.id">
@@ -256,9 +254,7 @@ onMounted(() => {
           </ul>
         </PanelCard>
 
-        <div class="footnote" style="text-align: left">
-          关联条件：GET /groups?speciesId=… 与 GET /occurrences?speciesId=…；出现记录由管理员登记。
-        </div>
+
       </PageState>
     </el-drawer>
 

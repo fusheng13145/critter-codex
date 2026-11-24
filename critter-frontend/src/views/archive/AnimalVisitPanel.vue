@@ -34,11 +34,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <PanelCard title="就诊记录" :more="loading ? '读取中…' : `共 ${visits.length} 次`">
+  <PanelCard title="就诊记录">
     <div v-if="errorText" class="notice">{{ errorText }}</div>
-    <div v-else-if="!loading && !visits.length" class="muted empty-line">
-      暂无就诊记录。管理员登记就诊后会在此显示。
-    </div>
     <div v-else class="table-wrap visit-table">
       <table class="native">
         <thead>
@@ -63,9 +60,7 @@ onMounted(() => {
         </tbody>
       </table>
     </div>
-    <div class="footnote" style="text-align: left">
-      来源：GET /visits?animalCode=...，按到院时间倒序；无工单就诊的来源备注见医疗协作页。
-    </div>
+
   </PanelCard>
 </template>
 

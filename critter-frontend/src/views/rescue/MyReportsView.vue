@@ -88,7 +88,7 @@ onMounted(load)
 
 <template>
   <div>
-    <PageHero title="我的上报" desc="服务端按上报人过滤，状态与受理进度实时更新。">
+    <PageHero title="我的上报">
       <template #actions>
         <button class="btn ghost" type="button" :disabled="loading" @click="load">刷新</button>
         <button class="btn" type="button" @click="router.push('/report')">新增上报</button>
@@ -157,9 +157,7 @@ onMounted(load)
       </div>
     </template>
 
-    <div class="footnote" style="text-align: left">
-      来源：GET /reports/mine。仅返回当前登录人提交的上报，按提交时间倒序。
-    </div>
+
 
     <el-drawer v-model="drawerVisible" title="上报详情" size="540px" append-to-body>
       <div v-if="detailError" class="notice">{{ detailError }}</div>
@@ -173,16 +171,15 @@ onMounted(load)
           <StatusTag :code="detail.status" :label="reportStatusLabel(detail.status)" />
         </div>
 
-        <div v-if="detail.overdue" class="notice">该上报已超过 24 小时受理时限，系统将标记超时。</div>
+        <div v-if="detail.overdue" class="notice">已超过受理时限</div>
 
         <div v-if="detail.invalid" class="notice">
-          该上报已判定无效：{{ detail.invalidReason || '未填写原因' }}，不计入救助统计。
+          已判定无效：{{ detail.invalidReason || '未填写原因' }}
         </div>
         <div v-else-if="needsConfirm(detail)" class="notice confirm-box">
           <div>
             <b>结案待确认</b><br />
-            管理员已于 {{ dateTime(detail.confirmedAt) }} 前提交结案，请在
-            {{ dateTime(detail.confirmDueAt) }} 前确认；逾期系统将自动确认。
+            已于 {{ dateTime(detail.confirmedAt) }} 结案，待确认至     {{ dateTime(detail.confirmDueAt) }}，逾期自动确认。
           </div>
           <button class="btn sm" type="button" :disabled="confirmBusy" @click="confirmClose">
             {{ confirmBusy ? '提交中…' : '确认结案' }}
@@ -199,7 +196,7 @@ onMounted(load)
 
         <div class="block">
           <h3>现场照片</h3>
-          <PhotoGallery :file-ids="detail.photos" empty-text="无照片" />
+          <PhotoGallery :file-ids="detail.photos" />
         </div>
 
         <div class="block">

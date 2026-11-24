@@ -15,13 +15,11 @@ const props = withDefaults(
     max?: number
     bizType?: string
     accept?: string
-    hint?: string
   }>(),
   {
     max: 3,
     bizType: 'GENERAL',
     accept: 'image/jpeg,image/png,image/webp',
-    hint: '单张不超过 5MB，支持 JPG / PNG / WebP',
   },
 )
 
@@ -110,7 +108,7 @@ function remove(index: number): void {
     />
 
     <div class="upload-hint">
-      {{ hint }} · 已上传 {{ modelValue.length }}/{{ max }}
+      已上传 {{ modelValue.length }}/{{ max }}
     </div>
     <div v-if="errorText" class="field-error">{{ errorText }}</div>
   </div>

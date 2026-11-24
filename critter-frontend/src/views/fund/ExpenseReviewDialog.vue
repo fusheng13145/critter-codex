@@ -133,13 +133,13 @@ async function submit(): Promise<void> {
     </div>
 
     <div v-if="isSelf" class="notice danger">
-      你是这笔支出的登记人，后端硬拦截自我复核；请转交另一名管理员。
+      登记人不能复核本笔支出
     </div>
     <div v-else-if="isFirstSign" class="notice">
-      金额超过 500.00 元。本次通过只完成第一签，还需要另一名管理员再次复核。
+      本次通过仅完成第一签
     </div>
     <div v-else-if="isSecondSign" class="notice">
-      该支出已完成第一签。本次通过将正式计入项目已支出并扣减余额。
+      本次通过将计入已支出
     </div>
 
     <template v-if="!isSelf">

@@ -198,7 +198,7 @@ onMounted(load)
 </script>
 
 <template>
-  <PageHero title="志愿任务" desc="管理员发布任务，活跃志愿者报名；到场拍照打卡后按任务时长累计服务时长。">
+  <PageHero title="志愿任务">
     <template #actions>
       <button v-if="isAdmin" class="btn" type="button" @click="openCreate">发布任务</button>
       <button v-if="canVolunteer" class="btn ghost" type="button" @click="activeTab = 'mine'; loadMine()">
@@ -227,7 +227,7 @@ onMounted(load)
         <div v-else-if="!rows.length" class="muted">当前没有符合条件的任务</div>
 
         <div v-else class="task-grid">
-          <PanelCard v-for="task in rows" :key="task.taskId" :title="task.title" :more="task.taskNo">
+          <PanelCard v-for="task in rows" :key="task.taskId" :title="task.title">
             <div class="task-meta">
               <span class="tag">{{ typeLabel(task.type) }}</span>
               <span class="tag" :class="task.status === 'OPEN' ? 'success' : task.status === 'FULL' ? 'warning' : 'gray'">
@@ -309,9 +309,6 @@ onMounted(load)
       </el-tab-pane>
     </el-tabs>
 
-    <div class="footnote" style="text-align: left">
-      来源：GET /tasks、POST /tasks、POST /tasks/{id}/join、POST /tasks/{id}/checkin、GET /tasks/mine。
-    </div>
   </div>
 
   <el-dialog v-model="createVisible" title="发布志愿任务" width="560px">
@@ -357,8 +354,7 @@ onMounted(load)
   </el-dialog>
 
   <el-dialog v-model="checkinVisible" title="到场打卡" width="480px">
-    <p class="muted" style="margin-top: 0">上传一张现场照片，系统按任务时长累计服务时长。</p>
-    <PhotoUploader v-model="photos" :max="1" biz-type="TASK_CHECKIN" hint="单张不超过 5MB" />
+    <PhotoUploader v-model="photos" :max="1" biz-type="TASK_CHECKIN" />
     <template #footer>
       <button class="btn ghost" type="button" @click="checkinVisible = false">取消</button>
       <button class="btn" type="button" :disabled="checkinBusy" @click="submitCheckin">

@@ -89,9 +89,6 @@ function localDateTime(value: Date): string {
     append-to-body
     @update:model-value="emit('update:modelValue', $event)"
   >
-    <div class="dialog-note">
-      出现数量按档位记录；如需精确计数请写入生境描述，不要在前端伪造精确只数。
-    </div>
 
     <div class="field">
       <label>物种 <b>*</b></label>
@@ -140,7 +137,7 @@ function localDateTime(value: Date): string {
 
     <div class="field">
       <label>现场照片</label>
-      <PhotoUploader v-model="form.fileIds" :max="6" biz-type="REPORT_PHOTO" hint="可选，最多 6 张" />
+      <PhotoUploader v-model="form.fileIds" :max="6" biz-type="REPORT_PHOTO" />
     </div>
 
     <div v-if="errorText" class="notice danger" style="margin-top: 12px">{{ errorText }}</div>

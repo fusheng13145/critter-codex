@@ -129,7 +129,7 @@ onMounted(load)
 </script>
 
 <template>
-  <PanelCard title="留言讨论" :more="`共 ${total} 条`">
+  <PanelCard title="留言讨论">
     <div v-if="errorText" class="notice">{{ errorText }}</div>
     <div v-else-if="loading && !comments.length" class="muted empty-line">留言加载中…</div>
     <div v-else-if="!comments.length" class="muted empty-line">还没有留言，来说第一句吧</div>
@@ -175,19 +175,17 @@ onMounted(load)
         :rows="3"
         maxlength="500"
         show-word-limit
-        placeholder="聊聊这只动物或这个项目，请勿发布广告与联系方式"
+        placeholder="写点什么"
       />
       <div class="comment-form-foot">
-        <span class="muted small">留言将公开展示；含引流转账号等营销内容会先进入待审核。</span>
+        <span class="muted small"></span>
         <button class="btn" type="button" :disabled="submitting" @click="submit">
           {{ submitting ? '提交中…' : loggedIn ? '发表留言' : '登录后留言' }}
         </button>
       </div>
     </div>
 
-    <div class="footnote" style="text-align: left">
-      来源：GET /comments、POST /comments；管理员通过 PUT /comments/{id}/reply 回复，回复待审留言同时视为审核通过。
-    </div>
+
 
     <el-dialog v-model="replyVisible" title="回复留言" width="520px" append-to-body>
       <div v-if="replyTarget" class="reply-quote">
@@ -203,7 +201,7 @@ onMounted(load)
       />
       <div class="reply-switch">
         <el-switch v-model="replyPublic" />
-        <span>{{ replyPublic ? '公开回复：所有访客可见' : '仅留言者可见：不在公开列表展示' }}</span>
+        <span>{{ replyPublic ? '公开回复' : '仅留言者可见' }}</span>
       </div>
       <template #footer>
         <button class="btn ghost" type="button" @click="replyVisible = false">取消</button>

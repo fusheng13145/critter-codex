@@ -124,16 +124,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageHero title="认养方案配置" desc="维护按月/按季方案的金额与权益；停用后公开认养页不再展示，历史认养单不受影响。">
+  <PageHero title="认养方案配置">
     <template #actions>
       <button class="btn ghost" type="button" @click="router.push({ name: 'adopt' })">返回认养专区</button>
       <button class="btn" type="button" @click="openCreate">新增方案</button>
     </template>
   </PageHero>
 
-  <PanelCard title="方案列表" :more="`共 ${rows.length} 个`">
+  <PanelCard title="方案列表">
     <div v-if="loading" class="muted">加载中…</div>
-    <div v-else-if="!rows.length" class="muted">还没有方案，先新增一个月度方案</div>
     <el-table v-else :data="rows" stripe>
       <el-table-column prop="planName" label="方案名称" min-width="150" />
       <el-table-column label="周期" width="90">
@@ -161,9 +160,7 @@ onMounted(() => {
         </template>
       </el-table-column>
     </el-table>
-    <div class="footnote" style="text-align: left">
-      金额按分存储；页面输入的是元。POST /plans 新增，PUT /plans/{id} 修改或启停。
-    </div>
+
   </PanelCard>
 
   <el-dialog v-model="dialogVisible" :title="editingId === null ? '新增认养方案' : '编辑认养方案'" width="520px">

@@ -118,7 +118,7 @@ async function submit(): Promise<void> {
     @update:model-value="emit('update:modelValue', false)"
   >
     <div class="dialog-note">
-      源群体 <span class="mono">{{ group?.groupCode }}</span> 保留并缩小范围，新群体自动发新编号；可选把源群体的某几条目击迁给新群体。
+      源群体 <span class="mono">{{ group?.groupCode }}</span>
     </div>
     <div class="form-grid">
       <div class="field form-span-2">

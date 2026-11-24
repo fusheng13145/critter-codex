@@ -128,7 +128,7 @@ onMounted(load)
       <input v-model="keyword" class="input" style="min-width: 200px" placeholder="键 / 显示名" @input="resetPage" />
       <button class="btn" type="button" @click="openCreate">＋ 新增字典项</button>
       <span class="muted" style="font-size: 12px; margin-left: auto">
-        共 {{ filtered.length }} 项 · 停用后所有表单下拉立即不再出现
+        共 {{ filtered.length }} 项
       </span>
     </div>
 

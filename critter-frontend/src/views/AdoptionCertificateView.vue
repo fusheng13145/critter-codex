@@ -46,9 +46,8 @@ function printCertificate(): void {
       <div class="corner top-left">青</div>
       <div class="corner bottom-right">檐</div>
       <header>
-        <p class="org">江苏科技大学 · 青檐万灵册校园生物档案与救助平台</p>
+        <p class="org">江苏科技大学 · 青檐万灵册</p>
         <h1>电 子 认 养 证 书</h1>
-        <p class="en">CAMPUS ADOPTION CERTIFICATE</p>
       </header>
 
       <section class="body">
@@ -59,10 +58,7 @@ function printCertificate(): void {
           认养方案为 <b>{{ certificate.planName }}</b>，有效期至
           <b>{{ dateOnly(certificate.endDate) }}</b>。
         </p>
-        <p>
-          愿每一次守护，都被温柔记录。本证书用于纪念人与校园生灵之间的照护关系，
-          不构成动物所有权或交易凭证。
-        </p>
+        <p class="disclaimer">本证书用于纪念照护关系，不构成所有权或交易凭证。</p>
       </section>
 
       <section class="meta">
@@ -84,7 +80,7 @@ function printCertificate(): void {
         <div class="seal">青檐<br />万灵册</div>
         <div class="signature">
           <p>青檐万灵册 · 认养管理专用章</p>
-          <small>本证书可凭证书编号在系统内查询核验</small>
+          <small>可凭证书编号核验</small>
         </div>
       </footer>
     </article>
@@ -150,13 +146,6 @@ h1 {
   font-size: 38px;
   letter-spacing: 12px;
   color: #244b3d;
-}
-
-.en {
-  margin-top: 8px;
-  font-size: 11px;
-  letter-spacing: 4px;
-  color: #8aa297;
 }
 
 .body {
